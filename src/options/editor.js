@@ -1,4 +1,4 @@
-import {browser} from "../../extension.config.js";
+import CodeMirror from "codemirror/src/edit/CodeMirror";
 
 let saveTimeout;
 let editor;

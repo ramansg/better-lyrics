@@ -2,6 +2,7 @@
 
 import {browser} from "../../extension.config.js";
 
+import Sortable from "sortablejs";
 
 const saveOptions = () => {
   const options = getOptionsFromForm();
