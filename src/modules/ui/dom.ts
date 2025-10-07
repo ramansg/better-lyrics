@@ -552,6 +552,8 @@ export function tickLyrics(
       return;
     }
 
+    const lines = AppState.lyricData!.lines;
+
     if (lyricData.syncType === "richsync") {
       currentTime += getCSSDurationInMs(lyricsElement, "--blyrics-richsync-timing-offset") / 1000;
     } else {
@@ -559,8 +561,6 @@ export function tickLyrics(
     }
 
     const lyricScrollTime = currentTime + getCSSDurationInMs(lyricsElement, "--blyrics-scroll-timing-offset") / 1000;
-
-    const lines = AppState.lyricData.lines;
 
     let selectedLyricHeight = 0;
     let targetScrollPos = 0;
