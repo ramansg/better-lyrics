@@ -1,28 +1,5 @@
 import { getStorage } from "./storage";
 
-class Logger {
-  private enabled = true;
-
-  constructor() {
-    this.updateStatus();
-  }
-
-  updateStatus() {
-    getStorage({ isLogsEnabled: true }, items => {
-      this.enabled = items.isLogsEnabled;
-      this.log.bind(console.log);
-    });
-  }
-
-  log(...args: any[]) {
-    if (this.enabled) {
-      console.log(...args);
-    }
-  }
-}
-
-const logger = new Logger();
-
 /**
  * Conditionally logs messages based on the isLogsEnabled setting.
  */
