@@ -10,6 +10,7 @@ class Logger {
   updateStatus() {
     getStorage({ isLogsEnabled: true }, items => {
       this.enabled = items.isLogsEnabled;
+      this.log.bind(console.log);
     });
   }
 
@@ -25,12 +26,26 @@ const logger = new Logger();
 /**
  * Conditionally logs messages based on the isLogsEnabled setting.
  */
-export const log = logger.log.bind(logger);
+export let log = (...args: any[]) => {
+  getStorage({ isLogsEnabled: true }, items => {
+    if (items.isLogsEnabled) {
+      console.log(args);
+    }
+  });
+}
 
 /**
  * Configures the logging function based on user settings.
  */
-export const setUpLog = logger.updateStatus.bind(logger);
+export function setUpLog() {
+  getStorage({ isLogsEnabled: true }, items => {
+    if (items.isLogsEnabled) {
+      log = console.log.bind(window.console);
+    } else {
+      log = function () {};
+    }
+  });
+}
 
 /**
  * Converts time string in MM:SS format to total seconds.

@@ -20,7 +20,7 @@ chrome.runtime.onMessage.addListener(request => {
       });
     });
   } else if (request.action === "updateSettings") {
-    handleSettings(request.settings);
+    handleSettings();
   }
   return true;
 });
