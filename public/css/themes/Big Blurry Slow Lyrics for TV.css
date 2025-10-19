@@ -8,8 +8,6 @@
 }
 
 .blyrics-container {
-  background: transparent 0%, rgba(0, 0, 0, 0.013) 5%,
-    rgba(255, 235, 205, 0.5) 15%, rgba(0, 0, 0, 0.987) 85%, #000 100%;
   padding: 10px;
   border-radius: 10px;
   overflow: oblique;

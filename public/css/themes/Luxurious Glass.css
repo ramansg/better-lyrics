@@ -42,7 +42,7 @@
 /* Remove default player bar styles */
 ytmusic-player-bar,
 #layout[player-ui-state="PLAYER_PAGE_OPEN"] ytmusic-player-bar {
-  backdrop-filter: transparent !important;
+  backdrop-filter: none !important;
   background-color: transparent !important;
   border: transparent !important;
   border-radius: 0px !important;

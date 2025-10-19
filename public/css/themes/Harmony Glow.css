@@ -3,8 +3,6 @@
   font-size: 2.5rem;
   font-weight: 700;
   line-height: 1.5;
-  background: transparent 0%, rgba(0, 0, 0, 0.013) 5%,
-    rgba(255, 235, 205, 0.5) 15%, rgba(0, 0, 0, 0.987) 85%, #000 100%;
   padding: 20px;
   border-radius: 10px;
   overflow: hidden;

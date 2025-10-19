@@ -71,7 +71,7 @@
 .blyrics--translated,
 .blyrics--romanized {
    opacity: 0.6 !important;
-   color: oklch(1 0 0 / var(--blyrics-translated-opacity)) !important;
+   color: oklch(1 0 0 / 1) !important;
    transition: opacity 0.5s ease !important;
 }
 
@@ -131,7 +131,7 @@ ytmusic-player-page[player-fullscreened] .song-media-controls.ytmusic-player {
       left: -6%;
       /*  background-attachment: fixed !important; */
       width: 110% !important;
-      height: 100% !importan;
+      height: 100% !important;
       background-repeat: no-repeat !important;
       background-size: cover !important;
       filter: saturate(var(--blyrics-background-saturate)) brightness(0.3)
