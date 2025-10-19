@@ -699,7 +699,8 @@ const stringSimilarity = (str1: string, str2: string, substringLength = 2, caseS
   return (match * 2) / (str1.length + str2.length - (substringLength - 1) * 2);
 };
 
-const testRtl = (text: string): boolean => /[\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Syriac}\p{Script=Thaana}]/u.test(text);
+const testRtl = (text: string): boolean =>
+  /[\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Syriac}\p{Script=Thaana}]/u.test(text);
 
 /**
  * This regex is designed to detect any characters that are outside of the
