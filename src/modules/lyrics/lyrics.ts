@@ -699,7 +699,7 @@ const stringSimilarity = (str1: string, str2: string, substringLength = 2, caseS
   return (match * 2) / (str1.length + str2.length - (substringLength - 1) * 2);
 };
 
-const testRtl = (text: string): boolean => /[؀-ۿ]|[ｐ-￐]|[֐-׿]|[ހ-޿]/.test(text);
+const testRtl = (text: string): boolean => /[\p{Script=Arabic}\p{Script=Hebrew}\p{Script=Syriac}\p{Script=Thaana}]/u.test(text);
 
 /**
  * This regex is designed to detect any characters that are outside of the
@@ -714,7 +714,7 @@ const testRtl = (text: string): boolean => /[؀-ۿ]|[ｐ-￐]|[֐-׿]|[ހ-޿]/.t
  * \u2018-\u201D - This range covers common "smart" or curly punctuation, including single
  * and double quotation marks/apostrophes (‘, ’, “, ”).
  */
-const nonLatinRegex = /[^ -ÿ‘-”]/;
+const nonLatinRegex = /[^\p{Script_Extensions=Latin}\p{Script_Extensions=Common}]/u;
 
 /**
  * Checks if a given string contains any non-Latin characters.
