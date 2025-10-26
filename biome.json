@@ -1,7 +1,20 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.0.4/schema.json",
   "files": {
-    "includes": ["**/*.js", "**/*.ts", "**/*.jsx", "**/*.tsx", "!**/*.min.js", "!**/*.js.map"],
+    "includes": [
+      "**/*.js",
+      "**/*.ts",
+      "**/*.jsx",
+      "**/*.tsx",
+      "!**/*.min.js",
+      "!**/*.js.map",
+      "!**/dist",
+      "!**/node_modules",
+      "!www/.next/**/*",
+      "!src/options.html",
+      "!.all-contributorsrc",
+      "!STYLING.md"
+    ],
     "ignoreUnknown": true
   },
   "formatter": {

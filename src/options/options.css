@@ -666,3 +666,12 @@ hr {
     overflow: auto;
     min-height: 100%;
 }
+
+.cm-gutters{
+	padding-right: 0 !important;
+	border-right: 1px solid rgb(80 93 100 / 20%) !important;
+}
+
+.cm-gutter-lint{
+	width: 0.5em !important;
+}

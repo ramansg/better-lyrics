@@ -1,37 +1,31 @@
 import { EditorState } from "@codemirror/state";
-import { basicSetup } from "@codemirror/basic-setup";
-import { openSearchPanel, highlightSelectionMatches } from "@codemirror/search";
+import { highlightSelectionMatches } from "@codemirror/search";
 import { type Diagnostic, linter, lintGutter, lintKeymap } from "@codemirror/lint";
 import { indentWithTab, history, defaultKeymap, historyKeymap } from "@codemirror/commands";
+import { foldGutter, indentOnInput, indentUnit, bracketMatching, foldKeymap } from "@codemirror/language";
 import {
-  foldGutter,
-  indentOnInput,
-  indentUnit,
-  bracketMatching,
-  foldKeymap,
-  syntaxHighlighting,
-  defaultHighlightStyle,
-} from "@codemirror/language";
-import { closeBrackets, autocompletion, closeBracketsKeymap, completionKeymap } from "@codemirror/autocomplete";
+  closeBrackets,
+  autocompletion,
+  closeBracketsKeymap,
+  completionKeymap,
+  acceptCompletion,
+} from "@codemirror/autocomplete";
 import {
   lineNumbers,
   highlightActiveLineGutter,
   highlightSpecialChars,
   drawSelection,
-  dropCursor,
   rectangularSelection,
   crosshairCursor,
   highlightActiveLine,
   keymap,
   EditorView,
-  type EditorViewConfig,
-  ViewPlugin,
   tooltips,
 } from "@codemirror/view";
 
-import { oneDark } from "@codemirror/theme-one-dark";
+import { materialDark } from "@fsegurai/codemirror-theme-material-dark";
 
-import { css, cssLanguage } from "@codemirror/lang-css";
+import { css } from "@codemirror/lang-css";
 
 let saveTimeout: number;
 let editor: EditorView;
@@ -195,6 +189,7 @@ function createEditorState(initialContents: string) {
     highlightActiveLine(),
     highlightSelectionMatches(),
     keymap.of([
+      { key: "Tab", run: acceptCompletion },
       indentWithTab,
       ...closeBracketsKeymap,
       ...defaultKeymap,
@@ -207,7 +202,7 @@ function createEditorState(initialContents: string) {
     lintGutter(),
     cssLinter,
     tooltips(),
-    oneDark,
+    materialDark,
     EditorView.updateListener.of(update => {
       let text = update.state.doc.toString();
       if (update.docChanged && !text.startsWith("Loading")) {
