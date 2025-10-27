@@ -39,7 +39,7 @@ export const EMPTY_THUMBNAIL_SRC: string =
 export const FONT_LINK: string = "https://api.fontshare.com/v2/css?f[]=satoshi@1&display=swap";
 
 // API URLs and Functions
-export const LYRICS_API_URL: string = "https://lyrics-api-go-better-lyrics-api-pr-12.up.railway.app/";
+export const LYRICS_API_URL: string = "https://lyrics-api-go-better-lyrics-api-pr-12.up.railway.app/getLyrics";
 export const DISCORD_INVITE_URL: string = "https://discord.gg/UsHE3d5fWF";
 export const LRCLIB_API_URL: string = "https://lrclib.net/api/get";
 export const LRCLIB_UPLOAD_URL: string = "https://lrclibup.boidu.dev/";

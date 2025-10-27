@@ -498,6 +498,9 @@ function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible = false
       span.dataset.duration = String(partData.duration);
       span.dataset.content = part.words;
       span.style.setProperty("--blyrics-duration", part.durationMs + "ms");
+      if (part.isBackground) {
+        span.classList.add("blyrics-background-lyric");
+      }
       if (part.words.trim().length === 0) {
         span.style.display = "inline";
       }

@@ -59,12 +59,14 @@ export interface Lyric {
   words: string;
   durationMs: number;
   parts?: LyricPart[];
+  agent?: string;
 }
 
 export interface LyricPart {
   startTimeMs: number;
   words: string;
   durationMs: number;
+  isBackground?: boolean;
 }
 
 export interface ProviderParameters {
@@ -84,11 +86,12 @@ export type SourceMapType = {
 };
 
 let defaultPreferredProviderList = [
+  "bLyrics-richsynced",
   "musixmatch-richsync",
   "yt-captions",
   "lrclib-synced",
   "musixmatch-synced",
-  "bLyrics",
+  "bLyrics-synced",
   "yt-lyrics",
   "lrclib-plain",
 ] as const;
@@ -135,7 +138,8 @@ const sourceKeyToFillFn = {
   "musixmatch-synced": cubey,
   "lrclib-synced": lyricLib,
   "lrclib-plain": lyricLib,
-  bLyrics: bLyrics,
+  "bLyrics-richsynced": bLyrics,
+  "bLyrics-synced": bLyrics,
   "yt-captions": ytCaptions,
   "yt-lyrics": ytLyrics,
 } as const;

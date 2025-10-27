@@ -188,11 +188,12 @@ const restoreOptions = (): void => {
     translationLanguage: "en",
     isRomanizationEnabled: false,
     preferredProviderList: [
+      "bLyrics-richsynced",
       "musixmatch-richsync",
       "yt-captions",
+      "bLyrics-synced",
       "lrclib-synced",
       "musixmatch-synced",
-      "bLyrics",
       "yt-lyrics",
       "lrclib-plain",
     ],
@@ -221,11 +222,12 @@ const setOptionsInForm = (items: Options): void => {
 
   // Always recreate in the default order to make sure no items go missing
   let unseenProviders = [
+    "bLyrics-richsynced",
     "musixmatch-richsync",
     "yt-captions",
+    "bLyrics-synced",
     "lrclib-synced",
     "musixmatch-synced",
-    "bLyrics",
     "yt-lyrics",
     "lrclib-plain",
   ];
@@ -253,7 +255,8 @@ const providerIdToNameMap: { [key: string]: string } = {
   "musixmatch-synced": "Musixmatch (Line Synced)",
   "yt-captions": "Youtube Captions (Line Synced)",
   "lrclib-synced": "LRClib (Line Synced)",
-  bLyrics: "Better Lyrics (Line Synced)",
+  "bLyrics-richsynced": "Better Lyrics (Syllable Synced)",
+  "bLyrics-synced": "Better Lyrics (Line Synced)",
   "yt-lyrics": "Youtube (Unsynced)",
   "lrclib-plain": "LRClib (Unsynced)",
 };
