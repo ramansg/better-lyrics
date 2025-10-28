@@ -1,7 +1,44 @@
 import * as Utils from "@core/utils";
 import type { LyricPart, LyricsArray } from "./shared";
+import {parseJsonNumber} from "ajv/dist/runtime/parseJson";
 
 const possibleIdTags = ["ti", "ar", "al", "au", "lr", "length", "by", "offset", "re", "tool", "ve", "#"];
+
+/**
+ * Parse time in [mm:ss.xx] or <mm:ss.xx> format to milliseconds
+ */
+export function parseTime(timeStr: string | number): number {
+  if (!timeStr) return 0;
+
+  if (typeof timeStr === "number") return timeStr;
+
+  const parts = timeStr.split(':');
+  let totalMs = 0;
+
+  try {
+    if (parts.length === 1) {
+      // Format: ss.mmm
+      totalMs = parseFloat(parts[0]) * 1000;
+    } else if (parts.length === 2) {
+      // Format: mm:ss.mmm
+      const minutes = parseInt(parts[0], 10);
+      const seconds = parseFloat(parts[1]);
+      totalMs = (minutes * 60 * 1000) + (seconds * 1000);
+    } else if (parts.length === 3) {
+      // Format: hh:mm:ss.mmm
+      const hours = parseInt(parts[0], 10);
+      const minutes = parseInt(parts[1], 10);
+      const seconds = parseFloat(parts[2]);
+      totalMs = (hours * 3600 * 1000) + (minutes * 60 * 1000) + (seconds * 1000);
+    }
+
+    // Return a rounded integer
+    return Math.round(totalMs);
+  } catch (e) {
+    console.error(`Error parsing time string: ${timeStr}`, e);
+    return 0;
+  }
+}
 
 /**
  *
@@ -13,15 +50,6 @@ export function parseLRC(lrcText: string, songDuration: number): LyricsArray {
   const lines = lrcText.split("\n");
   const result: LyricsArray = [];
   const idTags = {} as any;
-
-  // Parse time in [mm:ss.xx] or <mm:ss.xx> format to milliseconds
-  function parseTime(timeStr: string): number | null {
-    const match = timeStr.match(/(\d+):(\d+\.\d+)/);
-    if (!match) return null;
-    const minutes = parseInt(match[1], 10);
-    const seconds = parseFloat(match[2]);
-    return Math.round((minutes * 60 + seconds) * 1000);
-  }
 
   // Process each line
   lines.forEach(line => {
