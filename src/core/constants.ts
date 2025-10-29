@@ -7,6 +7,7 @@ export const LYRICS_CLASS: string = "blyrics-container";
 export const CURRENT_LYRICS_CLASS: string = "blyrics--active";
 export const ZERO_DURATION_ANIMATION_CLASS: string = "blyrics-zero-dur-animate";
 export const RTL_CLASS: string = "blyrics-rtl";
+export const WORD_CLASS: string = "blyrics--word";
 export const ANIMATING_CLASS: string = "blyrics--animating";
 export const PRE_ANIMATING_CLASS: string = "blyrics--pre-animating";
 export const USER_SCROLLING_CLASS: string = "blyrics-user-scrolling";

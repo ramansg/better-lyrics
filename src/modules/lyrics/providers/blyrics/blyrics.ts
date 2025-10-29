@@ -40,7 +40,9 @@ export default async function bLyrics(providerParameters: ProviderParameters): P
         trimValues: false,
         removeNSPrefix: true,
         preserveOrder: true,
-        allowBooleanAttributes: true
+        allowBooleanAttributes: true,
+        parseAttributeValue: false,
+        parseTagValue: false
     };
 
     const parser = new XMLParser(options);
@@ -75,25 +77,26 @@ export default async function bLyrics(providerParameters: ProviderParameters): P
         let parts = [] as LyricPart[];
 
         line.p.forEach(p => {
-            if (p["#text"]) {
-                text += p["#text"];
-                parts.push( {
-                    startTimeMs: parts.length > 0 ? parts[length - 1].startTimeMs +  parts[length - 1].durationMs : parseTime(meta["@_begin"]),
-                    durationMs: 0,
-                    words: p['#text'],
-                    isBackground: false
-                });
-            } else if (p.span) {
-                let isBackground = false;
-                let localP: BackgroundSpanElement[] = [p];
+            let isBackground = false;
+            let localP: BackgroundSpanElement[] = [p];
 
-                if (p[":@"]["@_role"] === "x-bg") {
-                    // traverse one span in. This is a bg lyric
-                    isBackground = true;
-                    localP = p.span;
-                }
+            if (p[":@"] && p[":@"]["@_role"] === "x-bg") {
+                // traverse one span in. This is a bg lyric
+                isBackground = true;
+                localP = p.span!;
+            }
 
-                for (let subParts of localP) {
+            for (let subParts of localP) {
+                if (p["#text"]) {
+                    text += p["#text"];
+                    let lastPart = parts[parts.length - 1];
+                    parts.push( {
+                        startTimeMs: lastPart ? lastPart.startTimeMs + lastPart.durationMs : parseTime(meta["@_begin"]),
+                        durationMs: 0,
+                        words: p['#text'],
+                        isBackground: false
+                    });
+                } else if (p.span) {
                     let spanText = subParts.span![0]["#text"]!;
                     let startTimeMs = parseTime(subParts[":@"]["@_begin"]);
                     let endTimeMs = parseTime(subParts[":@"]["@_end"]);
@@ -140,6 +143,8 @@ export default async function bLyrics(providerParameters: ProviderParameters): P
         source: "biodu.dev",
         sourceHref: "https://boidu.dev/"
     }
+
+    console.log("res", result)
 
 
     if (isWordSynced) {

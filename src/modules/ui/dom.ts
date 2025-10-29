@@ -565,9 +565,9 @@ export function tickLyrics(
         selectedLyricHeight = elemBounds.height;
         availableScrollTime = nextTime - lyricScrollTime;
         const timeDelta = lyricScrollTime - time;
-        if (animEngineState.selectedElementIndex !== index && timeDelta > 0.05 && index > 0) {
-          Utils.log(`[BetterLyrics] Scrolling to new lyric was late, dt: ${timeDelta.toFixed(5)}s`);
-        }
+        // if (animEngineState.selectedElementIndex !== index && timeDelta > 0.05 && index > 0) {
+        //   Utils.log(`[BetterLyrics] Scrolling to new lyric was late, dt: ${timeDelta.toFixed(5)}s`);
+        // }
         animEngineState.selectedElementIndex = index;
         if (!lineData.isScrolled) {
           lineData.lyricElement.classList.add(Constants.CURRENT_LYRICS_CLASS);

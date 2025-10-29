@@ -49,6 +49,7 @@ interface ParagraphAttributes {
 
 
 export interface BackgroundSpanElement {
+    "#text"?: string;
     span?: LyricSpan[];
     ":@": ParagraphAttributes;
 }
@@ -61,7 +62,6 @@ export interface BackgroundSpanElement {
  * If the attribute @_role === x-bg this is a background lyric. span will be a BackgroundSpanElement
  */
 export type ParagraphElementOrBackground = BackgroundSpanElement & {
-    "#text"?: string; // Used for line-synced lyrics
     span?: BackgroundSpanElement[]; // Used for word-synced lyrics.
 }
 

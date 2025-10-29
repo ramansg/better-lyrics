@@ -468,17 +468,21 @@ function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible = false
     let rtlBuffer: HTMLSpanElement[] = [];
     let isAllRtl = true;
 
+    let lyricElementsBuffer = [] as HTMLSpanElement[];
+
+
     item.parts.forEach(part => {
       let isRtl = testRtl(part.words);
       if (!isRtl && part.words.trim().length > 0) {
         isAllRtl = false;
         rtlBuffer.reverse().forEach(part => {
-          lyricElement.appendChild(part);
+          lyricElementsBuffer.push(part);
         });
         rtlBuffer = [];
       }
 
       let span = document.createElement("span");
+      span.classList.add(Constants.WORD_CLASS);
       if (Number(part.durationMs) === 0) {
         span.classList.add(Constants.ZERO_DURATION_ANIMATION_CLASS);
       }
@@ -509,7 +513,7 @@ function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible = false
       if (isRtl) {
         rtlBuffer.push(span);
       } else {
-        lyricElement.appendChild(span);
+        lyricElementsBuffer.push(span);
       }
     });
 
@@ -518,16 +522,42 @@ function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible = false
     if (isAllRtl) {
       lyricElement.classList.add(Constants.RTL_CLASS);
       rtlBuffer.forEach(part => {
-        lyricElement.appendChild(part);
+        lyricElementsBuffer.push(part);
       });
     } else {
       rtlBuffer.reverse().forEach(part => {
-        lyricElement.appendChild(part);
+        lyricElementsBuffer.push(part);
       });
     }
 
+    // Take elements from the buffer and group them together to control where wrapping happens
+    const breakChar = /([\s\u200B\u00AD\p{Dash_Punctuation}])/gu
+
+    let wordGroupBuffer = [] as HTMLSpanElement[];
+    lyricElementsBuffer.forEach(part => {
+      wordGroupBuffer.push(part);
+      if (part.textContent.length > 0 && breakChar.test(part.textContent[part.textContent.length - 1])) {
+        let span = document.createElement("span");
+        wordGroupBuffer.forEach(word => {
+          span.appendChild(word);
+        })
+        lyricElement.appendChild(span);
+        wordGroupBuffer = [];
+      }
+    });
+
+    //add remaining
+    let span = document.createElement("span");
+    wordGroupBuffer.forEach(word => {
+      span.appendChild(word);
+    })
+    lyricElement.appendChild(span);
+    wordGroupBuffer = [];
+
+
     //Makes bg lyrics go to the next line
     let breakElm: HTMLSpanElement = document.createElement("span");
+    breakElm.style.order = "1";
     breakElm.classList.add("blyrics--break");
     lyricElement.appendChild(breakElm);
 
@@ -551,9 +581,15 @@ function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible = false
     // Synchronously check cache and inject if found
     const romanizedResult = Translation.getRomanizationFromCache(item.words);
     if (romanizedResult) {
+      let breakElm: HTMLSpanElement = document.createElement("span");
+      breakElm.classList.add("blyrics--break");
+      breakElm.style.order = "4";
+      lyricElement.appendChild(breakElm);
+
       let romanizedLine = document.createElement("div");
       romanizedLine.classList.add(Constants.ROMANIZED_LYRICS_CLASS);
       romanizedLine.textContent = "\n" + romanizedResult;
+      romanizedLine.style.order = "5";
       lyricElement.appendChild(romanizedLine);
       lyricElement.dataset.romanized = "true";
     }
@@ -563,9 +599,15 @@ function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible = false
       Translation.getCurrentTranslationLanguage()
     );
     if (translatedResult) {
+      let breakElm: HTMLSpanElement = document.createElement("span");
+      breakElm.classList.add("blyrics--break");
+      breakElm.style.order = "6";
+      lyricElement.appendChild(breakElm);
+
       let translatedLine = document.createElement("div");
       translatedLine.classList.add(Constants.TRANSLATED_LYRICS_CLASS);
       translatedLine.textContent = "\n" + translatedResult.translatedText;
+      translatedLine.style.order = "7";
       lyricElement.appendChild(translatedLine);
       lyricElement.dataset.translated = "true";
     }

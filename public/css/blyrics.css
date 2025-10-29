@@ -171,13 +171,16 @@
 	cursor: default;
 }
 
-.blyrics-background-lyric {
-	order: 1;
-	font-size: 0.8em;
-}
+
 
 :not(.blyrics-background-lyric) {
 	order: 0;
+}
+
+.blyrics-background-lyric {
+	order: 2;
+	font-size: 0.8em;
+	font-style: italic;
 }
 
 .blyrics--line {
@@ -200,6 +203,11 @@
 	color: var(--blyrics-lyric-inactive-color);
 	display: inline-block;
 	white-space: pre-wrap;
+}
+
+.blyrics--word {
+	white-space: pre;
+	display: inline-block;
 	transform: translateY(0px);
 }
 
@@ -208,7 +216,7 @@
 	height: 0;
 }
 
-.blyrics--line > span.blyrics--animating {
+.blyrics--word.blyrics--animating {
 	animation: blyrics-wobble var(--blyrics-wobble-duration) forwards ease;
 	animation-delay: var(--blyrics-anim-delay);
 }
@@ -225,7 +233,7 @@
 	initial-value: 0;
 }
 
-.blyrics-container > div > span::after {
+.blyrics--word::after {
 	position: absolute;
 	content: attr(data-content);
 	top: -2rem;
@@ -264,9 +272,7 @@
 	background-clip: text;
 }
 
-.blyrics-container
-	> div
-	> span.blyrics--pre-animating:not(.blyrics--animating)::after {
+.blyrics--word.blyrics--pre-animating:not(.blyrics--animating)::after {
 	/*The transition is purposely very long for the background position when we deselect a lyric, so here we need to reset the background position
     to zero so that the lyric is in a valid state for the karaoke transition to play*/
 	transition: none;
@@ -275,15 +281,11 @@
 	opacity: 0;
 }
 
-.blyrics-container
-	> div
-	> span.blyrics--pre-animating:not(.blyrics--animating):not(
-		.blyrics-zero-dur-animate
-	)::after {
+.blyrics--word.blyrics--pre-animating:not(.blyrics--animating):not(.blyrics-zero-dur-animate)::after {
 	opacity: 1;
 }
 
-.blyrics-container > div > span.blyrics--animating::after {
+.blyrics--word.blyrics--animating::after {
 	opacity: 1;
 	animation: blyrics-glow max(calc(var(--blyrics-duration) * 1.2), 1.2s)
 		forwards ease;
@@ -298,13 +300,6 @@
 		var(--blyrics-lyric-highlight-fade-in-duration);
 	transition-timing-function: linear, linear, ease;
 	transition-delay: var(--blyrics-swipe-delay), var(--blyrics-swipe-delay), var(--blyrics-anim-delay);
-}
-
-.blyrics-container
-	> div
-	> span:not(:empty):not(.blyrics--translated):not(.blyrics--romanized) {
-	display: inline-block;
-	white-space: pre-wrap;
 }
 
 .blyrics-rtl {
