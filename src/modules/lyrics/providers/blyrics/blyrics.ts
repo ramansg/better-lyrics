@@ -68,6 +68,9 @@ export default async function bLyrics(providerParameters: ProviderParameters): P
   url.searchParams.append("s", providerParameters.song);
   url.searchParams.append("a", providerParameters.artist);
   url.searchParams.append("d", String(providerParameters.duration));
+  if (providerParameters.album != null) {
+    url.searchParams.append("al", providerParameters.album)
+  }
 
   const response = await fetch(url.toString(), {
     signal: AbortSignal.any([providerParameters.signal, AbortSignal.timeout(10000)]),
