@@ -8,9 +8,15 @@ const manifestPath = join(rootDir, "manifest.json");
 const optionsHtmlPath = join(rootDir, "src", "options", "options.html");
 
 try {
-  // Read version from package.json
   const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
-  const version = packageJson.version;
+  let version = packageJson.version;
+
+  if (process.argv[2]) {
+    version = process.argv[2];
+    console.log(`Using provided version: ${version}`);
+    packageJson.version = version;
+    writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 4) + "\n");
+  }
 
   if (!version) {
     throw new Error("Version not found in package.json");
