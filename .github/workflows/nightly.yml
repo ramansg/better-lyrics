@@ -1,0 +1,57 @@
+name: Nightly Build
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Required for git commands
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+
+      - name: Get version and hash
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          HASH=$(git rev-parse --short HEAD)
+          echo "NIGHTLY_VERSION=$VERSION-$HASH-nightly" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Update version in files
+        run: npm run update-version -- ${{ env.NIGHTLY_VERSION }}
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Sign Firefox extension
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.WEB_EXT_API_KEY }}
+          WEB_EXT_API_SECRET: ${{ secrets.WEB_EXT_API_SECRET }}
+        run: |
+          npm install -g web-ext
+          XPI_FILE=$(find dist/firefox -name "*.xpi")
+          mkdir -p firefox-build
+          unzip $XPI_FILE -d firefox-build
+          web-ext sign --source-dir firefox-build --artifacts-dir dist/firefox
+
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "dist/chrome/better-lyrics-*.zip, dist/edge/better-lyrics-*.zip, dist/firefox/web-ext-artifacts/*.xpi"
+          tag: ${{ env.NIGHTLY_VERSION }}
+          name: "Nightly Build ${{ env.NIGHTLY_VERSION }}"
+          prerelease: true
+          token: ${{ secrets.GITHUB_TOKEN }}
