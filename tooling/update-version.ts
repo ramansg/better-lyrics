@@ -14,15 +14,13 @@ try {
   if (process.argv[2]) {
     version = process.argv[2];
     console.log(`Using provided version: ${version}`);
-    packageJson.version = version;
-    writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 4) + "\n");
   }
 
   if (!version) {
     throw new Error("Version not found in package.json");
   }
 
-  const semverVersion = version.match(/^(\d+\.\d+\.\d+)/)?.[0];
+  const semverVersion = version.match(/^(\d+\.\d+\.\d+)(\.\d+)?/)?.[0];
   if (!semverVersion) {
     throw new Error(`Invalid SemVer version: ${version}`);
   }
@@ -32,7 +30,11 @@ try {
   // Update manifest.json
   const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
   manifest.version = semverVersion;
+  manifest.version_name = version;
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+
+  packageJson.version = semverVersion;
+  writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 4) + "\n");
 
   // Update src/options/options.html
   let optionsHtml = readFileSync(optionsHtmlPath, "utf-8");

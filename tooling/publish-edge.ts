@@ -1,13 +1,19 @@
 import axios from "axios";
 import { readFileSync } from "fs";
 
+const zipPath = process.argv[2] || "dist/better-lyrics-edge.zip";
+
 const clientId = process.env.CLIENT_ID;
 const apiKey = process.env.API_KEY;
 const productId = process.env.PRODUCT_ID;
-const zipPath = "dist/better-lyrics-edge.zip";
 
 if (!clientId || !apiKey || !productId) {
   console.error("Missing environment variables for Edge Add-ons publishing.");
+  process.exit(1);
+}
+
+if (!zipPath) {
+  console.error("No zip file path provided.");
   process.exit(1);
 }
 
@@ -18,7 +24,7 @@ const headers = {
 
 async function uploadPackage() {
   const url = `https://api.addons.microsoftedge.microsoft.com/v1/products/${productId}/submissions/draft/package`;
-  const body = readFileSync(zipPath);
+  const body = readFileSync(zipPath); //
   const response = await axios.post(url, body, {
     headers: { ...headers, "Content-Type": "application/zip" },
     maxRedirects: 0,

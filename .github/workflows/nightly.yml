@@ -23,7 +23,7 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           HASH=$(git rev-parse --short HEAD)
-          echo "NIGHTLY_VERSION=$VERSION-$HASH-nightly" >> $GITHUB_ENV
+          echo "NIGHTLY_VERSION=$VERSION.${{ github.run_number }}-Nightly ($HASH)" >> $GITHUB_ENV
 
       - name: Install dependencies
         run: npm install

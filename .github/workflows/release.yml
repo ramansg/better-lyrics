@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      version: ${{ github.event.inputs.version }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -31,23 +33,6 @@ jobs:
       - name: Build extension
         run: npm run build
 
-      - name: Sign Firefox extension
-        run: |
-          npm install -g web-ext
-          XPI_FILE=$(find dist/firefox -name "*.xpi")
-          mkdir -p firefox-build
-          unzip $XPI_FILE -d firefox-build
-          web-ext sign --channel=unlisted --api-key=${{ secrets.FIREFOX_JWT_ISSUER }} --api-secret=${{ secrets.FIREFOX_JWT_SECRET }} --upload-source-code
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: release-artifacts
-          path: |
-            dist/chrome
-            dist/edge
-            dist/firefox/web-ext-artifacts/*.xpi
-
       - name: Commit version changes
         run: |
           git config --local user.email "action@github.com"
@@ -57,13 +42,24 @@ jobs:
           git tag -a "v${{ github.event.inputs.version }}" -m "Version ${{ github.event.inputs.version }}"
           git push --follow-tags
 
-      - name: Create GitHub Release
-        uses: ncipollo/release-action@v1
+      # Uploading raw build directories, not zips
+      - name: Upload Chrome build
+        uses: actions/upload-artifact@v4
         with:
-          artifacts: "dist/chrome,dist/edge,dist/firefox/web-ext-artifacts/*.xpi"
-          tag: "v${{ github.event.inputs.version }}"
-          name: "Release ${{ github.event.inputs.version }}"
-          token: ${{ secrets.GITHUB_TOKEN }}
+          name: chrome-build-${{ github.event.inputs.version }}
+          path: dist/chrome
+
+      - name: Upload Edge build
+        uses: actions/upload-artifact@v4
+        with:
+          name: edge-build-${{ github.event.inputs.version }}
+          path: dist/edge
+
+      - name: Upload Firefox build
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-build-${{ github.event.inputs.version }}
+          path: dist/firefox
 
   publish-chrome:
     needs: release
@@ -75,20 +71,25 @@ jobs:
           node-version: '20.x'
       - name: Install dependencies
         run: npm install
-      - uses: actions/download-artifact@v3
+
+      - name: Download Chrome build
+        uses: actions/download-artifact@v4
         with:
-          name: release-artifacts
-          path: dist
+          name: chrome-build
+          path: dist/chrome
+
       - name: Zip Chrome artifact
-        run: |          
-          zip -r dist/better-lyrics-chrome.zip dist/chrome
+        run: |
+          VERSION=${{ needs.release.outputs.version }}
+          zip -r dist/chrome-v$VERSION.zip dist/chrome
+
       - name: Publish to Chrome Web Store
         env:
           EXTENSION_ID: ${{ secrets.GOOGLE_EXTENSION_ID }}
           CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET}}
           REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
-        run: tsx tooling/publish-chrome.ts
+        run: tsx tooling/publish-chrome.ts dist/chrome-v${{ needs.release.outputs.version }}.zip
 
   publish-firefox:
     needs: release
@@ -100,18 +101,19 @@ jobs:
           node-version: '20.x'
       - name: Install dependencies
         run: npm install
-      - uses: actions/download-artifact@v3
+
+      - name: Download Firefox build
+        uses: actions/download-artifact@v4
         with:
-          name: release-artifacts
-          path: dist
-      - name: Prepare Firefox artifact
-        run: |
-          find dist/firefox/web-ext-artifacts -name "*.xpi" -exec mv {} dist/better-lyrics-firefox.zip \;
+          name: firefox-build
+          path: dist/firefox
+
       - name: Publish to Firefox Add-ons
         env:
           FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
           FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}
-        run: tsx tooling/publish-firefox.ts
+          RELEASE_VERSION: ${{ needs.release.outputs.version }}
+        run: tsx tooling/publish-firefox.ts dist/firefox
 
   publish-edge:
     needs: release
@@ -123,16 +125,42 @@ jobs:
           node-version: '20.x'
       - name: Install dependencies
         run: npm install
-      - uses: actions/download-artifact@v3
+
+      - name: Download Edge build
+        uses: actions/download-artifact@v4
         with:
-          name: release-artifacts
-          path: dist
+          name: edge-build
+          path: dist/edge
+
       - name: Zip Edge artifact
         run: |
-          zip -r dist/better-lyrics-edge.zip dist/edge
+          VERSION=${{ needs.release.outputs.version }}
+          zip -r dist/edge-v$VERSION.zip dist/edge
+
       - name: Publish to Edge Add-ons
         env:
           CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
           API_KEY: ${{ secrets.EDGE_API_KEY }}
           PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
-        run: tsx tooling/publish-edge.ts
+        run: tsx tooling/publish-edge.ts dist/edge-v${{ needs.release.outputs.version }}.zip
+
+  create-github-release:
+    name: Create GitHub Release
+    needs: [ release, publish-chrome, publish-edge, publish-firefox ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all release files
+        uses: actions/download-artifact@v4
+        with:
+          name: release-files
+          path: release-artifacts
+
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "release-artifacts/*"
+          tag: "v${{ needs.release.outputs.version }}"
+          name: "Release ${{ needs.release.outputs.version }}"
+          token: ${{ secrets.GITHUB_TOKEN }}
