@@ -421,18 +421,17 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
  */
 function groupByWordAndInsert(lyricElement: HTMLDivElement, lyricElementsBuffer: HTMLSpanElement[]) {
   const breakChar = /([\s\u200B\u00AD\p{Dash_Punctuation}])/gu;
-
   let wordGroupBuffer = [] as HTMLSpanElement[];
   let isCurrentBufferBg = false;
 
-  let pushWordGroupBuffer = () => {
+  const pushWordGroupBuffer = () => {
     if (wordGroupBuffer.length > 0) {
       let span = document.createElement("span");
       wordGroupBuffer.forEach(word => {
         span.appendChild(word);
       });
 
-      if (wordGroupBuffer[0].classList.contains(BACKGROUND_LYRIC_CLASS)) {
+      if (isCurrentBufferBg) {
         span.classList.add(BACKGROUND_LYRIC_CLASS);
       }
 
@@ -441,8 +440,11 @@ function groupByWordAndInsert(lyricElement: HTMLDivElement, lyricElementsBuffer:
     }
   };
 
+
   lyricElementsBuffer.forEach(part => {
     const isNonMatchingType = isCurrentBufferBg !== part.classList.contains(BACKGROUND_LYRIC_CLASS);
+
+    const isElmJustSpace = !(part.textContent.length === 1 && part.textContent[0] === " ");
     if (!isNonMatchingType) {
       wordGroupBuffer.push(part);
     }
@@ -453,7 +455,12 @@ function groupByWordAndInsert(lyricElement: HTMLDivElement, lyricElementsBuffer:
       pushWordGroupBuffer();
     }
 
-    if (isNonMatchingType) {
+    // Switch to the correct type unless the current char we're at is just a space.
+    //
+    // We do this to prevent phantom spaces
+    // from appearing at the beginning of the word when the bg lyrics are at the start of a line
+    
+    if (isNonMatchingType && isElmJustSpace) {
       wordGroupBuffer.push(part);
       isCurrentBufferBg = part.classList.contains(BACKGROUND_LYRIC_CLASS);
     }
