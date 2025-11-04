@@ -108,10 +108,10 @@ function debounceSave() {
 }
 
 export function saveToStorage(isTheme = false) {
+  incrementSaveCount();
   const css = editor.state.doc.toString();
 
   if (!isTheme && isUserTyping && !isCustomTheme) {
-    incrementSaveCount();
     chrome.storage.sync.remove("themeName");
     setCurrentThemeName(null);
   }

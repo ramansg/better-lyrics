@@ -10,7 +10,7 @@ import {
 import { createEditorState, createEditorView } from "./core";
 import { generateDefaultFilename, loadCSSFromFile, saveCSSToFile } from "./file-operations";
 import { openEditCSS, openOptions } from "./navigation";
-import { decrementSaveCount, saveCount, setCurrentThemeName, setEditor, setIsUserTyping } from "./state";
+import { decrementSaveCount, getSaveCount, setCurrentThemeName, setEditor, setIsUserTyping } from "./state";
 import { loadCustomCSS } from "./storage";
 import {
   closeThemeModal,
@@ -106,7 +106,7 @@ export function initializeStorageListeners() {
   chrome.storage.onChanged.addListener(async (changes, namespace) => {
     console.log("storage", changes, namespace);
     if (Object.hasOwn(changes, "customCSS")) {
-      if (saveCount === 0) {
+      if (getSaveCount() === 0) {
         const css = await loadCustomCSS();
         const { editor } = await import("./state");
         console.log("Got a CSS Update");
