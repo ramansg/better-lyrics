@@ -244,26 +244,34 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
     // Synchronously check cache and inject if found
 
     let romanizedCacheResult = Translation.getRomanizationFromCache(item.words);
+
     // Language should always exist if item.timedRomanization exists
     const shouldRomanize =
       (data.language && Constants.romanizationLanguages.includes(data.language)) || containsNonLatin(item.words);
     const canInjectRomanizationsEarly =
-      (shouldRomanize && item.timedRomanization && item.timedRomanization.length > 0) || romanizedCacheResult !== null;
+      (shouldRomanize && item.romanization) || romanizedCacheResult !== null;
 
     if (canInjectRomanizationsEarly) {
-      createBreakElem(lyricElement, 4);
-
-      let romanizedLine = document.createElement("div");
-      romanizedLine.classList.add(Constants.ROMANIZED_LYRICS_CLASS);
-
-      if (item.timedRomanization && item.timedRomanization.length > 0) {
-        createLyricsLine(item.timedRomanization, line, romanizedLine);
-      } else {
-        romanizedLine.textContent = "\n" + romanizedCacheResult;
+      if (item.romanization) {
+        romanizedCacheResult = item.romanization;
       }
-      romanizedLine.style.order = "5";
-      lyricElement.appendChild(romanizedLine);
-      lyricElement.dataset.romanized = "true";
+
+      if (romanizedCacheResult !== item.words){
+        createBreakElem(lyricElement, 4);
+
+        let romanizedLine = document.createElement("div");
+        romanizedLine.classList.add(Constants.ROMANIZED_LYRICS_CLASS);
+
+        if (item.timedRomanization && item.timedRomanization.length > 0) {
+          createLyricsLine(item.timedRomanization, line, romanizedLine);
+        } else {
+
+          romanizedLine.textContent = "\n" + romanizedCacheResult;
+        }
+        romanizedLine.style.order = "5";
+        lyricElement.appendChild(romanizedLine);
+        lyricElement.dataset.romanized = "true";
+      }
     }
 
     let translationResult: TranslationResult | null;
@@ -312,7 +320,7 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
               result = await Translation.translateTextIntoRomaji(usableLang, item.words);
             }
 
-            if (result) {
+            if (result && result.trim() !== item.words.trim()) {
               createBreakElem(lyricElement, 4);
 
               romanizedLine.textContent = result ? "\n" + result : "\n";
