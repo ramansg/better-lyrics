@@ -248,15 +248,14 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
     // Language should always exist if item.timedRomanization exists
     const shouldRomanize =
       (data.language && Constants.romanizationLanguages.includes(data.language)) || containsNonLatin(item.words);
-    const canInjectRomanizationsEarly =
-      (shouldRomanize && item.romanization) || romanizedCacheResult !== null;
+    const canInjectRomanizationsEarly = (shouldRomanize && item.romanization) || romanizedCacheResult !== null;
 
     if (canInjectRomanizationsEarly) {
       if (item.romanization) {
         romanizedCacheResult = item.romanization;
       }
 
-      if (romanizedCacheResult !== item.words){
+      if (romanizedCacheResult !== item.words) {
         createBreakElem(lyricElement, 4);
 
         let romanizedLine = document.createElement("div");
@@ -265,7 +264,6 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
         if (item.timedRomanization && item.timedRomanization.length > 0) {
           createLyricsLine(item.timedRomanization, line, romanizedLine);
         } else {
-
           romanizedLine.textContent = "\n" + romanizedCacheResult;
         }
         romanizedLine.style.order = "5";
