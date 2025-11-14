@@ -127,6 +127,8 @@ const rainbowBracketsPlugin = ViewPlugin.fromClass(
   }
 );
 
+// https://github.com/eriknewland/rainbowbrackets/blob/main/rainbowBrackets.js
+// We have modified it to fit our use case
 export function rainbowBrackets() {
   const themeStyles: Record<string, { color: string }> = {};
 
