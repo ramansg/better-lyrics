@@ -15,7 +15,7 @@ export const cssLinter = linter(async view => {
     for (let i = 0; i < line - 1; i++) {
       offset += lines[i].length + 1;
     }
-    return offset + column - 1;
+    return Math.min(offset + column - 1, code.length);
   };
 
   try {
