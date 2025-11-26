@@ -186,7 +186,7 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
   });
 
   let lines: LineData[] = [];
-  let syncType: SyncType = "synced";
+  let syncType: SyncType = allZero ? "none" : "synced";
 
   lyrics.forEach((lyricItem, lineIndex) => {
     if (!lyricItem.parts) {
@@ -412,7 +412,6 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
     resizeObserver.observe(lyricsWrapper);
   } else {
     Utils.log(Constants.SYNC_DISABLED_LOG);
-    syncType = "none";
   }
 
   AppState.areLyricsLoaded = true;
