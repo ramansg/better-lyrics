@@ -16,6 +16,7 @@ export class EditorStateManager {
   private isCustomTheme = false;
   private saveCount = 0;
   private isUserTyping = false;
+  private isProgrammaticChange = false;
   private saveTimeout: number | null = null;
   private saveCustomThemeTimeout: number | null = null;
 
@@ -65,6 +66,10 @@ export class EditorStateManager {
 
   setIsUserTyping(value: boolean): void {
     this.isUserTyping = value;
+  }
+
+  getIsProgrammaticChange(): boolean {
+    return this.isProgrammaticChange;
   }
 
   getSaveTimeout(): number | null {
@@ -158,6 +163,7 @@ export class EditorStateManager {
 
     console.log(`[EditorStateManager] Setting editor content from: ${source} (${css.length} bytes)`);
 
+    this.isProgrammaticChange = true;
     this.editor.dispatch({
       changes: {
         from: 0,
@@ -165,6 +171,7 @@ export class EditorStateManager {
         insert: css,
       },
     });
+    this.isProgrammaticChange = false;
 
     console.log(`[EditorStateManager] Editor content set successfully from: ${source}`);
   }
