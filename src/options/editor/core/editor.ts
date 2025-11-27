@@ -9,7 +9,7 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirro
 import { css } from "@codemirror/lang-css";
 import { bracketMatching, foldGutter, foldKeymap, indentOnInput, indentUnit } from "@codemirror/language";
 import { lintGutter, lintKeymap } from "@codemirror/lint";
-import { highlightSelectionMatches } from "@codemirror/search";
+import { highlightSelectionMatches, search, searchKeymap } from "@codemirror/search";
 import { EditorState } from "@codemirror/state";
 import {
   crosshairCursor,
@@ -98,6 +98,7 @@ export function createEditorState(initialContents: string) {
     crosshairCursor(),
     highlightActiveLine(),
     highlightSelectionMatches(),
+    search(),
     keymap.of([
       { key: "Tab", run: acceptCompletion },
       indentWithTab,
@@ -107,6 +108,7 @@ export function createEditorState(initialContents: string) {
       ...foldKeymap,
       ...completionKeymap,
       ...lintKeymap,
+      ...searchKeymap,
     ]),
     css(),
     lintGutter(),
