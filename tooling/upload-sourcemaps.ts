@@ -8,7 +8,7 @@ if (!browser) {
   process.exit(1);
 }
 
-const BUCKET_NAME = "blyrics-sourcemaps";
+const BUCKET_NAME = "better-lyrics-sourcemaps";
 const R2_ENDPOINT = process.env.R2_ENDPOINT;
 const AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID;
 const AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY;
