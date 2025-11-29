@@ -267,16 +267,15 @@ select option {
 	border-radius: 0.5rem;
 	width: fit-content;
 	white-space: nowrap;
-	background: transparent;
-	border: 1px solid hsla(0, 0%, 100%, 0.2);
+	background: hsla(0, 0%, 100%, 0.1);
+	box-shadow: rgba(0, 0, 0, 0.025) 0px 10px 15px -3px, rgba(0, 0, 0, 0.0125) 0px 4px 6px -2px, rgba(255, 255, 255, 0.1) 0px 1px inset;
 	color: hsla(0, 0%, 100%, 0.8);
 	font-size: 0.875rem;
 	transition: all 0.2s;
 }
 
 #back-btn:hover {
-	background-color: hsla(0, 0%, 100%, 0.1);
-	border-color: hsla(0, 0%, 100%, 0.3);
+	background-color: hsla(0, 0%, 100%, 0.2);
 	color: #fff;
 }
 
@@ -388,6 +387,7 @@ select option {
 	border-radius: 0.5rem;
 	cursor: pointer;
 	width: fit-content;
+	box-shadow: rgba(0, 0, 0, 0.025) 0px 10px 15px -3px, rgba(0, 0, 0, 0.0125) 0px 4px 6px -2px, rgba(255, 255, 255, 0.1) 0px 1px inset;
 	transition: background-color 0.15s ease;
 }
 
