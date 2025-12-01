@@ -7,6 +7,7 @@ import type {
 } from "./types";
 
 const INDEX_REPO = "better-lyrics/themes";
+const DEFAULT_TIMEOUT_MS = 10000;
 
 const REQUIRED_ORIGINS = [
   "https://raw.githubusercontent.com/*",
@@ -22,6 +23,25 @@ interface BranchCacheEntry {
 const BRANCH_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const repoBranchCache = new Map<string, BranchCacheEntry>();
 
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+  timeoutMs = DEFAULT_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(`Request timed out after ${timeoutMs}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 function getRawGitHubUrl(repo: string, branch: string, path: string, bustCache = true): string {
   const base = `https://raw.githubusercontent.com/${repo}/${branch}/${path}`;
   return bustCache ? `${base}?t=${Date.now()}` : base;
@@ -30,7 +50,7 @@ function getRawGitHubUrl(repo: string, branch: string, path: string, bustCache =
 async function testBranchExists(repo: string, branch: string): Promise<boolean> {
   try {
     const url = `https://raw.githubusercontent.com/${repo}/${branch}/metadata.json`;
-    const response = await fetch(url, { method: "HEAD" });
+    const response = await fetchWithTimeout(url, { method: "HEAD" }, 5000);
     return response.ok;
   } catch {
     return false;
@@ -44,9 +64,11 @@ async function getDefaultBranch(repo: string): Promise<string> {
   }
 
   try {
-    const response = await fetch(`https://api.github.com/repos/${repo}`, {
-      headers: { Accept: "application/vnd.github.v3+json" },
-    });
+    const response = await fetchWithTimeout(
+      `https://api.github.com/repos/${repo}`,
+      { headers: { Accept: "application/vnd.github.v3+json" } },
+      5000
+    );
 
     if (response.ok) {
       const data = await response.json();
@@ -84,7 +106,7 @@ export async function requestStorePermissions(): Promise<boolean> {
 export async function fetchThemeStoreIndex(): Promise<string[]> {
   const branch = await getDefaultBranch(INDEX_REPO);
   const url = getRawGitHubUrl(INDEX_REPO, branch, "index.json");
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetchWithTimeout(url, { cache: "no-store" });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch theme index: ${response.status}`);
@@ -97,7 +119,7 @@ export async function fetchThemeStoreIndex(): Promise<string[]> {
 export async function fetchThemeMetadata(repo: string, branchOverride?: string): Promise<StoreThemeMetadata> {
   const branch = branchOverride ?? (await getDefaultBranch(repo));
   const url = getRawGitHubUrl(repo, branch, "metadata.json");
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetchWithTimeout(url, { cache: "no-store" });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch metadata for ${repo}: ${response.status}`);
@@ -109,7 +131,7 @@ export async function fetchThemeMetadata(repo: string, branchOverride?: string):
 export async function fetchThemeCSS(repo: string, branchOverride?: string): Promise<string> {
   const branch = branchOverride ?? (await getDefaultBranch(repo));
   const url = getRawGitHubUrl(repo, branch, "style.css");
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetchWithTimeout(url, { cache: "no-store" });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch CSS for ${repo}: ${response.status}`);
@@ -120,7 +142,7 @@ export async function fetchThemeCSS(repo: string, branchOverride?: string): Prom
 
 async function checkFileExists(url: string): Promise<boolean> {
   try {
-    const response = await fetch(url, { method: "HEAD" });
+    const response = await fetchWithTimeout(url, { method: "HEAD" }, 5000);
     return response.ok;
   } catch {
     return false;
@@ -135,7 +157,7 @@ export async function fetchThemeShaderConfig(repo: string, branchOverride?: stri
   if (!exists) return null;
 
   try {
-    const response = await fetch(url, { cache: "no-store" });
+    const response = await fetchWithTimeout(url, { cache: "no-store" });
     if (!response.ok) return null;
     return response.json();
   } catch {
@@ -206,7 +228,7 @@ export async function validateThemeRepo(repo: string, branchOverride?: string): 
   for (const file of requiredFiles) {
     const url = getRawGitHubUrl(repo, branch, file);
     try {
-      const response = await fetch(url, { method: "HEAD" });
+      const response = await fetchWithTimeout(url, { method: "HEAD" }, 5000);
       if (!response.ok) {
         missingFiles.push(file);
       }

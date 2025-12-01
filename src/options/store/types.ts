@@ -61,3 +61,9 @@ export interface RatingResult {
   average: number;
   count: number;
 }
+
+export interface ApiResult<T> {
+  success: boolean;
+  data: T;
+  error?: string;
+}

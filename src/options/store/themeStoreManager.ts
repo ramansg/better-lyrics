@@ -1,25 +1,105 @@
 import type { InstalledStoreTheme, StoreTheme } from "./types";
 import { fetchThemeCSS, fetchThemeShaderConfig } from "./themeStoreService";
 
-const STORAGE_KEY = "installedStoreThemes";
+const THEME_INDEX_KEY = "storeThemeIndex";
+const THEME_PREFIX = "storeTheme:";
 const ACTIVE_STORE_THEME_KEY = "activeStoreTheme";
 
+const LEGACY_STORAGE_KEY = "installedStoreThemes";
+
+interface ThemeIndex {
+  themeIds: string[];
+}
+
+async function getThemeIndex(): Promise<ThemeIndex> {
+  const result = await chrome.storage.local.get(THEME_INDEX_KEY);
+  return result[THEME_INDEX_KEY] || { themeIds: [] };
+}
+
+async function setThemeIndex(index: ThemeIndex): Promise<void> {
+  await chrome.storage.local.set({ [THEME_INDEX_KEY]: index });
+}
+
+function getThemeStorageKey(themeId: string): string {
+  return `${THEME_PREFIX}${themeId}`;
+}
+
+async function migrateFromLegacyStorage(): Promise<void> {
+  const result = await chrome.storage.local.get(LEGACY_STORAGE_KEY);
+  const legacyThemes: InstalledStoreTheme[] = result[LEGACY_STORAGE_KEY];
+
+  if (!legacyThemes || legacyThemes.length === 0) return;
+
+  console.log(`[ThemeStoreManager] Migrating ${legacyThemes.length} themes from legacy storage`);
+
+  const themeIds: string[] = [];
+
+  for (const theme of legacyThemes) {
+    try {
+      await chrome.storage.local.set({ [getThemeStorageKey(theme.id)]: theme });
+      themeIds.push(theme.id);
+    } catch (err) {
+      console.warn(`[ThemeStoreManager] Failed to migrate theme ${theme.id}:`, err);
+    }
+  }
+
+  await setThemeIndex({ themeIds });
+  await chrome.storage.local.remove(LEGACY_STORAGE_KEY);
+
+  console.log(`[ThemeStoreManager] Migration complete: ${themeIds.length} themes migrated`);
+}
+
+let migrationPromise: Promise<void> | null = null;
+
+async function ensureMigrated(): Promise<void> {
+  if (!migrationPromise) {
+    migrationPromise = migrateFromLegacyStorage();
+  }
+  await migrationPromise;
+}
+
 export async function getInstalledStoreThemes(): Promise<InstalledStoreTheme[]> {
-  const result = await chrome.storage.local.get(STORAGE_KEY);
-  return result[STORAGE_KEY] || [];
+  await ensureMigrated();
+
+  const index = await getThemeIndex();
+  if (index.themeIds.length === 0) return [];
+
+  const keys = index.themeIds.map(getThemeStorageKey);
+  const result = await chrome.storage.local.get(keys);
+
+  const themes: InstalledStoreTheme[] = [];
+  const validIds: string[] = [];
+
+  for (const id of index.themeIds) {
+    const theme = result[getThemeStorageKey(id)];
+    if (theme) {
+      themes.push(theme);
+      validIds.push(id);
+    }
+  }
+
+  if (validIds.length !== index.themeIds.length) {
+    await setThemeIndex({ themeIds: validIds });
+  }
+
+  return themes;
 }
 
 export async function isThemeInstalled(themeId: string): Promise<boolean> {
-  const installed = await getInstalledStoreThemes();
-  return installed.some(t => t.id === themeId);
+  await ensureMigrated();
+  const index = await getThemeIndex();
+  return index.themeIds.includes(themeId);
 }
 
 export async function getInstalledTheme(themeId: string): Promise<InstalledStoreTheme | null> {
-  const installed = await getInstalledStoreThemes();
-  return installed.find(t => t.id === themeId) || null;
+  await ensureMigrated();
+  const result = await chrome.storage.local.get(getThemeStorageKey(themeId));
+  return result[getThemeStorageKey(themeId)] || null;
 }
 
 export async function installTheme(theme: StoreTheme): Promise<InstalledStoreTheme> {
+  await ensureMigrated();
+
   const css = await fetchThemeCSS(theme.repo);
   const shaderConfig = theme.hasShaders ? await fetchThemeShaderConfig(theme.repo) : null;
 
@@ -34,24 +114,34 @@ export async function installTheme(theme: StoreTheme): Promise<InstalledStoreThe
     version: theme.version,
   };
 
-  const installed = await getInstalledStoreThemes();
-  const existingIndex = installed.findIndex(t => t.id === theme.id);
-
-  if (existingIndex !== -1) {
-    installed[existingIndex] = installedTheme;
-  } else {
-    installed.push(installedTheme);
+  try {
+    await chrome.storage.local.set({ [getThemeStorageKey(theme.id)]: installedTheme });
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("QUOTA")) {
+      throw new Error(
+        `Cannot install theme: storage is full. Please remove some installed themes and try again.`
+      );
+    }
+    throw err;
   }
 
-  await chrome.storage.local.set({ [STORAGE_KEY]: installed });
+  const index = await getThemeIndex();
+  if (!index.themeIds.includes(theme.id)) {
+    index.themeIds.push(theme.id);
+    await setThemeIndex(index);
+  }
 
   return installedTheme;
 }
 
 export async function removeTheme(themeId: string): Promise<void> {
-  const installed = await getInstalledStoreThemes();
-  const filtered = installed.filter(t => t.id !== themeId);
-  await chrome.storage.local.set({ [STORAGE_KEY]: filtered });
+  await ensureMigrated();
+
+  await chrome.storage.local.remove(getThemeStorageKey(themeId));
+
+  const index = await getThemeIndex();
+  index.themeIds = index.themeIds.filter(id => id !== themeId);
+  await setThemeIndex(index);
 
   const activeTheme = await getActiveStoreTheme();
   if (activeTheme === themeId) {
@@ -86,7 +176,14 @@ export async function applyStoreTheme(themeId: string): Promise<string> {
 
 export function parseVersion(version: string): number[] {
   const cleanVersion = version.replace(/-.*$/, "");
-  return cleanVersion.split(".").map(part => parseInt(part, 10) || 0);
+  return cleanVersion.split(".").map(part => {
+    const num = parseInt(part, 10);
+    if (isNaN(num)) {
+      console.warn(`[ThemeStoreManager] Non-numeric version part "${part}" in "${version}", treating as 0`);
+      return 0;
+    }
+    return num;
+  });
 }
 
 export function compareVersions(current: string, required: string): boolean {

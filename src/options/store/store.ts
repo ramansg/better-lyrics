@@ -436,14 +436,14 @@ async function loadMarketplace(): Promise<void> {
       }
     }
 
-    const [themes, installedThemes, stats] = await Promise.all([
+    const [themes, installedThemes, statsResult] = await Promise.all([
       fetchAllStoreThemes(),
       getInstalledStoreThemes(),
       fetchAllStats(),
     ]);
 
     storeThemesCache = [...themes, ...getTestThemes()];
-    storeStatsCache = { ...stats, ...getTestStats() };
+    storeStatsCache = { ...statsResult.data, ...getTestStats() };
     const installedIds = new Set(installedThemes.map(t => t.id));
 
     if (loading) loading.style.display = "none";
@@ -989,8 +989,8 @@ async function openDetailModal(theme: StoreTheme): Promise<void> {
           ratingStatusEl.textContent = "Submitting...";
           ratingStatusEl.className = "detail-rating-status";
 
-          const result = await submitRating(theme.id, rating);
-          if (result) {
+          const { success, data: ratingData, error } = await submitRating(theme.id, rating);
+          if (success && ratingData) {
             await saveUserRating(theme.id, rating);
             ratingStatusEl.textContent = `You rated ${rating} star${rating > 1 ? "s" : ""}`;
             ratingStatusEl.className = "detail-rating-status success";
@@ -1002,10 +1002,10 @@ async function openDetailModal(theme: StoreTheme): Promise<void> {
             });
 
             if (storeStatsCache[theme.id]) {
-              storeStatsCache[theme.id].rating = result.average;
-              storeStatsCache[theme.id].ratingCount = result.count;
+              storeStatsCache[theme.id].rating = ratingData.average;
+              storeStatsCache[theme.id].ratingCount = ratingData.count;
             } else {
-              storeStatsCache[theme.id] = { installs: 0, rating: result.average, ratingCount: result.count };
+              storeStatsCache[theme.id] = { installs: 0, rating: ratingData.average, ratingCount: ratingData.count };
             }
 
             if (statsEl) {
@@ -1013,17 +1013,17 @@ async function openDetailModal(theme: StoreTheme): Promise<void> {
               if (existingRating) {
                 existingRating.replaceChildren();
                 existingRating.appendChild(createStarIcon());
-                existingRating.appendChild(document.createTextNode(`${result.average.toFixed(1)} (${result.count})`));
+                existingRating.appendChild(document.createTextNode(`${ratingData.average.toFixed(1)} (${ratingData.count})`));
               } else {
                 const ratingStat = document.createElement("span");
                 ratingStat.className = "detail-stat";
                 ratingStat.appendChild(createStarIcon());
-                ratingStat.appendChild(document.createTextNode(`${result.average.toFixed(1)} (${result.count})`));
+                ratingStat.appendChild(document.createTextNode(`${ratingData.average.toFixed(1)} (${ratingData.count})`));
                 statsEl.appendChild(ratingStat);
               }
             }
           } else {
-            ratingStatusEl.textContent = "Failed to submit rating";
+            ratingStatusEl.textContent = error || "Failed to submit rating";
             ratingStatusEl.className = "detail-rating-status error";
           }
         };
