@@ -54,7 +54,7 @@ async function markUserInstall(themeId: string): Promise<void> {
 
 interface FilterState {
   searchQuery: string;
-  sortBy: "default" | "downloads" | "rating";
+  sortBy: "rating" | "downloads" | "newest";
   showFilter: "all" | "installed" | "not-installed";
   hasShaders: boolean;
   versionCompatible: boolean;
@@ -62,7 +62,7 @@ interface FilterState {
 
 let currentFilters: FilterState = {
   searchQuery: "",
-  sortBy: "default",
+  sortBy: "rating",
   showFilter: "all",
   hasShaders: false,
   versionCompatible: true,
@@ -606,24 +606,26 @@ async function applyFiltersToGrid(): Promise<void> {
     }
   });
 
-  if (currentFilters.sortBy !== "default") {
-    filteredCards.sort((a, b) => {
-      const statsA = storeStatsCache[a.dataset.themeId || ""] || { installs: 0, rating: 0, ratingCount: 0 };
-      const statsB = storeStatsCache[b.dataset.themeId || ""] || { installs: 0, rating: 0, ratingCount: 0 };
+  filteredCards.sort((a, b) => {
+    const statsA = storeStatsCache[a.dataset.themeId || ""] || { installs: 0, rating: 0, ratingCount: 0 };
+    const statsB = storeStatsCache[b.dataset.themeId || ""] || { installs: 0, rating: 0, ratingCount: 0 };
 
-      if (currentFilters.sortBy === "downloads") {
-        return statsB.installs - statsA.installs;
-      } else if (currentFilters.sortBy === "rating") {
-        if (statsB.rating !== statsA.rating) {
-          return statsB.rating - statsA.rating;
-        }
-        return statsB.ratingCount - statsA.ratingCount;
+    if (currentFilters.sortBy === "downloads") {
+      return statsB.installs - statsA.installs;
+    } else if (currentFilters.sortBy === "rating") {
+      if (statsB.rating !== statsA.rating) {
+        return statsB.rating - statsA.rating;
       }
-      return 0;
-    });
+      return statsB.ratingCount - statsA.ratingCount;
+    } else if (currentFilters.sortBy === "newest") {
+      const indexA = storeThemesCache.findIndex(t => t.id === a.dataset.themeId);
+      const indexB = storeThemesCache.findIndex(t => t.id === b.dataset.themeId);
+      return indexB - indexA;
+    }
+    return 0;
+  });
 
-    filteredCards.forEach(card => grid.appendChild(card));
-  }
+  filteredCards.forEach(card => grid.appendChild(card));
 
   if (isMarketplacePage && filteredCards.length > ITEMS_PER_PAGE) {
     const totalPages = Math.ceil(filteredCards.length / ITEMS_PER_PAGE);
@@ -1481,7 +1483,7 @@ export function toggleYourThemesDropdown(show?: boolean): void {
 function resetFilters(): void {
   currentFilters = {
     searchQuery: "",
-    sortBy: "default",
+    sortBy: "rating",
     showFilter: "all",
     hasShaders: false,
     versionCompatible: true,
