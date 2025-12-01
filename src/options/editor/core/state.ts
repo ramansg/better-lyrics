@@ -14,6 +14,7 @@ export class EditorStateManager {
   private isProcessing = false;
   private currentThemeName: string | null = null;
   private isCustomTheme = false;
+  private isStoreTheme = false;
   private saveCount = 0;
   private isUserTyping = false;
   private isProgrammaticChange = false;
@@ -45,6 +46,14 @@ export class EditorStateManager {
 
   setIsCustomTheme(value: boolean): void {
     this.isCustomTheme = value;
+  }
+
+  getIsStoreTheme(): boolean {
+    return this.isStoreTheme;
+  }
+
+  setIsStoreTheme(value: boolean): void {
+    this.isStoreTheme = value;
   }
 
   incrementSaveCount(): void {
@@ -197,6 +206,7 @@ export class EditorStateManager {
     await chrome.storage.sync.remove("themeName");
     this.currentThemeName = null;
     this.isCustomTheme = false;
+    this.isStoreTheme = false;
     console.log("[EditorStateManager] Theme state cleared");
   }
 }

@@ -4,6 +4,7 @@
 		<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet">
 		<link href="https://api.fontshare.com/v2.0.5/css?f[]=satoshi@1&amp;display=swap" rel="stylesheet">
 		<link rel="stylesheet" href="options.css">
+		<link rel="stylesheet" href="store/storeUI.css">
 		<script src="/stylelint/stylelint-bundle.min.js"></script>
 	</head>
 	<body>
@@ -355,6 +356,31 @@
 						Create
 					</button>
 				</div>
+				<div class="store-buttons-row">
+					<button class="small-btn" id="browse-themes-btn">
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+							<path d="M5.223 2.25c-.497 0-.974.198-1.325.55l-1.3 1.298A3.75 3.75 0 0 0 7.5 9.75c.627.47 1.406.75 2.25.75.844 0 1.624-.28 2.25-.75.626.47 1.406.75 2.25.75.844 0 1.623-.28 2.25-.75a3.75 3.75 0 0 0 4.902-5.652l-1.3-1.299a1.875 1.875 0 0 0-1.325-.549H5.223Z" />
+							<path fill-rule="evenodd" d="M3 20.25v-8.755c1.42.674 3.08.673 4.5 0A5.234 5.234 0 0 0 9.75 12c.804 0 1.568-.182 2.25-.506a5.234 5.234 0 0 0 2.25.506c.804 0 1.567-.182 2.25-.506 1.42.674 3.08.675 4.5.001v8.755h.75a.75.75 0 0 1 0 1.5H2.25a.75.75 0 0 1 0-1.5H3Zm3-6a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-.75.75h-3a.75.75 0 0 1-.75-.75v-3Zm8.25-.75a.75.75 0 0 0-.75.75v5.25c0 .414.336.75.75.75h3a.75.75 0 0 0 .75-.75v-5.25a.75.75 0 0 0-.75-.75h-3Z" clip-rule="evenodd" />
+						</svg>
+						Browse themes
+					</button>
+					<button class="small-btn" id="url-install-btn">
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+							<path d="M12.232 4.232a2.5 2.5 0 0 1 3.536 3.536l-1.225 1.224a.75.75 0 0 0 1.061 1.06l1.224-1.224a4 4 0 0 0-5.656-5.656l-3 3a4 4 0 0 0 .225 5.865.75.75 0 0 0 .977-1.138 2.5 2.5 0 0 1-.142-3.667l3-3Z"/>
+							<path d="M11.603 7.963a.75.75 0 0 0-.977 1.138 2.5 2.5 0 0 1 .142 3.667l-3 3a2.5 2.5 0 0 1-3.536-3.536l1.225-1.224a.75.75 0 0 0-1.061-1.06l-1.224 1.224a4 4 0 1 0 5.656 5.656l3-3a4 4 0 0 0-.225-5.865Z"/>
+						</svg>
+						Install from URL
+					</button>
+					<div class="your-themes-container">
+						<button class="small-btn" id="your-themes-btn">
+							<span>Your Themes</span>
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+								<path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/>
+							</svg>
+						</button>
+						<div id="your-themes-dropdown"></div>
+					</div>
+				</div>
 			</div>
 		</div>
 		<div id="status"></div>
@@ -472,6 +498,145 @@
 				</span>
 			<div id="status-css"></div>
 		</div>
+		<!-- Theme Store Modal -->
+		<div id="store-modal-overlay" class="modal-overlay">
+			<div class="modal store-modal">
+				<div class="modal-header store-modal-header">
+					<h3 class="modal-title">Theme Store</h3>
+					<div class="store-modal-header-actions">
+						<div class="store-search-container">
+							<svg class="store-search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+								<path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd"/>
+							</svg>
+							<input type="text" id="store-search-input" class="store-search-input" placeholder="Search themes...">
+						</div>
+						<div class="store-filter-container">
+							<button id="store-filter-btn" class="store-filter-btn" title="Filter">
+								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+									<path fill-rule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a2.25 2.25 0 0 1-.659 1.59l-4.682 4.683a2.25 2.25 0 0 0-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 0 1 8 18.25v-5.757a2.25 2.25 0 0 0-.659-1.591L2.659 6.22A2.25 2.25 0 0 1 2 4.629V2.34a.75.75 0 0 1 .628-.74Z" clip-rule="evenodd"/>
+								</svg>
+							</button>
+							<div id="store-filter-dropdown" class="store-filter-dropdown">
+								<div class="store-filter-section">
+									<span class="store-filter-label">Show</span>
+									<label class="store-filter-option">
+										<input type="radio" name="store-filter-show" value="all" checked>
+										<span>All themes</span>
+									</label>
+									<label class="store-filter-option">
+										<input type="radio" name="store-filter-show" value="installed">
+										<span>Installed</span>
+									</label>
+									<label class="store-filter-option">
+										<input type="radio" name="store-filter-show" value="not-installed">
+										<span>Not installed</span>
+									</label>
+								</div>
+								<div class="store-filter-section">
+									<span class="store-filter-label">Features</span>
+									<label class="store-filter-option">
+										<input type="checkbox" id="store-filter-shaders">
+										<span>Has shaders</span>
+									</label>
+								</div>
+							</div>
+						</div>
+						<button id="store-refresh-btn" class="store-refresh-btn" title="Refresh">
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+								<path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H3.989a.75.75 0 0 0-.75.75v4.242a.75.75 0 0 0 1.5 0v-2.43l.31.31a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.39Zm1.23-3.723a.75.75 0 0 0 .219-.53V2.929a.75.75 0 0 0-1.5 0v2.43l-.31-.31A7 7 0 0 0 3.239 8.188a.75.75 0 1 0 1.448.389A5.5 5.5 0 0 1 13.89 6.11l.311.31h-2.432a.75.75 0 0 0 0 1.5h4.243a.75.75 0 0 0 .53-.219Z" clip-rule="evenodd"/>
+							</svg>
+						</button>
+						<button id="store-modal-close" class="modal-close-btn" aria-label="Close">
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+								<path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/>
+							</svg>
+						</button>
+					</div>
+				</div>
+				<div class="store-modal-body">
+					<div id="store-loading" class="store-loading">
+						<div class="store-loading-spinner"></div>
+						<span>Loading themes...</span>
+					</div>
+					<div id="store-error" class="store-error">
+						<span class="store-error-message"></span>
+						<button id="store-retry-btn" class="small-btn">Retry</button>
+					</div>
+					<div id="store-modal-grid"></div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Theme Detail Modal -->
+		<div id="detail-modal-overlay" class="modal-overlay">
+			<div class="modal detail-modal">
+				<div class="modal-header">
+					<div class="detail-header-info">
+						<h4 id="detail-title"></h4>
+						<p id="detail-author"></p>
+					</div>
+					<div class="detail-header-actions">
+						<button id="detail-action-btn" class="store-card-btn store-card-btn-install">Install</button>
+						<button id="detail-modal-close" class="modal-close-btn" aria-label="Close">
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+								<path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/>
+							</svg>
+						</button>
+					</div>
+				</div>
+				<div class="detail-modal-body">
+					<div class="detail-slideshow">
+						<div id="detail-slideshow-container" class="detail-slideshow-container"></div>
+						<button id="detail-prev-btn" class="detail-nav-btn">
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+								<path fill-rule="evenodd" d="M11.78 5.22a.75.75 0 0 1 0 1.06L8.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/>
+							</svg>
+						</button>
+						<button id="detail-next-btn" class="detail-nav-btn">
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+								<path fill-rule="evenodd" d="M8.22 5.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/>
+							</svg>
+						</button>
+						<div id="detail-dots" class="detail-dots"></div>
+					</div>
+					<div class="detail-info">
+						<p id="detail-description"></p>
+						<div id="detail-shader-info" class="detail-shader-info">
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+								<path fill-rule="evenodd" d="M8 2.25A6.75 6.75 0 0 0 1.25 9v6A6.75 6.75 0 0 0 8 21.75h8A6.75 6.75 0 0 0 22.75 15V9A6.75 6.75 0 0 0 16 2.25zm-2 6a.75.75 0 0 0-.75.75v6a.75.75 0 0 0 1.5 0v-2.25h2.821a.75.75 0 0 0 0-1.5H6.75v-1.5H11a.75.75 0 0 0 0-1.5zm7.576.27a.75.75 0 1 0-1.152.96l2.1 2.52l-2.1 2.52a.75.75 0 1 0 1.152.96l1.924-2.308l1.924 2.308a.75.75 0 1 0 1.152-.96l-2.1-2.52l2.1-2.52a.75.75 0 1 0-1.152-.96L15.5 10.829z" clip-rule="evenodd"/>
+							</svg>
+							<span class="detail-shader-info-text">
+								This theme includes a shader config. <a id="detail-shader-download" href="#" class="detail-shader-link">Download shader.json</a> and import it in <a href="https://chromewebstore.google.com/detail/better-lyrics-shaders/mffpncjphfmkppebdoaehdlnagnlpfai" target="_blank" class="detail-shader-link">Better Lyrics Shaders</a>.
+							</span>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- URL Install Modal -->
+		<div id="url-modal-overlay" class="modal-overlay">
+			<div class="modal">
+				<div class="modal-header">
+					<h3 class="modal-title">Install from URL</h3>
+					<button id="url-modal-close" class="modal-close-btn" aria-label="Close">
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+							<path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/>
+						</svg>
+					</button>
+				</div>
+				<div class="modal-body">
+					<p class="modal-message">Enter a GitHub repository URL containing a Better Lyrics theme:</p>
+					<input type="text" id="url-modal-input" class="modal-input" placeholder="github.com/user/theme-repo or user/theme-repo">
+					<p id="url-modal-error"></p>
+				</div>
+				<div class="modal-footer">
+					<button id="url-modal-cancel" class="modal-btn modal-btn-secondary">Cancel</button>
+					<button id="url-modal-install" class="modal-btn modal-btn-primary">Install</button>
+				</div>
+			</div>
+		</div>
+
 		<script type="module" defer="" src="editor.ts"></script>
 		<script type="module" defer="" src="options.ts"></script>
 	

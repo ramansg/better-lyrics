@@ -14,10 +14,15 @@
     "*://music.youtube.com/*"
   ],
   "permissions": [
-    "storage"
+    "storage",
+    "alarms"
   ],
   "optional_permissions": [
     "downloads"
+  ],
+  "optional_host_permissions": [
+    "https://raw.githubusercontent.com/*",
+    "https://api.github.com/*"
   ],
   "options_ui": {
     "page": "src/options/options.html",

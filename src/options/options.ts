@@ -1,5 +1,6 @@
 // Function to save user options
 import Sortable from "sortablejs";
+import { initStoreUI, openStoreModal, openUrlModal, setupYourThemesButton } from "./store/storeUI";
 
 interface Options {
   isLogsEnabled: boolean;
@@ -339,4 +340,10 @@ document.addEventListener("DOMContentLoaded", () => {
     ghostClass: "dragging",
     onUpdate: saveOptions,
   });
+
+  initStoreUI();
+  setupYourThemesButton();
+
+  document.getElementById("browse-themes-btn")?.addEventListener("click", openStoreModal);
+  document.getElementById("url-install-btn")?.addEventListener("click", openUrlModal);
 });

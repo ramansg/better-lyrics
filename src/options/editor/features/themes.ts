@@ -14,6 +14,7 @@ import {
 } from "../ui/dom";
 import { showAlert, showConfirm, showPrompt } from "../ui/feedback";
 import { saveToStorageWithFallback, sendUpdateMessage, showSyncError, showSyncSuccess } from "./storage";
+import { getInstalledTheme } from "../../store/themeStoreManager";
 
 export class ThemeManager {
   async applyTheme(isCustom: boolean, index: number, themeName: string): Promise<void> {
@@ -111,6 +112,47 @@ export class ThemeManager {
 }
 
 export const themeManager = new ThemeManager();
+
+export async function applyStoreThemeToEditor(themeId: string, css: string, title: string): Promise<void> {
+  const themeContent = css.startsWith("/*") ? css : `/* ${title}, a store theme */\n\n${css}\n`;
+
+  await editorStateManager.queueOperation("theme", async () => {
+    console.log(`[ThemeManager] Setting store theme: ${title}`);
+
+    await editorStateManager.setEditorContent(themeContent, `store-theme:${themeId}`);
+
+    editorStateManager.setCurrentThemeName(title);
+    editorStateManager.setIsCustomTheme(false);
+
+    showThemeName(title, false);
+    updateThemeSelectorButton();
+
+    editorStateManager.incrementSaveCount();
+    editorStateManager.setIsSaving(true);
+
+    try {
+      const result = await saveToStorageWithFallback(themeContent, true);
+
+      if (!result.success || !result.strategy) {
+        throw new Error(`Failed to save theme: ${result.error?.message || "Unknown error"}`);
+      }
+
+      showSyncSuccess(result.strategy, result.wasRetry);
+      await sendUpdateMessage(themeContent, result.strategy);
+    } finally {
+      editorStateManager.setIsSaving(false);
+      editorStateManager.resetSaveCount();
+    }
+  });
+}
+
+export function initStoreThemeListener(): void {
+  document.addEventListener("store-theme-applied", async (event: Event) => {
+    const customEvent = event as CustomEvent<{ themeId: string; css: string; title: string }>;
+    const { themeId, css, title } = customEvent.detail;
+    await applyStoreThemeToEditor(themeId, css, title);
+  });
+}
 
 export function showThemeName(themeName: string, custom: boolean = false): void {
   if (themeNameDisplay && themeNameText) {
@@ -252,13 +294,16 @@ export function updateThemeSelectorButton() {
 export async function populateThemeModal(): Promise<void> {
   if (!themeModalGrid) return;
 
-  themeModalGrid.innerHTML = "";
+  themeModalGrid.replaceChildren();
 
   const customThemes = await getCustomThemes();
 
   const builtInSection = document.createElement("div");
   builtInSection.className = "theme-modal-section";
-  builtInSection.innerHTML = '<h3 class="theme-modal-section-title">Built-in Themes</h3>';
+  const builtInTitle = document.createElement("h3");
+  builtInTitle.className = "theme-modal-section-title";
+  builtInTitle.textContent = "Built-in Themes";
+  builtInSection.appendChild(builtInTitle);
 
   const builtInGrid = document.createElement("div");
   builtInGrid.className = "theme-modal-items";
@@ -279,7 +324,10 @@ export async function populateThemeModal(): Promise<void> {
   if (customThemes.length > 0) {
     const customSection = document.createElement("div");
     customSection.className = "theme-modal-section";
-    customSection.innerHTML = '<h3 class="theme-modal-section-title">Custom Themes</h3>';
+    const customTitle = document.createElement("h3");
+    customTitle.className = "theme-modal-section-title";
+    customTitle.textContent = "Custom Themes";
+    customSection.appendChild(customTitle);
 
     const customGrid = document.createElement("div");
     customGrid.className = "theme-modal-items";
@@ -303,7 +351,8 @@ function createThemeCard(options: ThemeCardOptions): HTMLElement {
   const card = document.createElement("div");
   card.className = "theme-card";
 
-  if (editorStateManager.getCurrentThemeName() === options.name) {
+  const isStoreThemeActive = editorStateManager.getIsStoreTheme();
+  if (!isStoreThemeActive && editorStateManager.getCurrentThemeName() === options.name) {
     card.classList.add("selected");
   }
 
@@ -374,27 +423,46 @@ export function closeThemeModal() {
 export async function setThemeName() {
   await chrome.storage.sync.get("themeName").then(async syncData => {
     if (syncData.themeName) {
-      const builtInIndex = THEMES.findIndex(theme => theme.name === syncData.themeName);
-      if (builtInIndex !== -1) {
-        editorStateManager.setCurrentThemeName(syncData.themeName);
-        editorStateManager.setIsCustomTheme(false);
-        showThemeName(syncData.themeName, false);
-      } else {
-        const customThemes = await getCustomThemes();
-        const customIndex = customThemes.findIndex(theme => theme.name === syncData.themeName);
-        if (customIndex !== -1) {
-          editorStateManager.setCurrentThemeName(syncData.themeName);
-          editorStateManager.setIsCustomTheme(true);
-          showThemeName(syncData.themeName, true);
+      if (syncData.themeName.startsWith("store:")) {
+        const storeThemeId = syncData.themeName.slice(6);
+        const storeTheme = await getInstalledTheme(storeThemeId);
+        if (storeTheme) {
+          editorStateManager.setCurrentThemeName(storeTheme.title);
+          editorStateManager.setIsCustomTheme(false);
+          editorStateManager.setIsStoreTheme(true);
+          showThemeName(storeTheme.title, false);
         } else {
           editorStateManager.setCurrentThemeName(null);
           editorStateManager.setIsCustomTheme(false);
+          editorStateManager.setIsStoreTheme(false);
           hideThemeName();
+        }
+      } else {
+        editorStateManager.setIsStoreTheme(false);
+        const builtInIndex = THEMES.findIndex(theme => theme.name === syncData.themeName);
+        if (builtInIndex !== -1) {
+          editorStateManager.setCurrentThemeName(syncData.themeName);
+          editorStateManager.setIsCustomTheme(false);
+          showThemeName(syncData.themeName, false);
+        } else {
+          const customThemes = await getCustomThemes();
+          const customIndex = customThemes.findIndex(theme => theme.name === syncData.themeName);
+          if (customIndex !== -1) {
+            editorStateManager.setCurrentThemeName(syncData.themeName);
+            editorStateManager.setIsCustomTheme(true);
+            showThemeName(syncData.themeName, true);
+          } else {
+            editorStateManager.setCurrentThemeName(null);
+            editorStateManager.setIsCustomTheme(false);
+            editorStateManager.setIsStoreTheme(false);
+            hideThemeName();
+          }
         }
       }
     } else {
       editorStateManager.setCurrentThemeName(null);
       editorStateManager.setIsCustomTheme(false);
+      editorStateManager.setIsStoreTheme(false);
       hideThemeName();
     }
     updateThemeSelectorButton();

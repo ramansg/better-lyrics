@@ -22,6 +22,7 @@ import {
   openThemeModal,
   saveToStorage,
   setThemeName,
+  initStoreThemeListener,
 } from "./features/themes";
 
 export function initializeNavigation() {
@@ -152,5 +153,6 @@ export function initialize() {
     initializeThemeActions();
     initializeFileOperations();
     initializeStorageListeners();
+    initStoreThemeListener();
   });
 }
