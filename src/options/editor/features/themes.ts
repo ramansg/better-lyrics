@@ -16,6 +16,8 @@ import { showAlert, showConfirm, showPrompt } from "../ui/feedback";
 import { saveToStorageWithFallback, sendUpdateMessage, showSyncError, showSyncSuccess } from "./storage";
 import { getInstalledTheme } from "../../store/themeStoreManager";
 
+const STORE_THEME_PREFIX = "store:";
+
 export class ThemeManager {
   async applyTheme(isCustom: boolean, index: number, themeName: string): Promise<void> {
     console.log(`[ThemeManager] Applying ${isCustom ? "custom" : "built-in"} theme: ${themeName}`);
@@ -117,37 +119,47 @@ export async function applyStoreThemeToEditor(themeId: string, css: string, titl
   console.log(`[BetterLyrics] applyStoreThemeToEditor called: ${title}, CSS length: ${css.length}`);
   const themeContent = css.startsWith("/*") ? css : `/* ${title}, a store theme */\n\n${css}\n`;
 
-  await editorStateManager.queueOperation("theme", async () => {
-    console.log(`[ThemeManager] Setting store theme: ${title}, content length: ${themeContent.length}`);
+  try {
+    await editorStateManager.queueOperation("theme", async () => {
+      console.log(`[ThemeManager] Setting store theme: ${title}, content length: ${themeContent.length}`);
 
-    await editorStateManager.setEditorContent(themeContent, `store-theme:${themeId}`);
+      await editorStateManager.setEditorContent(themeContent, `store-theme:${themeId}`);
 
-    editorStateManager.setCurrentThemeName(title);
-    editorStateManager.setIsCustomTheme(false);
+      editorStateManager.setCurrentThemeName(title);
+      editorStateManager.setIsCustomTheme(false);
 
-    showThemeName(title, false);
-    updateThemeSelectorButton();
+      showThemeName(title, false);
+      updateThemeSelectorButton();
 
-    editorStateManager.incrementSaveCount();
-    editorStateManager.setIsSaving(true);
+      editorStateManager.incrementSaveCount();
+      editorStateManager.setIsSaving(true);
 
-    try {
-      const result = await saveToStorageWithFallback(themeContent, true);
+      try {
+        const result = await saveToStorageWithFallback(themeContent, true);
 
-      if (!result.success || !result.strategy) {
-        throw new Error(`Failed to save theme: ${result.error?.message || "Unknown error"}`);
+        if (!result.success || !result.strategy) {
+          throw new Error(`Failed to save theme: ${result.error?.message || "Unknown error"}`);
+        }
+
+        showSyncSuccess(result.strategy, result.wasRetry);
+        await sendUpdateMessage(themeContent, result.strategy);
+      } finally {
+        editorStateManager.setIsSaving(false);
+        editorStateManager.resetSaveCount();
       }
-
-      showSyncSuccess(result.strategy, result.wasRetry);
-      await sendUpdateMessage(themeContent, result.strategy);
-    } finally {
-      editorStateManager.setIsSaving(false);
-      editorStateManager.resetSaveCount();
-    }
-  });
+    });
+  } catch (error) {
+    console.error(`[ThemeManager] Failed to apply store theme:`, error);
+    showAlert("Error applying store theme! Please try again.");
+  }
 }
 
+let storeThemeListenerInitialized = false;
+
 export function initStoreThemeListener(): void {
+  if (storeThemeListenerInitialized) return;
+  storeThemeListenerInitialized = true;
+
   console.log("[BetterLyrics] initStoreThemeListener registered");
 
   document.addEventListener("store-theme-applied", async (event: Event) => {
@@ -433,8 +445,8 @@ export function closeThemeModal() {
 export async function setThemeName() {
   await chrome.storage.sync.get("themeName").then(async syncData => {
     if (syncData.themeName) {
-      if (syncData.themeName.startsWith("store:")) {
-        const storeThemeId = syncData.themeName.slice(6);
+      if (syncData.themeName.startsWith(STORE_THEME_PREFIX)) {
+        const storeThemeId = syncData.themeName.slice(STORE_THEME_PREFIX.length);
         const storeTheme = await getInstalledTheme(storeThemeId);
         if (storeTheme) {
           editorStateManager.setCurrentThemeName(storeTheme.title);
