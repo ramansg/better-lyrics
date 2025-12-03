@@ -624,11 +624,19 @@
 	word-break: break-word;
 }
 
+/* Secondary and tertiary vocals */
 .blyrics--line[data-agent="v2"],
 .blyrics--line[data-agent="v3"] {
   justify-content: flex-end;
   text-align: right;
   transform-origin: right center !important;
+}
+
+/* All vocals together */
+.blyrics--line[data-agent="v1000"] {
+	justify-content: center;
+	text-align: center;
+	transform-origin: center center !important;
 }
 
 #blyrics-wrapper {
