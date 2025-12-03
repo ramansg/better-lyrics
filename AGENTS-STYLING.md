@@ -200,7 +200,7 @@ Use `.blyrics--animating` for styling active lines, but `.blyrics--active` in `:
   transition: opacity 0.4s ease, filter 0.4s ease, transform 0.5s ease calc(var(--blyrics-anim-delay, 0s) - 0.1s);
 }
 
-.blyrics-container:not(:has(.blyrics--active)) > div {
+.blyrics-container[data-sync="none"] > div {
   opacity: 1;
   filter: none;
 }
