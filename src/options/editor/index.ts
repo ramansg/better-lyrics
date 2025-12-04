@@ -23,11 +23,13 @@ import {
   themeNameText,
   themeSelectorBtn,
 } from "./ui/dom";
-import { showAlert } from "./ui/feedback";
+import { showAlert, showModal } from "./ui/feedback";
 
 export function initializeNavigation() {
   document.getElementById("edit-css-btn")?.addEventListener("click", openEditCSS);
   document.getElementById("back-btn")?.addEventListener("click", openOptions);
+
+  const isStandalone = document.querySelector(".theme-name-display.standalone") !== null;
 
   document.addEventListener("keydown", function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key === "s") {
@@ -35,11 +37,26 @@ export function initializeNavigation() {
       saveToStorage();
     }
     if ((e.ctrlKey || e.metaKey) && e.key === "f") {
-      let view = editorStateManager.getEditor();
-      if (view) {
-        openSearchPanel(view);
-      }
       e.preventDefault();
+      if (isStandalone) {
+        const view = editorStateManager.getEditor();
+        if (view) {
+          openSearchPanel(view);
+        }
+      } else {
+        showModal({
+          title: "Find & Replace",
+          message: "Find & Replace is only available in the fullscreen editor.<br><br>Click <strong>Open Fullscreen Editor</strong> to access all editor features.",
+          confirmText: "Open Fullscreen Editor",
+          cancelText: "Close",
+        }).then(result => {
+          if (result) {
+            chrome.tabs.create({
+              url: chrome.runtime.getURL("pages/standalone-editor.html"),
+            });
+          }
+        });
+      }
     }
   });
 }
