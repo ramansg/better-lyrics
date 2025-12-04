@@ -100,7 +100,7 @@ export async function getInstalledTheme(themeId: string): Promise<InstalledStore
 export async function installTheme(theme: StoreTheme): Promise<InstalledStoreTheme> {
   await ensureMigrated();
 
-  const css = await fetchThemeCSS(theme.repo);
+  const { css } = await fetchThemeCSS(theme.repo);
   const shaderConfig = theme.hasShaders ? await fetchThemeShaderConfig(theme.repo) : null;
 
   const installedTheme: InstalledStoreTheme = {

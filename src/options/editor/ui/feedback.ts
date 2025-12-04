@@ -10,28 +10,83 @@ import {
 } from "./dom";
 
 let alertTimeoutId: ReturnType<typeof setTimeout> | null = null;
+let alertKeyHandler: ((e: KeyboardEvent) => void) | null = null;
 const ALERT_DURATION = 2000;
+const ALERT_DURATION_WITH_ACTION = 5000;
 
-export const showAlert = (message: string, highlightText?: string): void => {
+export interface AlertAction {
+  label: string;
+  callback: () => void;
+}
+
+function cleanupAlertKeyHandler(): void {
+  if (alertKeyHandler) {
+    document.removeEventListener("keydown", alertKeyHandler);
+    alertKeyHandler = null;
+  }
+}
+
+function createToastContent(
+  status: HTMLElement,
+  message: string,
+  action?: AlertAction
+): void {
+  const textContainer = document.createElement("span");
+  textContainer.className = "toast-text";
+  textContainer.textContent = message;
+  status.appendChild(textContainer);
+
+  const actionWrapper = document.createElement("div");
+  actionWrapper.className = "toast-action-wrapper";
+  status.appendChild(actionWrapper);
+
+  if (action) {
+    const triggerAction = () => {
+      if (alertTimeoutId) {
+        clearTimeout(alertTimeoutId);
+        alertTimeoutId = null;
+      }
+      cleanupAlertKeyHandler();
+      action.callback();
+    };
+
+    const actionBtn = document.createElement("button");
+    actionBtn.className = "toast-action";
+    actionBtn.appendChild(document.createTextNode(action.label));
+    const kbd = document.createElement("kbd");
+    kbd.textContent = "Enter";
+    actionBtn.appendChild(kbd);
+    actionBtn.addEventListener("click", triggerAction);
+    actionWrapper.appendChild(actionBtn);
+
+    alertKeyHandler = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && status.classList.contains("active")) {
+        e.preventDefault();
+        triggerAction();
+      }
+    };
+    document.addEventListener("keydown", alertKeyHandler);
+  }
+}
+
+export const showAlert = (message: string, action?: AlertAction): void => {
   const status = document.getElementById("status-css");
   if (!status) return;
 
   const isAlreadyActive = status.classList.contains("active");
 
-  status.replaceChildren();
-  if (highlightText) {
-    const parts = message.split(highlightText);
-    if (parts.length === 2) {
-      status.appendChild(document.createTextNode(parts[0]));
-      const pre = document.createElement("pre");
-      pre.textContent = highlightText;
-      status.appendChild(pre);
-      status.appendChild(document.createTextNode(parts[1]));
-    } else {
-      status.textContent = message;
-    }
+  cleanupAlertKeyHandler();
+
+  if (isAlreadyActive && status.children.length > 0) {
+    status.classList.add("exiting");
+    setTimeout(() => {
+      status.classList.remove("exiting");
+      status.replaceChildren();
+      createToastContent(status, message, action);
+    }, 150);
   } else {
-    status.textContent = message;
+    status.replaceChildren();
+    createToastContent(status, message, action);
   }
 
   status.classList.add("active");
@@ -40,10 +95,12 @@ export const showAlert = (message: string, highlightText?: string): void => {
     clearTimeout(alertTimeoutId);
   }
 
-  const duration = isAlreadyActive ? ALERT_DURATION * 2 : ALERT_DURATION;
+  const baseDuration = action ? ALERT_DURATION_WITH_ACTION : ALERT_DURATION;
+  const duration = isAlreadyActive ? baseDuration * 1.5 : baseDuration;
 
   alertTimeoutId = setTimeout(() => {
     status.classList.remove("active");
+    cleanupAlertKeyHandler();
     setTimeout(() => {
       status.replaceChildren();
     }, 200);

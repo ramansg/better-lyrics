@@ -6,7 +6,7 @@ import { hideThemeName, updateThemeSelectorButton } from "./themes";
 export const generateDefaultFilename = (): string => {
   const date = new Date();
   const timestamp = date.toISOString().replace(/[:.]/g, "-").slice(0, -5);
-  return `blyrics-theme-${timestamp}.css`;
+  return `blyrics-theme-${timestamp}.rics`;
 };
 
 export const saveCSSToFile = (css: string, defaultFilename: string): void => {
@@ -25,8 +25,8 @@ export const saveCSSToFile = (css: string, defaultFilename: string): void => {
   });
 };
 
-const downloadFile = (css: string, defaultFilename: string): void => {
-  const blob = new Blob([css], { type: "text/css" });
+const downloadFile = (content: string, defaultFilename: string): void => {
+  const blob = new Blob([content], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
 
   if (chrome.downloads) {
@@ -37,7 +37,7 @@ const downloadFile = (css: string, defaultFilename: string): void => {
         saveAs: true,
       })
       .then(() => {
-        showAlert("CSS file save dialog opened. Choose where to save your file.");
+        showAlert("Theme file save dialog opened. Choose where to save your file.");
         URL.revokeObjectURL(url);
       })
       .catch(error => {
@@ -46,12 +46,12 @@ const downloadFile = (css: string, defaultFilename: string): void => {
         URL.revokeObjectURL(url);
       });
   } else {
-    fallbackSaveMethod(css, defaultFilename);
+    fallbackSaveMethod(content, defaultFilename);
   }
 };
 
-const fallbackSaveMethod = (css: string, defaultFilename: string): void => {
-  const blob = new Blob([css], { type: "text/css" });
+const fallbackSaveMethod = (content: string, defaultFilename: string): void => {
+  const blob = new Blob([content], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
 
   const a = document.createElement("a");
@@ -64,7 +64,7 @@ const fallbackSaveMethod = (css: string, defaultFilename: string): void => {
 
   setTimeout(() => URL.revokeObjectURL(url), 100);
 
-  showAlert("CSS file download initiated. Check your downloads folder.");
+  showAlert("Theme file download initiated. Check your downloads folder.");
 };
 
 export class ImportManager {
@@ -78,7 +78,7 @@ export class ImportManager {
       await this.performImport(css, file.name);
     } catch (error) {
       console.error(`[ImportManager] Import failed:`, error);
-      showAlert("Error importing CSS file! Please try again.");
+      showAlert("Error importing theme file! Please try again.");
       throw error;
     }
   }
@@ -133,7 +133,7 @@ export class ImportManager {
         await sendUpdateMessage(css, result.strategy);
 
         console.log(`[ImportManager] Import completed successfully`);
-        showAlert(`CSS file "${filename}" imported successfully!`);
+        showAlert(`Theme file "${filename}" imported successfully!`);
       } finally {
         editorStateManager.setIsSaving(false);
         editorStateManager.resetSaveCount();

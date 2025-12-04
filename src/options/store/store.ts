@@ -4,7 +4,7 @@ import type { AllThemeStats, InstalledStoreTheme, StoreTheme, ThemeStats } from 
 
 let gridAnimationController: AnimationController | null = null;
 
-import { showAlert } from "../editor/ui/feedback";
+import { showAlert, type AlertAction } from "../editor/ui/feedback";
 import { fetchAllStats, submitRating, trackInstall } from "./themeStoreApi";
 import {
   applyStoreTheme,
@@ -1244,12 +1244,18 @@ async function handleThemeAction(theme: StoreTheme, button: HTMLButtonElement): 
       await removeTheme(theme.id);
       button.className = "store-card-btn store-card-btn-install";
       button.textContent = "Install";
-      showAlert(`Removed ${theme.title}`, theme.title);
+      showAlert(`Removed ${theme.title}`);
     } else {
-      await installTheme(theme);
+      const installedTheme = await installTheme(theme);
       button.className = "store-card-btn store-card-btn-remove";
       button.textContent = "Remove";
-      showAlert(`Installed ${theme.title}`, theme.title);
+
+      const applyAction: AlertAction = {
+        label: "Apply",
+        callback: () => handleApplyTheme(installedTheme),
+      };
+      showAlert(`Installed ${theme.title}`, applyAction);
+
       if (!userInstallsCache[theme.id]) {
         trackInstall(theme.id)
           .then(result => {
@@ -1328,6 +1334,7 @@ async function openDetailModal(theme: StoreTheme): Promise<void> {
 
   const repoLinkContainer = document.getElementById("detail-repo-link");
   const repoAnchor = document.getElementById("detail-repo-anchor") as HTMLAnchorElement;
+  const ricsBadge = document.getElementById("detail-rics-badge");
   if (repoLinkContainer && repoAnchor) {
     if (theme.repo) {
       repoLinkContainer.style.display = "flex";
@@ -1336,6 +1343,11 @@ async function openDetailModal(theme: StoreTheme): Promise<void> {
     } else {
       repoLinkContainer.style.display = "none";
     }
+  }
+
+  if (ricsBadge) {
+    const isRics = theme.cssUrl.endsWith(".rics");
+    ricsBadge.classList.toggle("visible", isRics);
   }
 
   if (ratingSectionEl && ratingStarsEl && ratingStatusEl) {
@@ -1450,13 +1462,19 @@ async function openDetailModal(theme: StoreTheme): Promise<void> {
           await removeTheme(theme.id);
           actionBtn.className = "store-card-btn store-card-btn-install";
           setActionButtonContent(actionBtn, "Install", "I");
-          showAlert(`Removed ${theme.title}`, theme.title);
+          showAlert(`Removed ${theme.title}`);
           updateRatingEnabled(false);
         } else {
-          await installTheme(theme);
+          const installedTheme = await installTheme(theme);
           actionBtn.className = "store-card-btn store-card-btn-remove";
           setActionButtonContent(actionBtn, "Remove", "I");
-          showAlert(`Installed ${theme.title}`, theme.title);
+
+          const applyAction: AlertAction = {
+            label: "Apply",
+            callback: () => handleApplyTheme(installedTheme),
+          };
+          showAlert(`Installed ${theme.title}`, applyAction);
+
           updateRatingEnabled(true);
           if (!userInstallsCache[theme.id]) {
             trackInstall(theme.id)
@@ -1708,7 +1726,7 @@ async function handleUrlInstall(): Promise<void> {
     installBtn.textContent = "Installing...";
 
     const theme = await fetchFullTheme(repo, branch);
-    await installTheme(theme);
+    const installedTheme = await installTheme(theme);
     if (!userInstallsCache[theme.id]) {
       trackInstall(theme.id)
         .then(result => {
@@ -1720,7 +1738,11 @@ async function handleUrlInstall(): Promise<void> {
     }
 
     const branchInfo = branch ? ` (${branch})` : "";
-    showAlert(`Installed ${theme.title} from ${repo}${branchInfo}`, theme.title);
+    const applyAction: AlertAction = {
+      label: "Apply",
+      callback: () => handleApplyTheme(installedTheme),
+    };
+    showAlert(`Installed ${theme.title} from ${repo}${branchInfo}`, applyAction);
     closeUrlModal();
     updateYourThemesDropdown();
   } catch (err) {
@@ -1809,7 +1831,9 @@ async function handleApplyTheme(theme: InstalledStoreTheme): Promise<void> {
     });
     document.dispatchEvent(event);
 
-    showAlert(`Applied ${theme.title}`, theme.title);
+    chrome.runtime.sendMessage({ action: "updateCSS", css: themeContent }).catch(() => {});
+
+    showAlert(`Applied ${theme.title}`);
     updateYourThemesDropdown();
     toggleYourThemesDropdown(false);
   } catch (err) {

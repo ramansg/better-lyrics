@@ -122,16 +122,24 @@ export async function fetchThemeMetadata(repo: string, branchOverride?: string):
   return response.json();
 }
 
-export async function fetchThemeCSS(repo: string, branchOverride?: string): Promise<string> {
+export async function fetchThemeCSS(repo: string, branchOverride?: string): Promise<{ css: string; isRics: boolean }> {
   const branch = branchOverride ?? (await getDefaultBranch(repo));
-  const url = getRawGitHubUrl(repo, branch, "style.css");
-  const response = await fetchWithTimeout(url, { cache: "no-store" });
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch CSS for ${repo}: ${response.status}`);
+  const ricsUrl = getRawGitHubUrl(repo, branch, "style.rics");
+  const ricsResponse = await fetchWithTimeout(ricsUrl, { cache: "no-store" }).catch(() => null);
+
+  if (ricsResponse?.ok) {
+    return { css: await ricsResponse.text(), isRics: true };
   }
 
-  return response.text();
+  const cssUrl = getRawGitHubUrl(repo, branch, "style.css");
+  const cssResponse = await fetchWithTimeout(cssUrl, { cache: "no-store" });
+
+  if (!cssResponse.ok) {
+    throw new Error(`Failed to fetch style file for ${repo}: no style.rics or style.css found`);
+  }
+
+  return { css: await cssResponse.text(), isRics: false };
 }
 
 async function checkFileExists(url: string): Promise<boolean> {
@@ -185,7 +193,11 @@ export async function fetchFullTheme(repo: string, branchOverride?: string): Pro
   const description = descriptionMd ?? metadata.description ?? "";
 
   const baseUrl = getRawGitHubUrl(repo, branch, "", false);
-  const cssUrl = `${baseUrl}style.css`;
+
+  const ricsUrl = `${baseUrl}style.rics`;
+  const hasRics = await checkFileExists(ricsUrl);
+  const cssUrl = hasRics ? ricsUrl : `${baseUrl}style.css`;
+
   const shaderUrl = metadata.hasShaders ? `${baseUrl}shader.json` : undefined;
 
   const imageUrls: string[] = [];
@@ -239,54 +251,61 @@ export async function validateThemeRepo(repo: string, branchOverride?: string): 
   const missingFiles: string[] = [];
   const branch = branchOverride ?? (await getDefaultBranch(repo));
 
-  const requiredFiles = ["style.css", "metadata.json"];
-
-  for (const file of requiredFiles) {
-    const url = getRawGitHubUrl(repo, branch, file);
-    try {
-      const response = await fetchWithTimeout(url, { method: "HEAD" }, 5000);
-      if (!response.ok) {
-        missingFiles.push(file);
-      }
-    } catch {
-      missingFiles.push(file);
+  const metadataUrl = getRawGitHubUrl(repo, branch, "metadata.json");
+  try {
+    const response = await fetchWithTimeout(metadataUrl, { method: "HEAD" }, 5000);
+    if (!response.ok) {
+      missingFiles.push("metadata.json");
+      errors.push("Missing required file: metadata.json");
+      return { valid: false, errors, missingFiles };
     }
-  }
-
-  if (missingFiles.length > 0) {
-    errors.push(`Missing required files: ${missingFiles.join(", ")}`);
+  } catch {
+    missingFiles.push("metadata.json");
+    errors.push("Missing required file: metadata.json");
     return { valid: false, errors, missingFiles };
   }
 
+  let metadata;
   try {
-    const [metadata, descriptionMd] = await Promise.all([
-      fetchThemeMetadata(repo, branch),
-      fetchThemeDescription(repo, branch),
-    ]);
-
-    if (!metadata.id) errors.push("metadata.json missing 'id' field");
-    if (!metadata.title) errors.push("metadata.json missing 'title' field");
-    if (!metadata.description && !descriptionMd) {
-      errors.push("Theme must have either 'description' in metadata.json or a DESCRIPTION.md file");
-    }
-    if (!metadata.creators || metadata.creators.length === 0) {
-      errors.push("metadata.json missing 'creators' field");
-    }
-    if (!metadata.minVersion) errors.push("metadata.json missing 'minVersion' field");
-    if (typeof metadata.hasShaders !== "boolean") {
-      errors.push("metadata.json missing 'hasShaders' field");
-    }
-    if (!metadata.version) errors.push("metadata.json missing 'version' field");
-
-    if (!metadata.images || metadata.images.length === 0) {
-      const coverUrl = getRawGitHubUrl(repo, branch, "cover.png");
-      const hasCover = await checkFileExists(coverUrl);
-      if (!hasCover) {
-        errors.push("Theme must have either cover.png or images in metadata");
-      }
-    }
+    metadata = await fetchThemeMetadata(repo, branch);
   } catch (err) {
     errors.push(`Failed to parse metadata.json: ${err}`);
+    return { valid: false, errors, missingFiles };
+  }
+
+  const ricsUrl = getRawGitHubUrl(repo, branch, "style.rics");
+  const cssUrl = getRawGitHubUrl(repo, branch, "style.css");
+  const hasRics = await checkFileExists(ricsUrl);
+  const hasCss = await checkFileExists(cssUrl);
+
+  if (!hasRics && !hasCss) {
+    missingFiles.push("style.rics or style.css");
+    errors.push("Missing required file: style.rics or style.css");
+    return { valid: false, errors, missingFiles };
+  }
+
+  const descriptionMd = await fetchThemeDescription(repo, branch);
+
+  if (!metadata.id) errors.push("metadata.json missing 'id' field");
+  if (!metadata.title) errors.push("metadata.json missing 'title' field");
+  if (!metadata.description && !descriptionMd) {
+    errors.push("Theme must have either 'description' in metadata.json or a DESCRIPTION.md file");
+  }
+  if (!metadata.creators || metadata.creators.length === 0) {
+    errors.push("metadata.json missing 'creators' field");
+  }
+  if (!metadata.minVersion) errors.push("metadata.json missing 'minVersion' field");
+  if (typeof metadata.hasShaders !== "boolean") {
+    errors.push("metadata.json missing 'hasShaders' field");
+  }
+  if (!metadata.version) errors.push("metadata.json missing 'version' field");
+
+  if (!metadata.images || metadata.images.length === 0) {
+    const coverUrl = getRawGitHubUrl(repo, branch, "cover.png");
+    const hasCover = await checkFileExists(coverUrl);
+    if (!hasCover) {
+      errors.push("Theme must have either cover.png or images in metadata");
+    }
   }
 
   return {

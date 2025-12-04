@@ -75,7 +75,7 @@ export function initializeFileOperations() {
   document.getElementById("file-import-btn")?.addEventListener("click", () => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".css";
+    input.accept = ".css,.rics";
     input.onchange = async (event: Event) => {
       const file = (event.target as HTMLInputElement).files?.[0];
       if (!file) return;
