@@ -8,7 +8,7 @@ import { type LyricSourceKey, type LyricSourceResult, type ProviderParameters } 
 function handleTurnstile(): Promise<string> {
   return new Promise((resolve, reject) => {
     const iframe = document.createElement("iframe");
-    iframe.src = CUBEY_LYRICS_API_URL + "challenge";
+    iframe.src = CUBEY_LYRICS_API_URL_TURNSTILE + "challenge";
 
     iframe.style.position = "fixed";
     iframe.style.bottom = "calc(20px + var(--ytmusic-player-bar-height))";
@@ -63,7 +63,8 @@ function handleTurnstile(): Promise<string> {
   });
 }
 
-const CUBEY_LYRICS_API_URL = "https://lyrics.api.dacubeking.com/";
+const CUBEY_LYRICS_API_URL_TURNSTILE = "https://lyrics.api.dacubeking.com/";
+const CUBEY_LYRICS_API_URL = "https://go-api-proxy-better-lyrics-cf-api.dacubeking.workers.dev/";
 
 export type CubeyLyricSourceResult = LyricSourceResult & {
   album: string;
@@ -74,6 +75,7 @@ export type CubeyLyricSourceResult = LyricSourceResult & {
 
 import * as Utils from "@core/utils";
 import { lrcFixers, parseLRC, parsePlainLyrics } from "./lrcUtils";
+import { fillTtml } from "@modules/lyrics/providers/blyrics/blyrics";
 
 /**
  *
@@ -283,7 +285,21 @@ export default async function cubey(providerParameters: ProviderParameters): Pro
     };
   }
 
-  (["musixmatch-synced", "musixmatch-richsync", "lrclib-synced", "lrclib-plain"] as const).forEach(source => {
+  if (responseData.goLyricsApiTtml) {
+    let ttmlData = JSON.parse(responseData.goLyricsApiTtml);
+    await fillTtml(ttmlData.ttml, providerParameters);
+  }
+
+  (
+    [
+      "musixmatch-synced",
+      "musixmatch-richsync",
+      "lrclib-synced",
+      "lrclib-plain",
+      "bLyrics-richsynced",
+      "bLyrics-synced",
+    ] as const
+  ).forEach(source => {
     providerParameters.sourceMap[source].filled = true;
   });
 }

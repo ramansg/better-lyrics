@@ -61,28 +61,8 @@ function parseLyricPart(p: ParagraphElementOrBackground[], beginTime: number, ig
     isWordSynced,
   };
 }
-export default async function bLyrics(providerParameters: ProviderParameters): Promise<void> {
-  // Fetch from the primary API if cache is empty or invalid
-  const url = new URL(Constants.LYRICS_API_URL);
-  url.searchParams.append("s", providerParameters.song);
-  url.searchParams.append("a", providerParameters.artist);
-  url.searchParams.append("d", String(providerParameters.duration));
-  if (providerParameters.album != null) {
-    url.searchParams.append("al", providerParameters.album);
-  }
 
-  const response = await fetch(url.toString(), {
-    signal: AbortSignal.any([providerParameters.signal, AbortSignal.timeout(10000)]),
-  });
-
-  if (!response.ok) {
-    providerParameters.sourceMap["bLyrics-richsynced"].filled = true;
-    providerParameters.sourceMap["bLyrics-richsynced"].lyricSourceResult = null;
-
-    providerParameters.sourceMap["bLyrics-synced"].filled = true;
-    providerParameters.sourceMap["bLyrics-synced"].lyricSourceResult = null;
-  }
-
+export async function fillTtml(responseString: string, providerParameters: ProviderParameters) {
   const options: X2jOptions = {
     ignoreAttributes: false,
     attributeNamePrefix: "@_",
@@ -98,7 +78,6 @@ export default async function bLyrics(providerParameters: ProviderParameters): P
 
   const parser = new XMLParser(options);
 
-  let responseString: string = await response.json().then(json => json.ttml);
   const rawObj = (await parser.parse(responseString)) as TtmlRoot;
 
   let lyrics = [] as Lyric[];
@@ -194,4 +173,32 @@ export default async function bLyrics(providerParameters: ProviderParameters): P
 
   providerParameters.sourceMap["bLyrics-synced"].filled = true;
   providerParameters.sourceMap["bLyrics-richsynced"].filled = true;
+}
+
+export default async function bLyrics(providerParameters: ProviderParameters): Promise<void> {
+  // Fetch from the primary API if cache is empty or invalid
+  const url = new URL(Constants.LYRICS_API_URL);
+  url.searchParams.append("s", providerParameters.song);
+  url.searchParams.append("a", providerParameters.artist);
+  url.searchParams.append("d", String(providerParameters.duration));
+  if (providerParameters.album != null) {
+    url.searchParams.append("al", providerParameters.album);
+  }
+
+  const response = await fetch(url.toString(), {
+    signal: AbortSignal.any([providerParameters.signal, AbortSignal.timeout(10000)]),
+  });
+
+  if (!response.ok) {
+    providerParameters.sourceMap["bLyrics-richsynced"].filled = true;
+    providerParameters.sourceMap["bLyrics-richsynced"].lyricSourceResult = null;
+
+    providerParameters.sourceMap["bLyrics-synced"].filled = true;
+    providerParameters.sourceMap["bLyrics-synced"].lyricSourceResult = null;
+
+    return;
+  }
+
+  let responseString: string = await response.json().then(json => json.ttml);
+  await fillTtml(responseString, providerParameters);
 }
