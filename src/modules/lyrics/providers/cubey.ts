@@ -290,7 +290,7 @@ export default async function cubey(providerParameters: ProviderParameters): Pro
     await fillTtml(ttmlData.ttml, providerParameters);
   }
 
-  (["musixmatch-synced", "musixmatch-richsync", "lrclib-synced", "lrclib-plain"] as const).forEach(source => {
+  (["musixmatch-synced", "musixmatch-richsync", "lrclib-synced", "lrclib-plain", "bLyrics-richsynced", "bLyrics-synced"] as const).forEach(source => {
     providerParameters.sourceMap[source].filled = true;
   });
 }
