@@ -119,7 +119,7 @@ export class ImportManager {
 
       try {
         console.log(`[ImportManager] Step 3: Setting editor content`);
-        await editorStateManager.setEditorContent(css, `file-import:${filename}`);
+        await editorStateManager.setEditorContent(css, `file-import:${filename}`, false);
 
         console.log(`[ImportManager] Step 4: Saving to storage`);
         const result = await saveToStorageWithFallback(css);

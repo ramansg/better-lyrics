@@ -408,7 +408,7 @@ export class StorageManager {
     console.log(`[StorageManager] Applying store theme update from message: ${request.title} v${request.version}`);
 
     await editorStateManager.queueOperation("storage", async () => {
-      await editorStateManager.setEditorContent(request.css, "store-theme-update-message");
+      await editorStateManager.setEditorContent(request.css, "store-theme-update-message", false);
 
       const result = await saveToStorageWithFallback(request.css, true);
       if (result.success && result.strategy) {
@@ -461,7 +461,7 @@ export class StorageManager {
     await editorStateManager.queueOperation("storage", async () => {
       const css = await loadCustomCSS();
       console.log(`[StorageManager] CSS loaded from theme change: ${css.length} bytes`);
-      await editorStateManager.setEditorContent(css, "theme-name-change");
+      await editorStateManager.setEditorContent(css, "theme-name-change", false);
     });
   }
 
@@ -514,7 +514,7 @@ export class StorageManager {
 
     await editorStateManager.queueOperation("storage", async () => {
       console.log(`[StorageManager] Applying updated store theme to editor: ${themeContent.length} bytes`);
-      await editorStateManager.setEditorContent(themeContent, "store-theme-update");
+      await editorStateManager.setEditorContent(themeContent, "store-theme-update", false);
 
       editorStateManager.setCurrentThemeName(newTheme.title);
       showThemeName(displayName, false);
@@ -535,7 +535,7 @@ export class StorageManager {
       const css = await loadCustomCSS();
       console.log(`[StorageManager] Initial CSS loaded: ${css.length} bytes`);
 
-      await editorStateManager.setEditorContent(css, "initial-load");
+      await editorStateManager.setEditorContent(css, "initial-load", false);
     });
   }
 }

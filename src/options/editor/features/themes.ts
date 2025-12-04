@@ -48,7 +48,7 @@ export class ThemeManager {
     await editorStateManager.queueOperation("theme", async () => {
       console.log(`[ThemeManager] Setting custom theme: ${selectedTheme.name}`);
 
-      await editorStateManager.setEditorContent(themeContent, `custom-theme:${selectedTheme.name}`);
+      await editorStateManager.setEditorContent(themeContent, `custom-theme:${selectedTheme.name}`, false);
 
       await chrome.storage.sync.set({ themeName: selectedTheme.name });
       editorStateManager.setCurrentThemeName(selectedTheme.name);
@@ -78,7 +78,7 @@ export class ThemeManager {
     await editorStateManager.queueOperation("theme", async () => {
       console.log(`[ThemeManager] Setting built-in theme: ${selectedTheme.name}`);
 
-      await editorStateManager.setEditorContent(themeContent, `builtin-theme:${selectedTheme.name}`);
+      await editorStateManager.setEditorContent(themeContent, `builtin-theme:${selectedTheme.name}`, false);
 
       await chrome.storage.sync.set({ themeName: selectedTheme.name });
       editorStateManager.setCurrentThemeName(selectedTheme.name);
@@ -123,7 +123,7 @@ export async function applyStoreThemeToEditor(themeId: string, css: string, titl
     await editorStateManager.queueOperation("theme", async () => {
       console.log(`[ThemeManager] Setting store theme: ${title}, content length: ${themeContent.length}`);
 
-      await editorStateManager.setEditorContent(themeContent, `store-theme:${themeId}`);
+      await editorStateManager.setEditorContent(themeContent, `store-theme:${themeId}`, false);
 
       editorStateManager.setCurrentThemeName(title);
       editorStateManager.setIsCustomTheme(false);

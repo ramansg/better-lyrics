@@ -174,7 +174,7 @@ export class EditorStateManager {
     });
   }
 
-  async setEditorContent(css: string, source: string): Promise<void> {
+  async setEditorContent(css: string, source: string, preserveCursor = true): Promise<void> {
     if (!this.editor) {
       throw new Error("[EditorStateManager] Editor not initialized");
     }
@@ -188,6 +188,9 @@ export class EditorStateManager {
 
     console.log(`[EditorStateManager] Setting editor content from: ${source} (${css.length} bytes)`);
 
+    const selection = this.editor.state.selection;
+    const mainCursorPos = selection.main.head;
+
     this.isProgrammaticChange = true;
     this.editor.dispatch({
       changes: {
@@ -196,6 +199,14 @@ export class EditorStateManager {
         insert: css,
       },
     });
+
+    if (preserveCursor && mainCursorPos > 0) {
+      const clampedPos = Math.min(mainCursorPos, css.length);
+      this.editor.dispatch({
+        selection: { anchor: clampedPos },
+      });
+    }
+
     this.isProgrammaticChange = false;
 
     console.log(`[EditorStateManager] Editor content set successfully from: ${source}`);
