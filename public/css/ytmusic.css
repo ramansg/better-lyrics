@@ -205,13 +205,13 @@ ytmusic-player-page:not([is-mweb-modernization-enabled]):not([player-ui-state=MI
 /*
 Keep album art small
  */
-ytmusic-player-page:not([video-mode]):not([player-ui-state=MINIPLAYER]) #player.ytmusic-player-page {
+ytmusic-player-page:not([is-mweb-modernization-enabled]):not([video-mode]):not([player-ui-state=MINIPLAYER]) #player.ytmusic-player-page {
   width: 100%;
   margin-left: auto;
   margin-right: auto;
 }
 
-ytmusic-player-page:not([is-mweb-modernization-enabled]):not([video-mode])
+ytmusic-player-page:not([is-mweb-modernization-enabled]):not([is-mweb-modernization-enabled]):not([video-mode])
 #player.ytmusic-player-page {
   max-width: 400px !important;
 }
@@ -249,7 +249,7 @@ ytmusic-player-page:not([is-mweb-modernization-enabled])[player-fullscreened]
     width: var(--blyrics-fullscreen-video-panel-size);
   }
 
-  ytmusic-player-page[player-fullscreened]:not([video-mode])
+  ytmusic-player-page:not([is-mweb-modernization-enabled])[player-fullscreened]:not([video-mode])
   #player.ytmusic-player-page {
     margin-bottom: 0;
     margin-top: 0;
@@ -295,20 +295,19 @@ ytmusic-player-page:not([is-mweb-modernization-enabled])[player-fullscreened]
   }
 }
 
-@media (max-width: 615px) {
-  /* Styles for smaller screens */
-  #tab-renderer[page-type="MUSIC_PAGE_TYPE_TRACK_LYRICS"] {
-    mask-image: none;
-    -webkit-mask-image: none;
-  }
-  ytmusic-player-page[is-mweb-modernization-enabled][player-fullscreened]
-    #player-controls.ytmusic-player-page {
-    max-width: 100vw;
-  }
-  ytmusic-player-page[is-mweb-modernization-enabled][player-fullscreened]
-    #main-panel.ytmusic-player-page {
-    padding: 0 !important;
-  }
+
+/* Styles for mobile screens */
+#tab-renderer[is-mweb-modernization-enabled][page-type="MUSIC_PAGE_TYPE_TRACK_LYRICS"] {
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+ytmusic-player-page[is-mweb-modernization-enabled][player-fullscreened]
+#player-controls.ytmusic-player-page {
+  max-width: 100vw;
+}
+ytmusic-player-page[is-mweb-modernization-enabled][player-fullscreened]
+#main-panel.ytmusic-player-page {
+  padding: 0 !important;
 }
 
 /*Hide Yt's lyrics*/
