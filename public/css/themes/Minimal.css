@@ -1,7 +1,5 @@
 
-/* v1.5.2 alpha-5 */
-/* wallpapers, some fixes i don't remember, and bigger font for full-screen */
-/* replaced pulse effect with old iphone unlock screen text swipe effect */
+/* 2025-12-05T16-26-06 v1.5.3 */
 
 * {
   font-family: system-ui, sans-serif;
@@ -114,11 +112,11 @@ ytmusic-app-layout:not(
     [is-mweb-modernization-enabled]
   )[player-fullscreened]:not([blyrics-dfs])
   .blyrics-container {
-  font-size: 4.5rem;
+  font-size: 5rem;
 }
 ytmusic-app-layout:not([is-mweb-modernization-enabled])[player-fullscreened]:not([blyrics-dfs])
  .blyrics-container .blyrics--line :is(.blyrics--romanized, .blyrics--translated) {
-  font-size: 3rem;
+  font-size: 3.333rem;
 }
 #blyrics-loader:not([no-sync-available])::after,
 #blyrics-loader::after {
@@ -343,4 +341,13 @@ ytmusic-browse-response[has-background]:not([disable-gradient])
 .image.ytmusic-immersive-header-renderer
   ~ .content-container-wrapper.ytmusic-immersive-header-renderer {
   background: none;
+}
+tp-yt-paper-listbox.ytmusic-menu-popup-renderer {
+  border-radius: 8px;
+}
+#blyrics-wrapper > div > div.blyrics-footer {
+  opacity: 1;
+}
+ytmusic-search-box[is-bauhaus-sidenav-enabled] {
+  --ytmusic-search-background: #212121;
 }
