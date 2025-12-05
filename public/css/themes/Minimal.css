@@ -1,5 +1,5 @@
 
-/* v1.5.2 alpha-4 */
+/* v1.5.2 alpha-5 */
 /* wallpapers, some fixes i don't remember, and bigger font for full-screen */
 /* replaced pulse effect with old iphone unlock screen text swipe effect */
 
@@ -30,7 +30,7 @@ ytmusic-app-layout > [slot="player-bar"] {
   --blyrics-gradient-stops: none;
   --blyrics-lyric-scroll-duration: 0.4s;
   --blyrics-lyric-scroll-timing-function: ease-out;
-  --background-image-transition: background 3s ease-in-out 3s;
+  --background-image-transition: background 3s ease-in-out 4s;
   --blyrics-background-blur: 40px;
   --blyrics-background-saturate: 1.3;
   --background-image-filter: saturate(var(--blyrics-background-saturate))
@@ -63,7 +63,7 @@ ytmusic-app-layout > [slot="player-bar"] {
   animation: none !important;
 }
 .blyrics-container > div {
-  opacity: 0.35;
+  opacity: 0.3;
   transform: none !important;
   transition: opacity 0.4s ease-out !important;
   will-change: opacity;
@@ -114,17 +114,16 @@ ytmusic-app-layout:not(
     [is-mweb-modernization-enabled]
   )[player-fullscreened]:not([blyrics-dfs])
   .blyrics-container {
-  font-size: 5.5rem;
+  font-size: 4.5rem;
 }
 ytmusic-app-layout:not([is-mweb-modernization-enabled])[player-fullscreened]:not([blyrics-dfs])
  .blyrics-container .blyrics--line :is(.blyrics--romanized, .blyrics--translated) {
-  font-size: 3.66rem;
+  font-size: 3rem;
 }
 #blyrics-loader:not([no-sync-available])::after,
 #blyrics-loader::after {
   animation: none !important;
   opacity: 1 !important;
-  font-weight: 600;
   color: var(--blyrics-ui-text-color);
 }
 @supports (background-clip: text) or (-webkit-background-clip: text) {
@@ -132,9 +131,9 @@ ytmusic-app-layout:not([is-mweb-modernization-enabled])[player-fullscreened]:not
   #blyrics-loader::after {
     background: linear-gradient(
       110deg,
-      rgba(255, 255, 255, 0.3) 30%,
-      rgba(255, 255, 255, 0.9) 50%,
-      rgba(255, 255, 255, 0.3) 70%
+      rgba(255, 255, 255, 0.5) 30%,
+      rgba(255, 255, 255, 1) 50%,
+      rgba(255, 255, 255, 0.5) 70%
     );
     background-size: 200% 100%;
     -webkit-background-clip: text;
