@@ -21,9 +21,10 @@
     "downloads"
   ],
   "optional_host_permissions": [
+    "https://raw.githubusercontent.com/better-lyrics/*",
+    "https://better-lyrics-themes-api.boidu.dev/*",
     "https://raw.githubusercontent.com/*",
-    "https://api.github.com/*",
-    "https://better-lyrics-themes-api.boidu.dev/*"
+    "https://api.github.com/*"
   ],
   "options_ui": {
     "page": "src/options/options.html",

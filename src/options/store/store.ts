@@ -22,16 +22,20 @@ import {
 } from "./themeStoreManager";
 import {
   checkStorePermissions,
+  checkUrlInstallPermissions,
   fetchAllStoreThemes,
   fetchFullTheme,
+  fetchRegistryShaderConfig,
   fetchThemeShaderConfig,
   parseGitHubRepoUrl,
   requestStorePermissions,
+  requestUrlInstallPermissions,
   validateThemeRepo,
 } from "./themeStoreService";
 
 let detailModalOverlay: HTMLElement | null = null;
 let urlModalOverlay: HTMLElement | null = null;
+let urlPermissionModalOverlay: HTMLElement | null = null;
 let shortcutsModalOverlay: HTMLElement | null = null;
 let currentDetailTheme: StoreTheme | null = null;
 let currentSlideIndex = 0;
@@ -380,12 +384,14 @@ export function initStoreUI(): void {
 export async function initMarketplaceUI(): Promise<void> {
   detailModalOverlay = document.getElementById("detail-modal-overlay");
   urlModalOverlay = document.getElementById("url-modal-overlay");
+  urlPermissionModalOverlay = document.getElementById("url-permission-modal-overlay");
   shortcutsModalOverlay = document.getElementById("shortcuts-modal-overlay");
   isMarketplacePage = true;
 
   setupMarketplaceListeners();
   setupDetailModalListeners();
   setupUrlModalListeners();
+  setupUrlPermissionModalListeners();
   setupShortcutsModalListeners();
   setupMarketplaceKeyboardListeners();
   setupPaginationListeners();
@@ -625,6 +631,7 @@ function isAnyModalOpen(): boolean {
   return (
     detailModalOverlay?.classList.contains("active") ||
     urlModalOverlay?.classList.contains("active") ||
+    urlPermissionModalOverlay?.classList.contains("active") ||
     shortcutsModalOverlay?.classList.contains("active") ||
     false
   );
@@ -695,6 +702,9 @@ function setupMarketplaceKeyboardListeners(): void {
       if (shortcutsModalOverlay?.classList.contains("active")) {
         e.preventDefault();
         closeShortcutsModal();
+      } else if (urlPermissionModalOverlay?.classList.contains("active")) {
+        e.preventDefault();
+        closeUrlPermissionModal(false);
       } else if (detailModalOverlay?.classList.contains("active")) {
         e.preventDefault();
         closeDetailModal();
@@ -1202,6 +1212,63 @@ function setupUrlModalListeners(): void {
   });
 }
 
+let urlPermissionResolve: ((granted: boolean) => void) | null = null;
+
+function setupUrlPermissionModalListeners(): void {
+  const closeBtn = document.getElementById("url-permission-modal-close");
+  closeBtn?.addEventListener("click", () => closeUrlPermissionModal(false));
+
+  urlPermissionModalOverlay?.addEventListener("click", e => {
+    if (e.target === urlPermissionModalOverlay) closeUrlPermissionModal(false);
+  });
+
+  const cancelBtn = document.getElementById("url-permission-modal-cancel");
+  cancelBtn?.addEventListener("click", () => closeUrlPermissionModal(false));
+
+  const grantBtn = document.getElementById("url-permission-modal-grant");
+  grantBtn?.addEventListener("click", async () => {
+    const granted = await requestUrlInstallPermissions();
+    closeUrlPermissionModal(granted);
+  });
+}
+
+function openUrlPermissionModal(): Promise<boolean> {
+  return new Promise(resolve => {
+    urlPermissionResolve = resolve;
+
+    if (urlPermissionModalOverlay) {
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      urlPermissionModalOverlay.style.display = "flex";
+      requestAnimationFrame(() => {
+        urlPermissionModalOverlay?.classList.add("active");
+      });
+    }
+  });
+}
+
+function closeUrlPermissionModal(granted: boolean): void {
+  if (urlPermissionModalOverlay) {
+    const modal = urlPermissionModalOverlay.querySelector(".modal");
+    modal?.classList.add("closing");
+    urlPermissionModalOverlay.classList.remove("active");
+
+    setTimeout(() => {
+      if (urlPermissionModalOverlay) {
+        urlPermissionModalOverlay.style.display = "none";
+        modal?.classList.remove("closing");
+      }
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+    }, 200);
+  }
+
+  if (urlPermissionResolve) {
+    urlPermissionResolve(granted);
+    urlPermissionResolve = null;
+  }
+}
+
 interface UrlThemeInfo {
   sourceUrl?: string;
   repo: string;
@@ -1629,7 +1696,10 @@ async function openDetailModal(theme: StoreTheme, urlThemeInfo?: UrlThemeInfo): 
     shaderDownloadLink.onclick = async e => {
       e.preventDefault();
       try {
-        const shaderConfig = await fetchThemeShaderConfig(theme.repo);
+        const isRegistryTheme = !!theme.commit && !urlThemeInfo;
+        const shaderConfig = isRegistryTheme
+          ? await fetchRegistryShaderConfig(theme.id)
+          : await fetchThemeShaderConfig(theme.repo);
         if (!shaderConfig) {
           showAlert("Failed to fetch shader config");
           return;
@@ -1826,14 +1896,27 @@ async function handleUrlInstall(): Promise<void> {
   const { repo, branch } = parsed;
 
   installBtn.disabled = true;
-  installBtn.textContent = "Validating...";
+  installBtn.textContent = "Checking permissions...";
   if (error) error.style.display = "none";
 
   try {
-    const granted = await requestStorePermissions();
+    const permission = await checkUrlInstallPermissions();
+    let granted = permission.granted;
+
     if (!granted) {
-      throw new Error("GitHub access required");
+      closeUrlModal();
+      granted = await openUrlPermissionModal();
+      if (!granted) {
+        installBtn.disabled = false;
+        installBtn.textContent = "Install";
+        return;
+      }
+      openUrlModal();
+      const inputEl = document.getElementById("url-modal-input") as HTMLInputElement;
+      if (inputEl) inputEl.value = url;
     }
+
+    installBtn.textContent = "Validating...";
 
     const validation = await validateThemeRepo(repo, branch);
     if (!validation.valid) {

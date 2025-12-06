@@ -1,13 +1,18 @@
-import type { PermissionStatus, StoreTheme, StoreThemeMetadata, ThemeStoreIndex, ThemeValidationResult } from "./types";
+import type {
+  LockfileEntry,
+  PermissionStatus,
+  StoreTheme,
+  StoreThemeMetadata,
+  ThemeLockfile,
+  ThemeValidationResult,
+} from "./types";
 
-const INDEX_REPO = "better-lyrics/themes";
+const REGISTRY_BASE = "https://raw.githubusercontent.com/better-lyrics/themes/master";
 const DEFAULT_TIMEOUT_MS = 10000;
 
-const REQUIRED_ORIGINS = [
-  "https://raw.githubusercontent.com/*",
-  "https://api.github.com/*",
-  "https://better-lyrics-themes-api.boidu.dev/*",
-];
+const REGISTRY_ORIGINS = ["https://raw.githubusercontent.com/better-lyrics/*", "https://better-lyrics-themes-api.boidu.dev/*"];
+
+const URL_INSTALL_ORIGINS = ["https://raw.githubusercontent.com/*", "https://api.github.com/*"];
 
 interface BranchCacheEntry {
   branch: string;
@@ -88,26 +93,138 @@ async function getDefaultBranch(repo: string, testFile = "metadata.json"): Promi
   return "main";
 }
 
-export async function checkStorePermissions(): Promise<PermissionStatus> {
-  const granted = await chrome.permissions.contains({ origins: REQUIRED_ORIGINS });
+export async function checkRegistryPermissions(): Promise<PermissionStatus> {
+  const granted = await chrome.permissions.contains({ origins: REGISTRY_ORIGINS });
   return { granted, canRequest: true };
 }
 
-export async function requestStorePermissions(): Promise<boolean> {
-  return chrome.permissions.request({ origins: REQUIRED_ORIGINS });
+export async function requestRegistryPermissions(): Promise<boolean> {
+  return chrome.permissions.request({ origins: REGISTRY_ORIGINS });
 }
 
-export async function fetchThemeStoreIndex(): Promise<string[]> {
-  const branch = await getDefaultBranch(INDEX_REPO, "index.json");
-  const url = getRawGitHubUrl(INDEX_REPO, branch, "index.json");
+export async function checkUrlInstallPermissions(): Promise<PermissionStatus> {
+  const granted = await chrome.permissions.contains({ origins: URL_INSTALL_ORIGINS });
+  return { granted, canRequest: true };
+}
+
+export async function requestUrlInstallPermissions(): Promise<boolean> {
+  return chrome.permissions.request({ origins: URL_INSTALL_ORIGINS });
+}
+
+export async function checkStorePermissions(): Promise<PermissionStatus> {
+  return checkRegistryPermissions();
+}
+
+export async function requestStorePermissions(): Promise<boolean> {
+  return requestRegistryPermissions();
+}
+
+function getRegistryFileUrl(themeId: string, file: string): string {
+  return `${REGISTRY_BASE}/themes/${themeId}/${file}`;
+}
+
+function getLockfileUrl(): string {
+  return `${REGISTRY_BASE}/index.lock.json`;
+}
+
+export async function fetchThemeLockfile(): Promise<ThemeLockfile> {
+  const url = `${getLockfileUrl()}?t=${Date.now()}`;
   const response = await fetchWithTimeout(url, { cache: "no-store" });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch theme index: ${response.status}`);
+    throw new Error(`Failed to fetch theme lockfile: ${response.status}`);
   }
 
-  const data: ThemeStoreIndex = await response.json();
-  return data.themes.map(t => t.repo);
+  return response.json();
+}
+
+async function fetchRegistryMetadata(themeId: string): Promise<StoreThemeMetadata> {
+  const url = getRegistryFileUrl(themeId, "metadata.json");
+  const response = await fetchWithTimeout(url, { cache: "no-store" });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch metadata for ${themeId}: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+async function fetchRegistryDescription(themeId: string): Promise<string | null> {
+  const url = getRegistryFileUrl(themeId, "DESCRIPTION.md");
+
+  try {
+    const response = await fetchWithTimeout(url, { cache: "no-store" });
+    if (!response.ok) return null;
+    return response.text();
+  } catch {
+    return null;
+  }
+}
+
+async function checkRegistryFileExists(themeId: string, file: string): Promise<boolean> {
+  const url = getRegistryFileUrl(themeId, file);
+  try {
+    const response = await fetchWithTimeout(url, { method: "HEAD" }, 5000);
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function fetchRegistryShaderConfig(themeId: string): Promise<Record<string, unknown> | null> {
+  const url = getRegistryFileUrl(themeId, "shader.json");
+
+  try {
+    const response = await fetchWithTimeout(url, { cache: "no-store" });
+    if (!response.ok) return null;
+    return response.json();
+  } catch {
+    return null;
+  }
+}
+
+async function fetchFullThemeFromRegistry(lockEntry: LockfileEntry): Promise<StoreTheme> {
+  const themeId = lockEntry.id;
+
+  const [metadata, descriptionMd] = await Promise.all([fetchRegistryMetadata(themeId), fetchRegistryDescription(themeId)]);
+
+  const description = descriptionMd ?? metadata.description ?? "";
+
+  const hasRics = await checkRegistryFileExists(themeId, "style.rics");
+  const cssUrl = hasRics ? getRegistryFileUrl(themeId, "style.rics") : getRegistryFileUrl(themeId, "style.css");
+
+  const shaderUrl = metadata.hasShaders ? getRegistryFileUrl(themeId, "shader.json") : undefined;
+
+  const imageUrls: string[] = [];
+  if (metadata.images && metadata.images.length > 0) {
+    for (const img of metadata.images) {
+      imageUrls.push(`${REGISTRY_BASE}/themes/${themeId}/images/${img}`);
+    }
+  }
+
+  let coverUrl: string;
+  let allImageUrls: string[];
+
+  if (imageUrls.length > 0) {
+    coverUrl = imageUrls[0];
+    allImageUrls = imageUrls;
+  } else {
+    coverUrl = `${REGISTRY_BASE}/themes/${themeId}/cover.png`;
+    allImageUrls = [coverUrl];
+  }
+
+  return {
+    ...metadata,
+    description,
+    repo: lockEntry.repo,
+    coverUrl,
+    imageUrls: allImageUrls,
+    cssUrl,
+    shaderUrl,
+    version: lockEntry.version,
+    commit: lockEntry.commit,
+    locked: lockEntry.locked,
+  };
 }
 
 export async function fetchThemeMetadata(repo: string, branchOverride?: string): Promise<StoreThemeMetadata> {
@@ -230,10 +347,10 @@ export async function fetchFullTheme(repo: string, branchOverride?: string): Pro
 }
 
 export async function fetchAllStoreThemes(): Promise<StoreTheme[]> {
-  const repos = await fetchThemeStoreIndex();
+  const lockfile = await fetchThemeLockfile();
   const themes: StoreTheme[] = [];
 
-  const results = await Promise.allSettled(repos.map(repo => fetchFullTheme(repo)));
+  const results = await Promise.allSettled(lockfile.themes.map(entry => fetchFullThemeFromRegistry(entry)));
 
   for (const result of results) {
     if (result.status === "fulfilled") {

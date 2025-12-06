@@ -1,5 +1,19 @@
-import { fetchFullTheme, fetchThemeCSS, fetchThemeMetadata, fetchThemeShaderConfig } from "./themeStoreService";
+import {
+  fetchFullTheme,
+  fetchRegistryShaderConfig,
+  fetchThemeCSS,
+  fetchThemeMetadata,
+  fetchThemeShaderConfig,
+} from "./themeStoreService";
 import type { InstalledStoreTheme, StoreTheme, ThemeSource } from "./types";
+
+async function fetchCssFromUrl(url: string): Promise<string> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch CSS from ${url}: ${response.status}`);
+  }
+  return response.text();
+}
 
 export interface InstallOptions {
   source?: ThemeSource;
@@ -106,9 +120,24 @@ export async function getInstalledTheme(themeId: string): Promise<InstalledStore
 export async function installTheme(theme: StoreTheme, options: InstallOptions = {}): Promise<InstalledStoreTheme> {
   await ensureMigrated();
 
-  const branch = options.branch;
-  const { css } = await fetchThemeCSS(theme.repo, branch);
-  const shaderConfig = theme.hasShaders ? await fetchThemeShaderConfig(theme.repo, branch) : null;
+  const isRegistryTheme = !!theme.commit && options.source !== "url";
+
+  let css: string;
+  let shaderConfig: Record<string, unknown> | null = null;
+
+  if (isRegistryTheme) {
+    css = await fetchCssFromUrl(theme.cssUrl);
+    if (theme.hasShaders) {
+      shaderConfig = await fetchRegistryShaderConfig(theme.id);
+    }
+  } else {
+    const branch = options.branch;
+    const cssResult = await fetchThemeCSS(theme.repo, branch);
+    css = cssResult.css;
+    if (theme.hasShaders) {
+      shaderConfig = await fetchThemeShaderConfig(theme.repo, branch);
+    }
+  }
 
   const installedTheme: InstalledStoreTheme = {
     id: theme.id,
@@ -128,6 +157,7 @@ export async function installTheme(theme: StoreTheme, options: InstallOptions = 
     minVersion: theme.minVersion,
     hasShaders: theme.hasShaders,
     tags: theme.tags,
+    commit: theme.commit,
   };
 
   try {
