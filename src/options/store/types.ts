@@ -31,6 +31,8 @@ export interface StoreTheme extends ResolvedStoreThemeMetadata {
   shaderUrl?: string;
 }
 
+export type ThemeSource = "marketplace" | "url";
+
 export interface InstalledStoreTheme {
   id: string;
   repo: string;
@@ -40,6 +42,15 @@ export interface InstalledStoreTheme {
   shaderConfig?: Record<string, unknown>;
   installedAt: number;
   version: string;
+  source?: ThemeSource;
+  sourceUrl?: string;
+  branch?: string;
+  description?: string;
+  coverUrl?: string;
+  imageUrls?: string[];
+  minVersion?: string;
+  hasShaders?: boolean;
+  tags?: string[];
 }
 
 export interface ThemeValidationResult {

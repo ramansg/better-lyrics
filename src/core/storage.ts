@@ -12,7 +12,7 @@ function truncateSource(source: string): string {
   return source.slice(0, LOG_SOURCE_MAX_LENGTH) + `... (${source.length} chars total)`;
 }
 
-function compileRicsToCSS(sourceCode: string): string {
+export function compileRicsToCSS(sourceCode: string): string {
   try {
     const startTime = performance.now();
     const result = compileWithDetails(sourceCode, {

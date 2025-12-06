@@ -1,5 +1,11 @@
-import { fetchThemeCSS, fetchThemeShaderConfig } from "./themeStoreService";
-import type { InstalledStoreTheme, StoreTheme } from "./types";
+import { fetchFullTheme, fetchThemeCSS, fetchThemeMetadata, fetchThemeShaderConfig } from "./themeStoreService";
+import type { InstalledStoreTheme, StoreTheme, ThemeSource } from "./types";
+
+export interface InstallOptions {
+  source?: ThemeSource;
+  sourceUrl?: string;
+  branch?: string;
+}
 
 const THEME_INDEX_KEY = "storeThemeIndex";
 const THEME_PREFIX = "storeTheme:";
@@ -97,11 +103,12 @@ export async function getInstalledTheme(themeId: string): Promise<InstalledStore
   return result[getThemeStorageKey(themeId)] || null;
 }
 
-export async function installTheme(theme: StoreTheme): Promise<InstalledStoreTheme> {
+export async function installTheme(theme: StoreTheme, options: InstallOptions = {}): Promise<InstalledStoreTheme> {
   await ensureMigrated();
 
-  const { css } = await fetchThemeCSS(theme.repo);
-  const shaderConfig = theme.hasShaders ? await fetchThemeShaderConfig(theme.repo) : null;
+  const branch = options.branch;
+  const { css } = await fetchThemeCSS(theme.repo, branch);
+  const shaderConfig = theme.hasShaders ? await fetchThemeShaderConfig(theme.repo, branch) : null;
 
   const installedTheme: InstalledStoreTheme = {
     id: theme.id,
@@ -112,6 +119,15 @@ export async function installTheme(theme: StoreTheme): Promise<InstalledStoreThe
     shaderConfig: shaderConfig || undefined,
     installedAt: Date.now(),
     version: theme.version,
+    source: options.source,
+    sourceUrl: options.sourceUrl,
+    branch: options.branch,
+    description: theme.description,
+    coverUrl: theme.coverUrl,
+    imageUrls: theme.imageUrls,
+    minVersion: theme.minVersion,
+    hasShaders: theme.hasShaders,
+    tags: theme.tags,
   };
 
   try {
@@ -250,4 +266,60 @@ export async function performSilentUpdates(storeThemes: StoreTheme[]): Promise<s
   }
 
   return updatedIds;
+}
+
+export async function performUrlThemeUpdates(): Promise<string[]> {
+  const installed = await getInstalledStoreThemes();
+  const urlThemes = installed.filter(t => t.source === "url");
+  const updatedIds: string[] = [];
+
+  if (urlThemes.length === 0) return updatedIds;
+
+  const activeThemeId = await getActiveStoreTheme();
+
+  for (const theme of urlThemes) {
+    try {
+      const metadata = await fetchThemeMetadata(theme.repo, theme.branch);
+      if (metadata.version === theme.version) continue;
+
+      const fullTheme = await fetchFullTheme(theme.repo, theme.branch);
+      await installTheme(fullTheme, {
+        source: "url",
+        sourceUrl: theme.sourceUrl,
+        branch: theme.branch,
+      });
+
+      updatedIds.push(theme.id);
+
+      if (activeThemeId === theme.id) {
+        await applyStoreTheme(theme.id);
+      }
+    } catch (err) {
+      console.warn(`[ThemeStore] Failed to check/update URL theme ${theme.id}:`, err);
+    }
+  }
+
+  return updatedIds;
+}
+
+export async function refreshUrlThemesMetadata(): Promise<number> {
+  const installed = await getInstalledStoreThemes();
+  const urlThemesNeedingRefresh = installed.filter(t => t.source === "url" && !t.coverUrl);
+  let refreshedCount = 0;
+
+  for (const theme of urlThemesNeedingRefresh) {
+    try {
+      const fullTheme = await fetchFullTheme(theme.repo, theme.branch);
+      await installTheme(fullTheme, {
+        source: "url",
+        sourceUrl: theme.sourceUrl,
+        branch: theme.branch,
+      });
+      refreshedCount++;
+    } catch (err) {
+      console.warn(`[ThemeStore] Failed to refresh URL theme ${theme.id}:`, err);
+    }
+  }
+
+  return refreshedCount;
 }

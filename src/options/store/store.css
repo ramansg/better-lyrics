@@ -864,6 +864,19 @@
   height: 0.75rem;
 }
 
+.store-card-badge-url {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+  top: 0.5rem;
+  left: 0.5rem;
+  right: auto;
+}
+
+.store-card-badge-url svg {
+  width: 0.7rem;
+  height: 0.7rem;
+}
+
 /* Detail Modal */
 .detail-modal {
   max-width: 550px;
@@ -913,6 +926,26 @@
 }
 
 .detail-shader-badge svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.detail-url-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.625rem;
+  font-weight: 600;
+  padding: 0.2rem 0.35rem;
+  border-radius: 0.25rem;
+  flex-shrink: 0;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.detail-url-badge svg {
   width: 0.75rem;
   height: 0.75rem;
 }
@@ -1466,6 +1499,13 @@
   flex: 1;
 }
 
+.your-themes-item-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
 .your-themes-item-title {
   font-size: 0.875rem;
   font-weight: 600;
@@ -1473,6 +1513,26 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.your-themes-item-url-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.5rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.1875rem;
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.your-themes-item-url-badge svg {
+  width: 0.625rem;
+  height: 0.625rem;
 }
 
 .your-themes-item-meta {

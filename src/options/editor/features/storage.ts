@@ -4,7 +4,7 @@ import { editorStateManager } from "../core/state";
 import type { SaveResult } from "../types";
 import { syncIndicator } from "../ui/dom";
 import { ricsCompiler } from "./compiler";
-import { setThemeName, showThemeName } from "./themes";
+import { setThemeName, showThemeName, themeSourceToEditorSource } from "./themes";
 
 async function compressCSS(css: string): Promise<string> {
   try {
@@ -336,6 +336,46 @@ export async function sendUpdateMessage(sourceCode: string, strategy: "local" | 
   }
 }
 
+export function broadcastCSS(sourceCode: string): void {
+  chrome.runtime.sendMessage({ action: "updateCSS", css: sourceCode }).catch(() => {});
+}
+
+export interface ApplyStoreThemeOptions {
+  themeId: string;
+  css: string;
+  title: string;
+  creators: string[];
+  source?: "marketplace" | "url";
+}
+
+export async function applyStoreThemeComplete(options: ApplyStoreThemeOptions): Promise<boolean> {
+  const { themeId, css, title, creators, source } = options;
+  const themeContent = `/* ${title}, a marketplace theme by ${creators.join(", ")} */\n\n${css}\n`;
+
+  try {
+    editorStateManager.incrementSaveCount();
+
+    await chrome.storage.sync.set({ themeName: `store:${themeId}` });
+
+    const saveResult = await saveToStorageWithFallback(themeContent, true);
+    if (!saveResult.success) {
+      throw new Error("Failed to save theme to storage");
+    }
+
+    const event = new CustomEvent("store-theme-applied", {
+      detail: { themeId, css: themeContent, title, source },
+    });
+    document.dispatchEvent(event);
+
+    broadcastCSS(themeContent);
+
+    return true;
+  } catch (err) {
+    console.error("[Storage] Failed to apply store theme:", err);
+    return false;
+  }
+}
+
 export class StorageManager {
   private isInitialized = false;
 
@@ -515,21 +555,22 @@ export class StorageManager {
 
     console.log(`[StorageManager] Store theme updated: ${newTheme.title} v${themeVersion}`);
 
-    const themeContent = `/* ${newTheme.title}, a store theme by ${themeCreators} */\n\n${newTheme.css}\n`;
+    const themeContent = `/* ${newTheme.title}, a marketplace theme by ${themeCreators} */\n\n${newTheme.css}\n`;
     const displayName = newTheme.version ? `${newTheme.title} (v${newTheme.version})` : newTheme.title;
 
     await editorStateManager.queueOperation("storage", async () => {
-      console.log(`[StorageManager] Applying updated store theme to editor: ${themeContent.length} bytes`);
+      console.log(`[StorageManager] Applying updated marketplace theme to editor: ${themeContent.length} bytes`);
       await editorStateManager.setEditorContent(themeContent, "store-theme-update", false);
 
       editorStateManager.setCurrentThemeName(newTheme.title);
-      showThemeName(displayName, false);
+      const editorSource = themeSourceToEditorSource(newTheme.source);
+      showThemeName(displayName, editorSource);
 
       const result = await saveToStorageWithFallback(themeContent, true);
       if (result.success && result.strategy) {
         showSyncSuccess(result.strategy, result.wasRetry);
         await sendUpdateMessage(themeContent, result.strategy);
-        console.log("[StorageManager] Store theme update propagated to YouTube Music");
+        console.log("[StorageManager] Marketplace theme update propagated to YouTube Music");
       }
     });
   }

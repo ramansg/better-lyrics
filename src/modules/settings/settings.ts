@@ -165,8 +165,9 @@ export function listenForPopupMessages(): void {
     if (request.action === "updateCSS") {
       console.log("[BetterLyrics Content] Processing updateCSS, CSS length:", request.css?.length);
       if (request.css) {
-        console.log("[BetterLyrics Content] Applying CSS directly");
-        Utils.applyCustomCSS(request.css);
+        console.log("[BetterLyrics Content] Compiling and applying CSS");
+        const compiledCSS = Storage.compileRicsToCSS(request.css);
+        Utils.applyCustomCSS(compiledCSS);
         calculateLyricPositions();
         console.log("[BetterLyrics Content] CSS applied successfully");
       } else {

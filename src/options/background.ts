@@ -13,6 +13,7 @@ import {
   getInstalledStoreThemes,
   getInstalledTheme,
   performSilentUpdates,
+  performUrlThemeUpdates,
 } from "./store/themeStoreManager";
 import { checkStorePermissions, fetchAllStoreThemes } from "./store/themeStoreService";
 
@@ -29,7 +30,9 @@ async function checkAndApplyThemeUpdates(): Promise<void> {
 
     console.log("[BetterLyrics] Checking for theme updates...");
     const storeThemes = await fetchAllStoreThemes();
-    const updatedIds = await performSilentUpdates(storeThemes);
+    const marketplaceUpdatedIds = await performSilentUpdates(storeThemes);
+    const urlUpdatedIds = await performUrlThemeUpdates();
+    const updatedIds = [...marketplaceUpdatedIds, ...urlUpdatedIds];
 
     if (updatedIds.length > 0) {
       console.log(`[BetterLyrics] Updated ${updatedIds.length} theme(s)`);
@@ -38,7 +41,7 @@ async function checkAndApplyThemeUpdates(): Promise<void> {
       if (activeThemeId && updatedIds.includes(activeThemeId)) {
         const updatedTheme = await getInstalledTheme(activeThemeId);
         if (updatedTheme) {
-          const formattedCSS = `/* ${updatedTheme.title}, a store theme by ${updatedTheme.creators.join(", ")} */\n\n${updatedTheme.css}\n`;
+          const formattedCSS = `/* ${updatedTheme.title}, a marketplace theme by ${updatedTheme.creators.join(", ")} */\n\n${updatedTheme.css}\n`;
 
           chrome.tabs.query({ url: "*://music.youtube.com/*" }, tabs => {
             tabs.forEach(tab => {

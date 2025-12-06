@@ -1,5 +1,6 @@
 import autoAnimate, { type AnimationController } from "@formkit/auto-animate";
 import { marked } from "marked";
+import { applyStoreThemeComplete } from "../editor/features/storage";
 import type { AllThemeStats, InstalledStoreTheme, StoreTheme, ThemeStats } from "./types";
 
 let gridAnimationController: AnimationController | null = null;
@@ -15,7 +16,9 @@ import {
   isThemeInstalled,
   isVersionCompatible,
   performSilentUpdates,
+  refreshUrlThemesMetadata,
   removeTheme,
+  type InstallOptions,
 } from "./themeStoreManager";
 import {
   checkStorePermissions,
@@ -36,6 +39,31 @@ let storeThemesCache: StoreTheme[] = [];
 let storeStatsCache: AllThemeStats = {};
 let userRatingsCache: Record<string, number> = {};
 let userInstallsCache: Record<string, boolean> = {};
+let urlOnlyThemeCards: Map<string, HTMLElement> = new Map();
+
+function getUrlOnlyThemes(
+  installedThemes: InstalledStoreTheme[],
+  marketplaceIds: Set<string>
+): InstalledStoreTheme[] {
+  return installedThemes.filter(t => t.source === "url" && !marketplaceIds.has(t.id));
+}
+
+function installedThemeToStoreTheme(installed: InstalledStoreTheme): StoreTheme {
+  return {
+    id: installed.id,
+    repo: installed.repo,
+    title: installed.title,
+    description: installed.description || "",
+    creators: installed.creators,
+    version: installed.version,
+    minVersion: installed.minVersion || "0.0.0",
+    hasShaders: installed.hasShaders ?? !!installed.shaderConfig,
+    tags: installed.tags,
+    coverUrl: installed.coverUrl || "",
+    imageUrls: installed.imageUrls || [],
+    cssUrl: "",
+  };
+}
 
 async function loadUserRatings(): Promise<void> {
   const { userThemeRatings } = await chrome.storage.local.get("userThemeRatings");
@@ -279,6 +307,28 @@ function createShaderBadge(className: string): HTMLSpanElement {
   return badge;
 }
 
+function createGitHubIcon(): SVGSVGElement {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "currentColor");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute(
+    "d",
+    "M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385c.6.105.825-.255.825-.57c0-.285-.015-1.23-.015-2.235c-3.015.555-3.795-.735-4.035-1.41c-.135-.345-.72-1.41-1.23-1.695c-.42-.225-1.02-.78-.015-.795c.945-.015 1.62.87 1.845 1.23c1.08 1.815 2.805 1.305 3.495.99c.105-.78.42-1.305.765-1.605c-2.67-.3-5.46-1.335-5.46-5.925c0-1.305.465-2.385 1.23-3.225c-.12-.3-.54-1.53.12-3.18c0 0 1.005-.315 3.3 1.23c.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23c.66 1.65.24 2.88.12 3.18c.765.84 1.23 1.905 1.23 3.225c0 4.605-2.805 5.625-5.475 5.925c.435.375.81 1.095.81 2.22c0 1.605-.015 2.895-.015 3.3c0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"
+  );
+  svg.appendChild(path);
+  return svg;
+}
+
+function createGitHubBadge(className: string, title: string): HTMLSpanElement {
+  const badge = document.createElement("span");
+  badge.className = className;
+  badge.title = title;
+  badge.appendChild(createGitHubIcon());
+  badge.appendChild(document.createTextNode("GitHub"));
+  return badge;
+}
+
 function createDownloadIcon(): SVGSVGElement {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox", "0 0 20 20");
@@ -342,6 +392,9 @@ export async function initMarketplaceUI(): Promise<void> {
 
   await loadUserRatings();
   await loadUserInstalls();
+
+  refreshUrlThemesMetadata();
+
   await loadMarketplace();
 }
 
@@ -837,25 +890,16 @@ async function refreshMarketplace(): Promise<void> {
 
 async function checkForThemeUpdates(): Promise<void> {
   try {
-    console.debug("[ThemeStore] Checking for theme updates...");
     const permission = await checkStorePermissions();
-    if (!permission.granted) {
-      console.debug("[ThemeStore] Skipping update check: permissions not granted");
-      return;
-    }
+    if (!permission.granted) return;
 
     const installed = await getInstalledStoreThemes();
-    if (installed.length === 0) {
-      console.debug("[ThemeStore] Skipping update check: no themes installed");
-      return;
-    }
+    if (installed.length === 0) return;
 
-    console.debug(`[ThemeStore] Checking updates for ${installed.length} installed theme(s)`);
     const storeThemes = await fetchAllStoreThemes();
     const updatedIds = await performSilentUpdates(storeThemes);
 
     if (updatedIds.length > 0) {
-      console.debug(`[ThemeStore] Updated ${updatedIds.length} theme(s):`, updatedIds);
       updateYourThemesDropdown();
     }
   } catch (err) {
@@ -919,6 +963,8 @@ async function applyFiltersToGrid(): Promise<void> {
 
   const installedThemes = await getInstalledStoreThemes();
   const installedIds = new Set(installedThemes.map(t => t.id));
+  const marketplaceIds = new Set(storeThemesCache.map(t => t.id));
+  const urlOnlyThemes = getUrlOnlyThemes(installedThemes, marketplaceIds);
 
   const visibleCards: HTMLElement[] = [];
 
@@ -951,6 +997,43 @@ async function applyFiltersToGrid(): Promise<void> {
       }
     }
   });
+
+  const showUrlThemes = currentFilters.showFilter === "installed" || currentFilters.showFilter === "all";
+  if (showUrlThemes) {
+    urlOnlyThemes.forEach(installed => {
+      const storeTheme = installedThemeToStoreTheme(installed);
+      const matchesSearch = matchesSearchQuery(storeTheme, currentFilters.searchQuery);
+      const matchesShaderFilter = !currentFilters.hasShaders || storeTheme.hasShaders;
+      const matchesVersionFilter =
+        !currentFilters.versionCompatible || isVersionCompatible(storeTheme.minVersion, EXTENSION_VERSION);
+
+      if (!matchesSearch || !matchesShaderFilter || !matchesVersionFilter) {
+        const existingCard = urlOnlyThemeCards.get(installed.id);
+        if (existingCard?.parentElement) {
+          existingCard.remove();
+        }
+        return;
+      }
+
+      let card = urlOnlyThemeCards.get(installed.id);
+      if (!card) {
+        const urlInfo: UrlThemeInfo = { sourceUrl: installed.sourceUrl, repo: installed.repo };
+        card = createStoreThemeCard(storeTheme, true, undefined, urlInfo);
+        urlOnlyThemeCards.set(installed.id, card);
+      }
+
+      if (!card.parentElement) {
+        grid.appendChild(card);
+      }
+      visibleCards.push(card);
+    });
+  } else {
+    urlOnlyThemeCards.forEach(card => {
+      if (card.parentElement) {
+        card.remove();
+      }
+    });
+  }
 
   visibleCards.sort((a, b) => {
     const statsA = storeStatsCache[a.dataset.themeId || ""] || { installs: 0, rating: 0, ratingCount: 0 };
@@ -1119,10 +1202,23 @@ function setupUrlModalListeners(): void {
   });
 }
 
-function createStoreThemeCard(theme: StoreTheme, isInstalled: boolean, stats?: ThemeStats): HTMLElement {
+interface UrlThemeInfo {
+  sourceUrl?: string;
+  repo: string;
+}
+
+function createStoreThemeCard(
+  theme: StoreTheme,
+  isInstalled: boolean,
+  stats?: ThemeStats,
+  urlThemeInfo?: UrlThemeInfo
+): HTMLElement {
   const card = document.createElement("div");
   card.className = "store-card";
   card.dataset.themeId = theme.id;
+  if (urlThemeInfo) {
+    card.dataset.urlTheme = "true";
+  }
 
   const isCompatible = isVersionCompatible(theme.minVersion, EXTENSION_VERSION);
 
@@ -1205,11 +1301,16 @@ function createStoreThemeCard(theme: StoreTheme, isInstalled: boolean, stats?: T
 
   card.addEventListener("click", () => {
     if (card.dataset.loading) return;
-    openDetailModal(theme);
+    openDetailModal(theme, urlThemeInfo);
   });
 
   if (theme.hasShaders) {
     card.appendChild(createShaderBadge("store-card-badge"));
+  }
+
+  if (urlThemeInfo) {
+    const title = urlThemeInfo.sourceUrl || `Installed from ${urlThemeInfo.repo}`;
+    card.appendChild(createGitHubBadge("store-card-badge store-card-badge-url", title));
   }
 
   if (!isCompatible) {
@@ -1239,14 +1340,23 @@ async function handleThemeAction(theme: StoreTheme, button: HTMLButtonElement): 
   button.disabled = true;
   const isRemoveButton = button.classList.contains("store-card-btn-remove");
 
+  const card = button.closest(".store-card") as HTMLElement | null;
+  const isUrlTheme = card?.dataset.urlTheme === "true";
+
   try {
     if (isRemoveButton) {
       await removeTheme(theme.id);
-      button.className = "store-card-btn store-card-btn-install";
-      button.textContent = "Install";
+
+      if (isUrlTheme && card) {
+        card.remove();
+        urlOnlyThemeCards.delete(theme.id);
+      } else {
+        button.className = "store-card-btn store-card-btn-install";
+        button.textContent = "Install";
+      }
       showAlert(`Removed ${theme.title}`);
     } else {
-      const installedTheme = await installTheme(theme);
+      const installedTheme = await installTheme(theme, { source: "marketplace" });
       button.className = "store-card-btn store-card-btn-remove";
       button.textContent = "Remove";
 
@@ -1256,7 +1366,7 @@ async function handleThemeAction(theme: StoreTheme, button: HTMLButtonElement): 
       };
       showAlert(`Installed ${theme.title}`, applyAction);
 
-      if (!userInstallsCache[theme.id]) {
+      if (!isUrlTheme && !userInstallsCache[theme.id]) {
         trackInstall(theme.id)
           .then(result => {
             if (result.success && result.data !== null) {
@@ -1283,7 +1393,7 @@ async function handleThemeAction(theme: StoreTheme, button: HTMLButtonElement): 
   }
 }
 
-async function openDetailModal(theme: StoreTheme): Promise<void> {
+async function openDetailModal(theme: StoreTheme, urlThemeInfo?: UrlThemeInfo): Promise<void> {
   currentDetailTheme = theme;
   currentSlideIndex = 0;
 
@@ -1301,6 +1411,10 @@ async function openDetailModal(theme: StoreTheme): Promise<void> {
     if (theme.hasShaders) {
       titleEl.appendChild(createShaderBadge("detail-shader-badge"));
     }
+    if (urlThemeInfo) {
+      const title = urlThemeInfo.sourceUrl || `Installed from ${urlThemeInfo.repo}`;
+      titleEl.appendChild(createGitHubBadge("detail-url-badge", title));
+    }
   }
   if (authorEl) authorEl.textContent = `By ${theme.creators.join(", ")} · v${theme.version}`;
   if (descEl) descEl.replaceChildren(parseMarkdown(theme.description));
@@ -1310,24 +1424,28 @@ async function openDetailModal(theme: StoreTheme): Promise<void> {
   const ratingStarsEl = document.getElementById("detail-rating-stars");
   const ratingStatusEl = document.getElementById("detail-rating-status");
 
+  const isUrlTheme = !!urlThemeInfo;
+
   if (statsEl) {
     statsEl.replaceChildren();
-    const themeStats = storeStatsCache[theme.id];
-    if (themeStats && (themeStats.installs > 0 || themeStats.ratingCount > 0)) {
-      if (themeStats.installs > 0) {
-        const installStat = document.createElement("span");
-        installStat.className = "detail-stat";
-        installStat.title = `${themeStats.installs} downloads`;
-        installStat.appendChild(createDownloadIcon());
-        installStat.appendChild(document.createTextNode(formatNumber(themeStats.installs)));
-        statsEl.appendChild(installStat);
-      }
-      if (themeStats.ratingCount > 0) {
-        const ratingStat = document.createElement("span");
-        ratingStat.className = "detail-stat";
-        ratingStat.appendChild(createStarIcon());
-        ratingStat.appendChild(document.createTextNode(`${themeStats.rating.toFixed(1)} (${themeStats.ratingCount})`));
-        statsEl.appendChild(ratingStat);
+    if (!isUrlTheme) {
+      const themeStats = storeStatsCache[theme.id];
+      if (themeStats && (themeStats.installs > 0 || themeStats.ratingCount > 0)) {
+        if (themeStats.installs > 0) {
+          const installStat = document.createElement("span");
+          installStat.className = "detail-stat";
+          installStat.title = `${themeStats.installs} downloads`;
+          installStat.appendChild(createDownloadIcon());
+          installStat.appendChild(document.createTextNode(formatNumber(themeStats.installs)));
+          statsEl.appendChild(installStat);
+        }
+        if (themeStats.ratingCount > 0) {
+          const ratingStat = document.createElement("span");
+          ratingStat.className = "detail-stat";
+          ratingStat.appendChild(createStarIcon());
+          ratingStat.appendChild(document.createTextNode(`${themeStats.rating.toFixed(1)} (${themeStats.ratingCount})`));
+          statsEl.appendChild(ratingStat);
+        }
       }
     }
   }
@@ -1350,7 +1468,13 @@ async function openDetailModal(theme: StoreTheme): Promise<void> {
     ricsBadge.classList.toggle("visible", isRics);
   }
 
-  if (ratingSectionEl && ratingStarsEl && ratingStatusEl) {
+  const initialInstalled = await isThemeInstalled(theme.id);
+
+  let updateRatingEnabled: ((enabled: boolean) => void) | null = null;
+
+  if (isUrlTheme) {
+    ratingSectionEl?.remove();
+  } else if (ratingSectionEl && ratingStarsEl && ratingStatusEl) {
     const starButtons = ratingStarsEl.querySelectorAll(".detail-star");
     const existingUserRating = userRatingsCache[theme.id];
 
@@ -1367,6 +1491,13 @@ async function openDetailModal(theme: StoreTheme): Promise<void> {
       starButtons.forEach((btn, i) => {
         btn.classList.toggle("hover", isHover && i < rating);
         btn.classList.toggle("active", !isHover && i < rating);
+      });
+    };
+
+    updateRatingEnabled = (enabled: boolean) => {
+      ratingSectionEl.classList.toggle("disabled", !enabled);
+      starButtons.forEach(btn => {
+        (btn as HTMLButtonElement).disabled = !enabled;
       });
     };
 
@@ -1431,25 +1562,9 @@ async function openDetailModal(theme: StoreTheme): Promise<void> {
         }
       };
     });
+
+    updateRatingEnabled(initialInstalled);
   }
-
-  const initialInstalled = await isThemeInstalled(theme.id);
-
-  const ratingSectionEl2 = document.getElementById("detail-rating-section");
-  const ratingStarButtons = ratingSectionEl2?.querySelectorAll(".detail-star") as
-    | NodeListOf<HTMLButtonElement>
-    | undefined;
-  const updateRatingEnabled = (enabled: boolean) => {
-    if (ratingSectionEl2) {
-      ratingSectionEl2.classList.toggle("disabled", !enabled);
-    }
-    if (ratingStarButtons) {
-      ratingStarButtons.forEach(btn => {
-        btn.disabled = !enabled;
-      });
-    }
-  };
-  updateRatingEnabled(initialInstalled);
 
   if (actionBtn) {
     actionBtn.className = `store-card-btn ${initialInstalled ? "store-card-btn-remove" : "store-card-btn-install"}`;
@@ -1463,9 +1578,9 @@ async function openDetailModal(theme: StoreTheme): Promise<void> {
           actionBtn.className = "store-card-btn store-card-btn-install";
           setActionButtonContent(actionBtn, "Install", "I");
           showAlert(`Removed ${theme.title}`);
-          updateRatingEnabled(false);
+          updateRatingEnabled?.(false);
         } else {
-          const installedTheme = await installTheme(theme);
+          const installedTheme = await installTheme(theme, { source: "marketplace" });
           actionBtn.className = "store-card-btn store-card-btn-remove";
           setActionButtonContent(actionBtn, "Remove", "I");
 
@@ -1475,20 +1590,22 @@ async function openDetailModal(theme: StoreTheme): Promise<void> {
           };
           showAlert(`Installed ${theme.title}`, applyAction);
 
-          updateRatingEnabled(true);
-          if (!userInstallsCache[theme.id]) {
-            trackInstall(theme.id)
-              .then(result => {
-                if (result.success && result.data !== null) {
-                  markUserInstall(theme.id);
-                  if (storeStatsCache[theme.id]) {
-                    storeStatsCache[theme.id].installs = result.data;
-                  } else {
-                    storeStatsCache[theme.id] = { installs: result.data, rating: 0, ratingCount: 0 };
+          if (!isUrlTheme) {
+            updateRatingEnabled?.(true);
+            if (!userInstallsCache[theme.id]) {
+              trackInstall(theme.id)
+                .then(result => {
+                  if (result.success && result.data !== null) {
+                    markUserInstall(theme.id);
+                    if (storeStatsCache[theme.id]) {
+                      storeStatsCache[theme.id].installs = result.data;
+                    } else {
+                      storeStatsCache[theme.id] = { installs: result.data, rating: 0, ratingCount: 0 };
+                    }
                   }
-                }
-              })
-              .catch(() => {});
+                })
+                .catch(() => {});
+            }
           }
         }
         updateYourThemesDropdown();
@@ -1726,16 +1843,13 @@ async function handleUrlInstall(): Promise<void> {
     installBtn.textContent = "Installing...";
 
     const theme = await fetchFullTheme(repo, branch);
-    const installedTheme = await installTheme(theme);
-    if (!userInstallsCache[theme.id]) {
-      trackInstall(theme.id)
-        .then(result => {
-          if (result.success) {
-            markUserInstall(theme.id);
-          }
-        })
-        .catch(() => {});
-    }
+    const sourceUrl = branch ? `https://github.com/${repo}/tree/${branch}` : `https://github.com/${repo}`;
+    const installOptions: InstallOptions = {
+      source: "url",
+      sourceUrl,
+      branch,
+    };
+    const installedTheme = await installTheme(theme, installOptions);
 
     const branchInfo = branch ? ` (${branch})` : "";
     const applyAction: AlertAction = {
@@ -1745,6 +1859,9 @@ async function handleUrlInstall(): Promise<void> {
     showAlert(`Installed ${theme.title} from ${repo}${branchInfo}`, applyAction);
     closeUrlModal();
     updateYourThemesDropdown();
+    urlOnlyThemeCards.clear();
+    await applyFiltersToGrid();
+    await refreshStoreCards();
   } catch (err) {
     console.error("[ThemeStore] URL install failed:", err);
     if (error) {
@@ -1790,15 +1907,26 @@ export async function updateYourThemesDropdown(): Promise<void> {
     const info = document.createElement("div");
     info.className = "your-themes-item-info";
 
+    const titleRow = document.createElement("div");
+    titleRow.className = "your-themes-item-title-row";
+
     const title = document.createElement("span");
     title.className = "your-themes-item-title";
     title.textContent = theme.title;
+
+    titleRow.appendChild(title);
+
+    if (theme.source === "url") {
+      const badgeTitle = theme.sourceUrl || `Installed from ${theme.repo}`;
+      const badge = createGitHubBadge("your-themes-item-url-badge", badgeTitle);
+      titleRow.appendChild(badge);
+    }
 
     const meta = document.createElement("span");
     meta.className = "your-themes-item-meta";
     meta.textContent = `By ${theme.creators.join(", ")} · v${theme.version}`;
 
-    info.appendChild(title);
+    info.appendChild(titleRow);
     info.appendChild(meta);
 
     const applyBtn = document.createElement("button");
@@ -1822,16 +1950,17 @@ async function handleApplyTheme(theme: InstalledStoreTheme): Promise<void> {
   try {
     const css = await applyStoreTheme(theme.id);
 
-    const themeContent = `/* ${theme.title}, a store theme by ${theme.creators.join(", ")} */\n\n${css}\n`;
-
-    await chrome.storage.sync.set({ themeName: `store:${theme.id}` });
-
-    const event = new CustomEvent("store-theme-applied", {
-      detail: { themeId: theme.id, css: themeContent, title: theme.title },
+    const success = await applyStoreThemeComplete({
+      themeId: theme.id,
+      css,
+      title: theme.title,
+      creators: theme.creators,
+      source: theme.source,
     });
-    document.dispatchEvent(event);
 
-    chrome.runtime.sendMessage({ action: "updateCSS", css: themeContent }).catch(() => {});
+    if (!success) {
+      throw new Error("Failed to apply theme");
+    }
 
     showAlert(`Applied ${theme.title}`);
     updateYourThemesDropdown();
