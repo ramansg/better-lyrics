@@ -314,11 +314,11 @@
 
 #blyrics-loader:after {
 	background: linear-gradient(
-		110deg,
-		rgb(var(--blyrics-ui-text-color) / 0.5) 30%,
-		rgb(var(--blyrics-ui-text-color) / 1) 50%,
-		rgb(var(--blyrics-ui-text-color) / 0.5) 70%
-	);
+        110deg,
+        color-mix(in srgb, var(--blyrics-ui-text-color) 50%, transparent) 30%,
+        var(--blyrics-ui-text-color) 50%,
+        color-mix(in srgb, var(--blyrics-ui-text-color) 50%, transparent) 70%
+    );
 	background-size: 200% 100%;
 	-webkit-background-clip: text;
 	background-clip: text;
