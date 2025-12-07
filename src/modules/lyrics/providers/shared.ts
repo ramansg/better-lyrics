@@ -105,7 +105,7 @@ let defaultPreferredProviderList: LyricSourceKey[] = [
 ] as const;
 
 function isLyricSourceKey(provider: string): provider is LyricSourceKey {
-  return defaultPreferredProviderList.includes(provider as LyricSourceKey);
+  return (Constants.LYRIC_SOURCE_KEYS as readonly string[]).includes(provider);
 }
 
 export let providerPriority: LyricSourceKey[] = [];

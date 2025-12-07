@@ -165,3 +165,14 @@ export const NO_LYRICS_TEXT: string = "No lyrics found for this song";
 export const MUSIC_NOTES: string = "♪𝅘𝅥𝅮𝅘𝅥𝅯𝅘𝅥𝅰𝅘𝅥𝅱𝅘𝅥𝅲";
 
 export const DEFAULT_LINE_SYNCED_WORD_DELAY_MS = 50;
+
+export const LYRIC_SOURCE_KEYS = [
+  "bLyrics-richsynced",
+  "bLyrics-synced",
+  "musixmatch-richsync",
+  "musixmatch-synced",
+  "lrclib-synced",
+  "lrclib-plain",
+  "yt-captions",
+  "yt-lyrics",
+] as const;

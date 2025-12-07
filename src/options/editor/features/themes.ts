@@ -1,10 +1,12 @@
 import { LOG_PREFIX_EDITOR } from "@constants";
-import { getInstalledTheme } from "../../store/themeStoreManager";
+
 import type { ThemeSource } from "../../store/types";
+import type { ThemeCardOptions } from "../types";
+
+import { getInstalledTheme } from "../../store/themeStoreManager";
 import THEMES, { deleteCustomTheme, getCustomThemes, renameCustomTheme, saveCustomTheme } from "../../themes";
 import { SAVE_CUSTOM_THEME_DEBOUNCE, SAVE_DEBOUNCE_DELAY } from "../core/editor";
 import { editorStateManager } from "../core/state";
-import type { ThemeCardOptions } from "../types";
 import {
   deleteThemeBtn,
   editThemeBtn,

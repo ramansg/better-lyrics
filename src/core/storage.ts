@@ -1,6 +1,7 @@
 import * as Constants from "@constants";
 import * as Utils from "@utils";
 import { compileWithDetails } from "rics";
+import { compressString, decompressString, isCompressed } from "./compression";
 
 const COMPILE_TIMEOUT = 3000;
 const MAX_ITERATIONS = 10000;
@@ -47,28 +48,8 @@ export function compileRicsToCSS(sourceCode: string): string {
   }
 }
 
-async function decompressCSS(css: string): Promise<string> {
-  if (!css.startsWith("__COMPRESSED__")) {
-    return css;
-  }
-
-  try {
-    if (typeof DecompressionStream !== "undefined") {
-      const base64 = css.substring("__COMPRESSED__".length);
-      const binaryString = atob(base64);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      const blob = new Blob([bytes]);
-      const stream = blob.stream().pipeThrough(new DecompressionStream("gzip"));
-      const decompressedBlob = await new Response(stream).blob();
-      return await decompressedBlob.text();
-    }
-  } catch (error) {
-    Utils.log(Constants.GENERAL_ERROR_LOG, "Decompression failed:", error);
-  }
-  return css.substring("__COMPRESSED__".length);
+function decompressCSS(css: string): string {
+  return decompressString(css);
 }
 
 async function loadChunkedCSS(): Promise<string | null> {
@@ -116,23 +97,23 @@ export async function getAndApplyCustomCSS(): Promise<void> {
     const syncData = await chrome.storage.sync.get(["cssStorageType", "customCSS", "cssCompressed"]);
 
     let css: string | null = null;
-    let isCompressed = false;
+    let compressed = false;
 
     if (syncData.cssStorageType === "chunked") {
       css = await loadChunkedCSS();
-      isCompressed = syncData.cssCompressed || false;
+      compressed = syncData.cssCompressed || false;
     } else if (syncData.cssStorageType === "local") {
       const localData = await chrome.storage.local.get(["customCSS", "cssCompressed"]);
       css = localData.customCSS;
-      isCompressed = localData.cssCompressed || false;
+      compressed = localData.cssCompressed || false;
     } else {
       css = syncData.customCSS;
-      isCompressed = syncData.cssCompressed || false;
+      compressed = syncData.cssCompressed || false;
     }
 
     if (css) {
-      if (isCompressed || css.startsWith("__COMPRESSED__")) {
-        css = await decompressCSS(css);
+      if (compressed || isCompressed(css)) {
+        css = decompressCSS(css);
       }
       Utils.applyCustomCSS(compileRicsToCSS(css));
     }
@@ -143,8 +124,8 @@ export async function getAndApplyCustomCSS(): Promise<void> {
       if (chunkedCSS) {
         const syncData = await chrome.storage.sync.get("cssCompressed");
         let css = chunkedCSS;
-        if (syncData.cssCompressed || css.startsWith("__COMPRESSED__")) {
-          css = await decompressCSS(css);
+        if (syncData.cssCompressed || isCompressed(css)) {
+          css = decompressCSS(css);
         }
         Utils.applyCustomCSS(compileRicsToCSS(css));
         return;
@@ -153,8 +134,8 @@ export async function getAndApplyCustomCSS(): Promise<void> {
       const localData = await chrome.storage.local.get(["customCSS", "cssCompressed"]);
       if (localData.customCSS) {
         let css = localData.customCSS;
-        if (localData.cssCompressed || css.startsWith("__COMPRESSED__")) {
-          css = await decompressCSS(css);
+        if (localData.cssCompressed || isCompressed(css)) {
+          css = decompressCSS(css);
         }
         Utils.applyCustomCSS(compileRicsToCSS(css));
         return;
@@ -163,8 +144,8 @@ export async function getAndApplyCustomCSS(): Promise<void> {
       const syncData = await chrome.storage.sync.get(["customCSS", "cssCompressed"]);
       if (syncData.customCSS) {
         let css = syncData.customCSS;
-        if (syncData.cssCompressed || css.startsWith("__COMPRESSED__")) {
-          css = await decompressCSS(css);
+        if (syncData.cssCompressed || isCompressed(css)) {
+          css = decompressCSS(css);
         }
         Utils.applyCustomCSS(compileRicsToCSS(css));
       }
@@ -184,8 +165,8 @@ export function subscribeToCustomCSS(): void {
     if ((area === "sync" || area === "local") && changes.customCSS) {
       if (changes.customCSS.newValue) {
         let css = changes.customCSS.newValue;
-        if (css.startsWith("__COMPRESSED__")) {
-          css = await decompressCSS(css);
+        if (isCompressed(css)) {
+          css = decompressCSS(css);
         }
         Utils.applyCustomCSS(compileRicsToCSS(css));
       }
@@ -222,6 +203,7 @@ async function handleStoreThemeChange(
 
 /**
  * Retrieves a value from transient storage with automatic expiry handling.
+ * Automatically decompresses if the value was stored compressed.
  *
  * @param {string} key - Storage key to retrieve
  * @returns {Promise<*|null>} The stored value or null if expired/not found
@@ -239,6 +221,10 @@ export async function getTransientStorage(key: string): Promise<any | null> {
       return null;
     }
 
+    if (typeof value === "string" && isCompressed(value)) {
+      return decompressString(value);
+    }
+
     return value;
   } catch (error) {
     Utils.log(Constants.GENERAL_ERROR_LOG, error);
@@ -248,6 +234,7 @@ export async function getTransientStorage(key: string): Promise<any | null> {
 
 /**
  * Stores a value in transient storage with automatic expiry.
+ * Automatically compresses string values to save storage space.
  *
  * @param {string} key - Storage key
  * @param {*} value - Value to store
@@ -256,10 +243,12 @@ export async function getTransientStorage(key: string): Promise<any | null> {
 export async function setTransientStorage(key: string, value: any, ttl: number): Promise<void> {
   try {
     const expiry = Date.now() + ttl;
+    const storedValue = typeof value === "string" ? compressString(value) : value;
+
     await chrome.storage.local.set({
       [key]: {
         type: "transient",
-        value,
+        value: storedValue,
         expiry,
       },
     });
@@ -270,8 +259,20 @@ export async function setTransientStorage(key: string, value: any, ttl: number):
   }
 }
 
+function extractVideoIdFromCacheKey(key: string): string | null {
+  const withoutPrefix = key.slice("blyrics_".length);
+  for (const sourceKey of Constants.LYRIC_SOURCE_KEYS) {
+    const suffix = `_${sourceKey}`;
+    if (withoutPrefix.endsWith(suffix)) {
+      return withoutPrefix.slice(0, -suffix.length);
+    }
+  }
+  return null;
+}
+
 /**
  * Calculates current cache information including count and size of stored lyrics.
+ * Count represents unique songs (by video ID), not individual cache entries.
  *
  * @returns {Promise<{count: number, size: number}>} Cache statistics
  */
@@ -279,12 +280,22 @@ export async function getUpdatedCacheInfo(): Promise<{ count: number; size: numb
   try {
     const result = await chrome.storage.local.get(null);
     const lyricsKeys = Object.keys(result).filter(key => key.startsWith("blyrics_"));
+
+    const uniqueVideoIds = new Set<string>();
+    for (const key of lyricsKeys) {
+      const videoId = extractVideoIdFromCacheKey(key);
+      if (videoId) {
+        uniqueVideoIds.add(videoId);
+      }
+    }
+
     const totalSize = lyricsKeys.reduce((acc, key) => {
       const item = result[key];
       return acc + JSON.stringify(item).length;
     }, 0);
+
     return {
-      count: lyricsKeys.length,
+      count: uniqueVideoIds.size,
       size: totalSize,
     };
   } catch (error) {

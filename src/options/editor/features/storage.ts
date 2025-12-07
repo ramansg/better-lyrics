@@ -1,4 +1,5 @@
 import { LOG_PREFIX_EDITOR } from "@constants";
+import { compressString, decompressString, isCompressed } from "@core/compression";
 import type { InstalledStoreTheme } from "../../store/types";
 import { CHUNK_SIZE, LOCAL_STORAGE_SAFE_LIMIT, MAX_RETRY_ATTEMPTS, SYNC_STORAGE_LIMIT } from "../core/editor";
 import { editorStateManager } from "../core/state";
@@ -6,46 +7,6 @@ import type { SaveResult } from "../types";
 import { syncIndicator } from "../ui/dom";
 import { ricsCompiler } from "./compiler";
 import { setThemeName, showThemeName, themeSourceToEditorSource } from "./themes";
-
-async function compressCSS(css: string): Promise<string> {
-  try {
-    if (typeof CompressionStream !== "undefined") {
-      const blob = new Blob([css]);
-      const stream = blob.stream().pipeThrough(new CompressionStream("gzip"));
-      const compressedBlob = await new Response(stream).blob();
-      const arrayBuffer = await compressedBlob.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-      return `__COMPRESSED__${base64}`;
-    }
-  } catch (error) {
-    console.warn("Compression not supported, storing uncompressed:", error);
-  }
-  return css;
-}
-
-async function decompressCSS(css: string): Promise<string> {
-  if (!css.startsWith("__COMPRESSED__")) {
-    return css;
-  }
-
-  try {
-    if (typeof DecompressionStream !== "undefined") {
-      const base64 = css.substring("__COMPRESSED__".length);
-      const binaryString = atob(base64);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      const blob = new Blob([bytes]);
-      const stream = blob.stream().pipeThrough(new DecompressionStream("gzip"));
-      const decompressedBlob = await new Response(stream).blob();
-      return await decompressedBlob.text();
-    }
-  } catch (error) {
-    console.error("Decompression failed:", error);
-  }
-  return css.substring("__COMPRESSED__".length);
-}
 
 async function getStorageUsage(): Promise<{ used: number; total: number }> {
   const bytesInUse = await chrome.storage.local.getBytesInUse();
@@ -174,7 +135,7 @@ export const saveToStorageWithFallback = async (css: string, _isTheme = false, r
     console.log(LOG_PREFIX_EDITOR, `Saving CSS: ${cssSize} bytes (${(cssSize / 1024).toFixed(2)} KB)`);
 
     const shouldCompress = cssSize > 50000;
-    const cssToStore = shouldCompress ? await compressCSS(css) : css;
+    const cssToStore = shouldCompress ? compressString(css) : css;
     const compressedSize = new Blob([cssToStore]).size;
 
     if (shouldCompress) {
@@ -215,7 +176,7 @@ export const saveToStorageWithFallback = async (css: string, _isTheme = false, r
         console.log(LOG_PREFIX_EDITOR, "Attempting chunked storage fallback...");
         const cssSize = new Blob([css]).size;
         const shouldCompress = cssSize > 50000;
-        const cssToStore = shouldCompress ? await compressCSS(css) : css;
+        const cssToStore = shouldCompress ? compressString(css) : css;
 
         await saveChunkedCSS(cssToStore);
         await chrome.storage.sync.set({ cssCompressed: shouldCompress });
@@ -232,21 +193,21 @@ export const saveToStorageWithFallback = async (css: string, _isTheme = false, r
 
 export async function loadCustomCSS(): Promise<string> {
   let css: string | null = null;
-  let isCompressed = false;
+  let compressed = false;
 
   try {
     const syncData = await chrome.storage.sync.get(["cssStorageType", "customCSS", "cssCompressed"]);
 
     if (syncData.cssStorageType === "chunked") {
       css = await loadChunkedCSS();
-      isCompressed = syncData.cssCompressed || false;
+      compressed = syncData.cssCompressed || false;
     } else if (syncData.cssStorageType === "local") {
       const localData = await chrome.storage.local.get(["customCSS", "cssCompressed"]);
       css = localData.customCSS;
-      isCompressed = localData.cssCompressed || false;
+      compressed = localData.cssCompressed || false;
     } else {
       css = syncData.customCSS;
-      isCompressed = syncData.cssCompressed || false;
+      compressed = syncData.cssCompressed || false;
     }
   } catch (error) {
     console.error("Error loading CSS:", error);
@@ -255,16 +216,16 @@ export async function loadCustomCSS(): Promise<string> {
       if (chunkedCSS) {
         css = chunkedCSS;
         const syncData = await chrome.storage.sync.get("cssCompressed");
-        isCompressed = syncData.cssCompressed || false;
+        compressed = syncData.cssCompressed || false;
       } else {
         const localData = await chrome.storage.local.get(["customCSS", "cssCompressed"]);
         if (localData.customCSS) {
           css = localData.customCSS;
-          isCompressed = localData.cssCompressed || false;
+          compressed = localData.cssCompressed || false;
         } else {
           const syncData = await chrome.storage.sync.get(["customCSS", "cssCompressed"]);
           css = syncData.customCSS;
-          isCompressed = syncData.cssCompressed || false;
+          compressed = syncData.cssCompressed || false;
         }
       }
     } catch (fallbackError) {
@@ -274,8 +235,8 @@ export async function loadCustomCSS(): Promise<string> {
 
   if (!css) return "";
 
-  if (isCompressed || css.startsWith("__COMPRESSED__")) {
-    return await decompressCSS(css);
+  if (compressed || isCompressed(css)) {
+    return decompressString(css);
   }
 
   return css;
