@@ -5,6 +5,7 @@ on:
     branches:
       - master
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -13,16 +14,23 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ssh-key: ${{ secrets.DEPLOY_KEY }}
+          token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
 
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: "20.x"
 
       - name: Install Biome
         run: npm install -g @biomejs/biome
@@ -33,40 +41,36 @@ jobs:
           biome format --write .
 
       - name: Check for changes and commit
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-            # First, check if there are any changes.
-            if [ -n "$(git status --porcelain)" ]; then
-            
-              # Define the auto-fix commit message
-              AUTO_FIX_MSG="Auto-fix: Apply Biome lint and format fixes"
-            
-              # Get the subject of the very last commit.
-              # "|| true" prevents the script from failing if there are no commits yet.
-              LAST_COMMIT_MSG=$(git log -1 --pretty=%s || true)
-            
-              # Check if the last commit was ALSO an auto-fix
-              if [ "$LAST_COMMIT_MSG" = "$AUTO_FIX_MSG" ]; then
-                echo "❌ ERROR: Potential auto-fix loop detected!"
-                echo "The previous commit was an auto-fix, but this run *still* found Biome issues."
-                echo "This means the auto-fix is not succeeding in one pass."
-                echo "Failing the job to prevent an infinite commit loop."
-                echo "Please review the Biome output and fix the remaining issues manually."
-                exit 1
-              fi
-            
-              # If we're here, it's safe to commit.
-              echo "✅ Found Biome issues. Proceeding with auto-fix commit."
-              git config --local user.email "harmonizer@betterlyrics.dev"
-              git config --local user.name "Better Lyrics Harmonizer"
-              git add .
-              git commit -m "$AUTO_FIX_MSG"
-            
-              if git symbolic-ref HEAD >/dev/null 2>&1; then
-                git push
-                echo "✅ Auto-fixed Biome issues and pushed changes."
-              else
-                echo "✅ Auto-fixed Biome issues (detached HEAD - changes committed locally)"
-              fi
-            else
-              echo "✅ No Biome issues found - skipping commit"
+          if [ -n "$(git status --porcelain)" ]; then
+
+            AUTO_FIX_MSG="Auto-fix: Apply Biome lint and format fixes"
+            LAST_COMMIT_MSG=$(git log -1 --pretty=%s || true)
+
+            if [ "$LAST_COMMIT_MSG" = "$AUTO_FIX_MSG" ]; then
+              echo "❌ ERROR: Potential auto-fix loop detected!"
+              echo "The previous commit was an auto-fix, but this run *still* found Biome issues."
+              echo "This means the auto-fix is not succeeding in one pass."
+              echo "Failing the job to prevent an infinite commit loop."
+              echo "Please review the Biome output and fix the remaining issues manually."
+              exit 1
             fi
+
+            echo "✅ Found Biome issues. Proceeding with auto-fix commit."
+            git config --local user.name "better-lyrics-harmonizer[bot]"
+            # https://github.com/orgs/community/discussions/24664#discussioncomment-3880274
+            git config --local user.email "248079304+better-lyrics-harmonizer[bot]@users.noreply.github.com"
+            git add .
+            git commit -m "$AUTO_FIX_MSG"
+
+            if git symbolic-ref HEAD >/dev/null 2>&1; then
+              git push
+              echo "✅ Auto-fixed Biome issues and pushed changes."
+            else
+              echo "✅ Auto-fixed Biome issues (detached HEAD - changes committed locally)"
+            fi
+          else
+            echo "✅ No Biome issues found - skipping commit"
+          fi
