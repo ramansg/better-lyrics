@@ -175,8 +175,8 @@ export async function getAndApplyCustomCSS(): Promise<void> {
 }
 
 /**
- * Subscribes to custom CSS changes and applies them automatically.
- * Also invalidates cached transition duration when CSS changes.
+ * Subscribes to CSS changes and applies them automatically.
+ * Watches both customCSS (editor working copy) and storeTheme:* (store theme updates).
  * Listens to both sync and local storage for hybrid storage support.
  */
 export function subscribeToCustomCSS(): void {
@@ -190,8 +190,34 @@ export function subscribeToCustomCSS(): void {
         Utils.applyCustomCSS(compileRicsToCSS(css));
       }
     }
+
+    if (area === "local") {
+      for (const key of Object.keys(changes)) {
+        if (key.startsWith("storeTheme:")) {
+          await handleStoreThemeChange(key, changes[key]);
+        }
+      }
+    }
   });
   getAndApplyCustomCSS();
+}
+
+async function handleStoreThemeChange(
+  key: string,
+  change: { oldValue?: any; newValue?: any }
+): Promise<void> {
+  const themeId = key.replace("storeTheme:", "");
+  const { activeStoreTheme } = await chrome.storage.sync.get("activeStoreTheme");
+
+  if (activeStoreTheme !== themeId) return;
+
+  const theme = change.newValue;
+  if (!theme?.css) return;
+
+  if (change.oldValue?.css === theme.css && change.oldValue?.version === theme.version) return;
+
+  Utils.log(Constants.LOG_PREFIX, "Store theme updated:", theme.title || themeId);
+  Utils.applyCustomCSS(compileRicsToCSS(theme.css));
 }
 
 /**

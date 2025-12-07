@@ -1,3 +1,4 @@
+import { LOG_PREFIX_EDITOR } from "@constants";
 import { getInstalledTheme } from "../../store/themeStoreManager";
 import type { ThemeSource } from "../../store/types";
 import THEMES, { deleteCustomTheme, getCustomThemes, renameCustomTheme, saveCustomTheme } from "../../themes";
@@ -81,7 +82,7 @@ export function themeSourceToEditorSource(source: ThemeSource | undefined): Edit
 
 export class ThemeManager {
   async applyTheme(isCustom: boolean, index: number, themeName: string): Promise<void> {
-    console.log(`[ThemeManager] Applying ${isCustom ? "custom" : "built-in"} theme: ${themeName}`);
+    console.log(LOG_PREFIX_EDITOR, `Applying ${isCustom ? "custom" : "built-in"} theme: ${themeName}`);
 
     try {
       if (isCustom) {
@@ -90,7 +91,7 @@ export class ThemeManager {
         await this.applyBuiltInTheme(index);
       }
     } catch (error) {
-      console.error(`[ThemeManager] Failed to apply theme:`, error);
+      console.error(LOG_PREFIX_EDITOR, "Failed to apply theme:", error);
       showAlert("Error applying theme! Please try again.");
       throw error;
     }
@@ -107,7 +108,7 @@ export class ThemeManager {
     const themeContent = `/* ${selectedTheme.name}, a custom theme for BetterLyrics */\n\n${selectedTheme.css}\n`;
 
     await editorStateManager.queueOperation("theme", async () => {
-      console.log(`[ThemeManager] Setting custom theme: ${selectedTheme.name}`);
+      console.log(LOG_PREFIX_EDITOR, `Setting custom theme: ${selectedTheme.name}`);
 
       await editorStateManager.setEditorContent(themeContent, `custom-theme:${selectedTheme.name}`, false);
 
@@ -137,7 +138,7 @@ export class ThemeManager {
     const themeContent = `/* ${selectedTheme.name}, a theme for BetterLyrics by ${selectedTheme.author} ${selectedTheme.link && `(${selectedTheme.link})`} */\n\n${css}\n`;
 
     await editorStateManager.queueOperation("theme", async () => {
-      console.log(`[ThemeManager] Setting built-in theme: ${selectedTheme.name}`);
+      console.log(LOG_PREFIX_EDITOR, `Setting built-in theme: ${selectedTheme.name}`);
 
       await editorStateManager.setEditorContent(themeContent, `builtin-theme:${selectedTheme.name}`, false);
 
@@ -182,11 +183,11 @@ export async function applyStoreThemeToEditor(
   title: string,
   source: EditorThemeSource = "marketplace"
 ): Promise<void> {
-  console.log(`[BetterLyrics] applyStoreThemeToEditor called: ${title}, CSS length: ${css.length}, source: ${source}`);
+  console.log(LOG_PREFIX_EDITOR, `applyStoreThemeToEditor called: ${title}, CSS length: ${css.length}, source: ${source}`);
 
   try {
     await editorStateManager.queueOperation("theme", async () => {
-      console.log(`[ThemeManager] Setting marketplace theme: ${title}, content length: ${css.length}`);
+      console.log(LOG_PREFIX_EDITOR, `Setting marketplace theme: ${title}, content length: ${css.length}`);
 
       await editorStateManager.setEditorContent(css, `store-theme:${themeId}`, false);
 
@@ -197,7 +198,7 @@ export async function applyStoreThemeToEditor(
       updateThemeSelectorButton();
     });
   } catch (error) {
-    console.error(`[ThemeManager] Failed to apply marketplace theme:`, error);
+    console.error(LOG_PREFIX_EDITOR, "Failed to apply marketplace theme:", error);
     showAlert("Error applying marketplace theme! Please try again.");
   }
 }
@@ -208,10 +209,10 @@ export function initStoreThemeListener(): void {
   if (storeThemeListenerInitialized) return;
   storeThemeListenerInitialized = true;
 
-  console.log("[BetterLyrics] initStoreThemeListener registered");
+  console.log(LOG_PREFIX_EDITOR, "initStoreThemeListener registered");
 
   document.addEventListener("store-theme-applied", async (event: Event) => {
-    console.log("[BetterLyrics] store-theme-applied event received");
+    console.log(LOG_PREFIX_EDITOR, "store-theme-applied event received");
     const customEvent = event as CustomEvent<{
       themeId: string;
       css: string;
@@ -221,7 +222,8 @@ export function initStoreThemeListener(): void {
     const { themeId, css, title, source } = customEvent.detail;
     const editorSource: EditorThemeSource = source === "url" ? "github" : "marketplace";
     console.log(
-      `[BetterLyrics] Event detail: themeId=${themeId}, title=${title}, source=${source}, CSS length=${css.length}`
+      LOG_PREFIX_EDITOR,
+      `Event detail: themeId=${themeId}, title=${title}, source=${source}, CSS length=${css.length}`
     );
     await applyStoreThemeToEditor(themeId, css, title, editorSource);
   });
@@ -270,7 +272,7 @@ export function hideThemeName(): void {
 }
 
 export function onChange(_state: string) {
-  console.log("[BetterLyrics] onChange triggered, isProgrammaticChange:", editorStateManager.getIsProgrammaticChange());
+  console.log(LOG_PREFIX_EDITOR, "onChange triggered, isProgrammaticChange:", editorStateManager.getIsProgrammaticChange());
   if (editorStateManager.getIsProgrammaticChange()) {
     return;
   }
@@ -294,7 +296,7 @@ export function onChange(_state: string) {
   } else if (isCustom && themeName) {
     debounceSaveCustomTheme();
   }
-  console.log("[BetterLyrics] onChange calling debounceSave");
+  console.log(LOG_PREFIX_EDITOR, "onChange calling debounceSave");
   debounceSave();
 }
 
@@ -330,17 +332,17 @@ function debounceSave() {
 }
 
 export function saveToStorage(isTheme = false) {
-  console.log("[BetterLyrics] saveToStorage called, isTheme:", isTheme);
+  console.log(LOG_PREFIX_EDITOR, "saveToStorage called, isTheme:", isTheme);
   const currentEditor = editorStateManager.getEditor();
   if (!currentEditor) {
-    console.error("[BetterLyrics] Cannot save: editor not initialized");
+    console.error(LOG_PREFIX_EDITOR, "Cannot save: editor not initialized");
     return;
   }
 
   editorStateManager.incrementSaveCount();
   editorStateManager.setIsSaving(true);
   const css = currentEditor.state.doc.toString();
-  console.log("[BetterLyrics] saveToStorage CSS length:", css.length);
+  console.log(LOG_PREFIX_EDITOR, "saveToStorage CSS length:", css.length);
 
   const isCustom = editorStateManager.getIsCustomTheme();
   if (!isTheme && editorStateManager.getIsUserTyping() && !isCustom) {
@@ -350,7 +352,7 @@ export function saveToStorage(isTheme = false) {
 
   saveToStorageWithFallback(css, isTheme)
     .then(result => {
-      console.log("[BetterLyrics] saveToStorageWithFallback result:", result);
+      console.log(LOG_PREFIX_EDITOR, "saveToStorageWithFallback result:", result);
       if (result.success && result.strategy) {
         showSyncSuccess(result.strategy, result.wasRetry);
         sendUpdateMessage(css, result.strategy);
@@ -494,7 +496,7 @@ async function selectTheme(isCustom: boolean, index: number, themeName: string) 
   try {
     await themeManager.applyTheme(isCustom, index, themeName);
   } catch (error) {
-    console.error("[BetterLyrics] Error selecting theme:", error);
+    console.error(LOG_PREFIX_EDITOR, "Error selecting theme:", error);
   }
 }
 

@@ -1,4 +1,5 @@
 import { openSearchPanel } from "@codemirror/search";
+import { LOG_PREFIX_EDITOR } from "@constants";
 import { createEditorState, createEditorView } from "./core/editor";
 import { editorStateManager } from "./core/state";
 import { generateDefaultFilename, importManager, saveCSSToFile } from "./features/import";
@@ -110,7 +111,7 @@ export function initializeFileOperations() {
       try {
         await importManager.importCSSFile(file);
       } catch (err) {
-        console.error("[BetterLyrics] File import error:", err);
+        console.error(LOG_PREFIX_EDITOR, "File import error:", err);
       }
     };
     input.click();
@@ -139,7 +140,7 @@ export function initializeStorageListeners() {
 }
 
 export async function initializeEditor() {
-  console.log("[BetterLyrics] DOM loaded, initializing editor");
+  console.log(LOG_PREFIX_EDITOR, "DOM loaded, initializing editor");
 
   const editorElement = document.getElementById("editor")!;
   const isStandalone = document.querySelector(".theme-name-display.standalone") !== null;
@@ -162,14 +163,14 @@ export async function initializeEditor() {
     openStandaloneEditor();
   });
 
-  console.log("[BetterLyrics] Loading theme name and initial CSS");
+  console.log(LOG_PREFIX_EDITOR, "Loading theme name and initial CSS");
 
   const setSelectedThemePromise = setThemeName();
   const loadCustomCssPromise = storageManager.loadInitialCSS();
 
   await Promise.allSettled([setSelectedThemePromise, loadCustomCssPromise]);
 
-  console.log("[BetterLyrics] Editor initialization complete");
+  console.log(LOG_PREFIX_EDITOR, "Editor initialization complete");
 }
 
 export function initialize() {

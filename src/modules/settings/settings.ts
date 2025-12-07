@@ -161,20 +161,20 @@ export function hideCursorOnIdle(): void {
 
 export function listenForPopupMessages(): void {
   chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
-    console.log("[BetterLyrics Content] Received message:", request.action);
+    Utils.log(Constants.LOG_PREFIX_CONTENT, "Received message:", request.action);
     if (request.action === "updateCSS") {
-      console.log("[BetterLyrics Content] Processing updateCSS, CSS length:", request.css?.length);
+      Utils.log(Constants.LOG_PREFIX_CONTENT, "Processing updateCSS, CSS length:", request.css?.length);
       if (request.css) {
-        console.log("[BetterLyrics Content] Compiling and applying CSS");
+        Utils.log(Constants.LOG_PREFIX_CONTENT, "Compiling and applying CSS");
         const compiledCSS = Storage.compileRicsToCSS(request.css);
         Utils.applyCustomCSS(compiledCSS);
         calculateLyricPositions();
-        console.log("[BetterLyrics Content] CSS applied successfully");
+        Utils.log(Constants.LOG_PREFIX_CONTENT, "CSS applied successfully");
       } else {
-        console.log("[BetterLyrics Content] Loading CSS from storage");
+        Utils.log(Constants.LOG_PREFIX_CONTENT, "Loading CSS from storage");
         Storage.getAndApplyCustomCSS().then(() => {
           calculateLyricPositions();
-          console.log("[BetterLyrics Content] CSS loaded from storage and applied");
+          Utils.log(Constants.LOG_PREFIX_CONTENT, "CSS loaded from storage and applied");
         });
       }
     } else if (request.action === "updateSettings") {

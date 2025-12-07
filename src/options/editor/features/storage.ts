@@ -1,3 +1,4 @@
+import { LOG_PREFIX_EDITOR } from "@constants";
 import type { InstalledStoreTheme } from "../../store/types";
 import { CHUNK_SIZE, LOCAL_STORAGE_SAFE_LIMIT, MAX_RETRY_ATTEMPTS, SYNC_STORAGE_LIMIT } from "../core/editor";
 import { editorStateManager } from "../core/state";
@@ -66,28 +67,28 @@ async function clearLyricsCacheIfNeeded(requiredSpace: number): Promise<void> {
   const usage = await getStorageUsage();
   const availableSpace = usage.total - usage.used;
 
-  console.log(`[BetterLyrics] Available space: ${availableSpace} bytes, Required: ${requiredSpace} bytes`);
+  console.log(LOG_PREFIX_EDITOR, `Available space: ${availableSpace} bytes, Required: ${requiredSpace} bytes`);
 
   if (availableSpace < requiredSpace) {
-    console.log(`[BetterLyrics] Not enough space, clearing lyrics cache...`);
+    console.log(LOG_PREFIX_EDITOR, "Not enough space, clearing lyrics cache...");
     const allData = await chrome.storage.local.get(null);
     const lyricsKeys = Object.keys(allData).filter(key => key.startsWith("blyrics_"));
 
     if (lyricsKeys.length > 0) {
-      console.log(`[BetterLyrics] Removing ${lyricsKeys.length} cached lyrics entries`);
+      console.log(LOG_PREFIX_EDITOR, `Removing ${lyricsKeys.length} cached lyrics entries`);
       await chrome.storage.local.remove(lyricsKeys);
 
       const newUsage = await getStorageUsage();
-      console.log(`[BetterLyrics] Storage after cache clear: ${newUsage.used} / ${newUsage.total} bytes`);
+      console.log(LOG_PREFIX_EDITOR, `Storage after cache clear: ${newUsage.used} / ${newUsage.total} bytes`);
     }
   }
 }
 
 async function saveChunkedCSS(css: string): Promise<void> {
-  console.log(`[BetterLyrics] Saving CSS in chunks. Total size: ${css.length} bytes`);
+  console.log(LOG_PREFIX_EDITOR, `Saving CSS in chunks. Total size: ${css.length} bytes`);
 
   const storageUsage = await getStorageUsage();
-  console.log(`[BetterLyrics] Storage usage before save: ${storageUsage.used} / ${storageUsage.total} bytes`);
+  console.log(LOG_PREFIX_EDITOR, `Storage usage before save: ${storageUsage.used} / ${storageUsage.total} bytes`);
 
   const estimatedSize = css.length * 1.2;
   await clearLyricsCacheIfNeeded(estimatedSize);
@@ -97,7 +98,7 @@ async function saveChunkedCSS(css: string): Promise<void> {
     chunks.push(css.substring(i, i + CHUNK_SIZE));
   }
 
-  console.log(`[BetterLyrics] Splitting into ${chunks.length} chunks of ~${CHUNK_SIZE} bytes each`);
+  console.log(LOG_PREFIX_EDITOR, `Splitting into ${chunks.length} chunks of ~${CHUNK_SIZE} bytes each`);
 
   const oldMetadata = await chrome.storage.local.get(["customCSS_chunkCount"]);
   const oldChunkCount = oldMetadata.customCSS_chunkCount || 0;
@@ -105,9 +106,9 @@ async function saveChunkedCSS(css: string): Promise<void> {
   for (let i = 0; i < chunks.length; i++) {
     try {
       await chrome.storage.local.set({ [`customCSS_chunk_${i}`]: chunks[i] });
-      console.log(`[BetterLyrics] Saved chunk ${i + 1}/${chunks.length} (${chunks[i].length} bytes)`);
+      console.log(LOG_PREFIX_EDITOR, `Saved chunk ${i + 1}/${chunks.length} (${chunks[i].length} bytes)`);
     } catch (error) {
-      console.error(`[BetterLyrics] Failed to save chunk ${i}:`, error);
+      console.error(LOG_PREFIX_EDITOR, `Failed to save chunk ${i}:`, error);
       throw error;
     }
   }
@@ -133,7 +134,7 @@ async function saveChunkedCSS(css: string): Promise<void> {
   }
 
   const finalUsage = await getStorageUsage();
-  console.log(`[BetterLyrics] Storage usage after save: ${finalUsage.used} / ${finalUsage.total} bytes`);
+  console.log(LOG_PREFIX_EDITOR, `Storage usage after save: ${finalUsage.used} / ${finalUsage.total} bytes`);
 }
 
 async function loadChunkedCSS(): Promise<string | null> {
@@ -170,7 +171,7 @@ export const getStorageStrategy = (css: string): "local" | "sync" | "chunked" =>
 export const saveToStorageWithFallback = async (css: string, _isTheme = false, retryCount = 0): Promise<SaveResult> => {
   try {
     const cssSize = new Blob([css]).size;
-    console.log(`[BetterLyrics] Saving CSS: ${cssSize} bytes (${(cssSize / 1024).toFixed(2)} KB)`);
+    console.log(LOG_PREFIX_EDITOR, `Saving CSS: ${cssSize} bytes (${(cssSize / 1024).toFixed(2)} KB)`);
 
     const shouldCompress = cssSize > 50000;
     const cssToStore = shouldCompress ? await compressCSS(css) : css;
@@ -178,11 +179,11 @@ export const saveToStorageWithFallback = async (css: string, _isTheme = false, r
 
     if (shouldCompress) {
       const ratio = ((1 - compressedSize / cssSize) * 100).toFixed(1);
-      console.log(`[BetterLyrics] Compressed: ${compressedSize} bytes (${ratio}% reduction)`);
+      console.log(LOG_PREFIX_EDITOR, `Compressed: ${compressedSize} bytes (${ratio}% reduction)`);
     }
 
     const strategy = getStorageStrategy(cssToStore);
-    console.log(`[BetterLyrics] Selected strategy: ${strategy}`);
+    console.log(LOG_PREFIX_EDITOR, `Selected strategy: ${strategy}`);
 
     if (strategy === "chunked") {
       await saveChunkedCSS(cssToStore);
@@ -197,21 +198,21 @@ export const saveToStorageWithFallback = async (css: string, _isTheme = false, r
       await chrome.storage.sync.set({ cssStorageType: "local", cssCompressed: shouldCompress });
       await clearCSSChunks();
       await chrome.storage.sync.remove("customCSS");
-      console.log(`[BetterLyrics] Saved to local storage`);
+      console.log(LOG_PREFIX_EDITOR, "Saved to local storage");
     } else {
       await chrome.storage.sync.set({ customCSS: cssToStore, cssStorageType: "sync", cssCompressed: shouldCompress });
       await clearCSSChunks();
       await chrome.storage.local.remove(["customCSS", "cssCompressed"]);
-      console.log(`[BetterLyrics] Saved to sync storage`);
+      console.log(LOG_PREFIX_EDITOR, "Saved to sync storage");
     }
 
     return { success: true, strategy };
   } catch (error: any) {
-    console.error("[BetterLyrics] Storage save attempt failed:", error);
+    console.error(LOG_PREFIX_EDITOR, "Storage save attempt failed:", error);
 
     if (error.message?.includes("quota") && retryCount < MAX_RETRY_ATTEMPTS) {
       try {
-        console.log("[BetterLyrics] Attempting chunked storage fallback...");
+        console.log(LOG_PREFIX_EDITOR, "Attempting chunked storage fallback...");
         const cssSize = new Blob([css]).size;
         const shouldCompress = cssSize > 50000;
         const cssToStore = shouldCompress ? await compressCSS(css) : css;
@@ -220,7 +221,7 @@ export const saveToStorageWithFallback = async (css: string, _isTheme = false, r
         await chrome.storage.sync.set({ cssCompressed: shouldCompress });
         return { success: true, strategy: "chunked", wasRetry: true };
       } catch (chunkError) {
-        console.error("[BetterLyrics] Chunked storage fallback failed:", chunkError);
+        console.error(LOG_PREFIX_EDITOR, "Chunked storage fallback failed:", chunkError);
         return { success: false, error: chunkError };
       }
     }
@@ -316,7 +317,8 @@ export function showSyncError(error: any): void {
 export async function sendUpdateMessage(sourceCode: string, strategy: "local" | "sync" | "chunked"): Promise<void> {
   const compiledCSS = ricsCompiler.getCompiledCSS(sourceCode);
   console.log(
-    `[BetterLyrics] sendUpdateMessage called, source length: ${sourceCode.length}, compiled CSS length: ${compiledCSS.length}, strategy: ${strategy}`
+    LOG_PREFIX_EDITOR,
+    `sendUpdateMessage called, source length: ${sourceCode.length}, compiled CSS length: ${compiledCSS.length}, strategy: ${strategy}`
   );
   try {
     chrome.runtime
@@ -326,13 +328,13 @@ export async function sendUpdateMessage(sourceCode: string, strategy: "local" | 
         storageType: strategy,
       })
       .then(() => {
-        console.log("[BetterLyrics] Message sent to background successfully");
+        console.log(LOG_PREFIX_EDITOR, "Message sent to background successfully");
       })
       .catch(error => {
-        console.log("[BetterLyrics] Error sending message to background:", error);
+        console.log(LOG_PREFIX_EDITOR, "Error sending message to background:", error);
       });
   } catch (err) {
-    console.log("[BetterLyrics] sendUpdateMessage exception:", err);
+    console.log(LOG_PREFIX_EDITOR, "sendUpdateMessage exception:", err);
   }
 }
 
@@ -371,7 +373,7 @@ export async function applyStoreThemeComplete(options: ApplyStoreThemeOptions): 
 
     return true;
   } catch (err) {
-    console.error("[Storage] Failed to apply store theme:", err);
+    console.error(LOG_PREFIX_EDITOR, "Failed to apply store theme:", err);
     return false;
   }
 }
@@ -381,14 +383,14 @@ export class StorageManager {
 
   initialize(): void {
     if (this.isInitialized) {
-      console.warn("[StorageManager] Already initialized");
+      console.warn(LOG_PREFIX_EDITOR, "StorageManager already initialized");
       return;
     }
 
-    console.log("[StorageManager] Initializing storage listeners");
+    console.log(LOG_PREFIX_EDITOR, "Initializing storage listeners");
 
     chrome.storage.onChanged.addListener(async (changes, namespace) => {
-      console.log(`[StorageManager] Storage changed in ${namespace}:`, Object.keys(changes));
+      console.log(LOG_PREFIX_EDITOR, `Storage changed in ${namespace}:`, Object.keys(changes));
 
       if (Object.hasOwn(changes, "customCSS")) {
         await this.handleCSSChange(changes.customCSS);
@@ -399,91 +401,49 @@ export class StorageManager {
       }
 
       if (Object.hasOwn(changes, "customCSS_chunk_0")) {
-        console.log("[StorageManager] Chunked CSS detected, handling as CSS change");
+        console.log(LOG_PREFIX_EDITOR, "Chunked CSS detected, handling as CSS change");
         await this.handleCSSChange(changes.customCSS_chunk_0);
       }
 
-      if (namespace === "local" && Object.hasOwn(changes, "installedStoreThemes")) {
-        await this.handleStoreThemeUpdate(changes.installedStoreThemes);
+      if (namespace === "local") {
+        for (const key of Object.keys(changes)) {
+          if (key.startsWith("storeTheme:")) {
+            const themeId = key.replace("storeTheme:", "");
+            await this.handleIndividualThemeUpdate(themeId, changes[key]);
+          }
+        }
       }
-    });
-
-    chrome.runtime.onMessage.addListener(request => {
-      if (request.action === "storeThemeUpdated") {
-        console.log(`[StorageManager] Received storeThemeUpdated: ${request.title} v${request.version}`);
-        this.handleStoreThemeUpdateMessage(request);
-      }
-      return true;
     });
 
     this.isInitialized = true;
-    console.log("[StorageManager] Storage listeners initialized");
-  }
-
-  private async handleStoreThemeUpdateMessage(request: {
-    themeId: string;
-    css: string;
-    title: string;
-    version: string;
-  }): Promise<void> {
-    if (editorStateManager.getIsSaving()) {
-      console.log("[StorageManager] Skipping store theme update (save in progress)");
-      return;
-    }
-
-    const syncData = await chrome.storage.sync.get("themeName");
-    const currentThemeName = syncData.themeName as string | undefined;
-
-    if (!currentThemeName?.startsWith("store:")) {
-      console.log("[StorageManager] No store theme active, skipping message");
-      return;
-    }
-
-    const activeThemeId = currentThemeName.slice(6);
-    if (activeThemeId !== request.themeId) {
-      console.log("[StorageManager] Message is for different theme, skipping");
-      return;
-    }
-
-    console.log(`[StorageManager] Applying store theme update from message: ${request.title} v${request.version}`);
-
-    await editorStateManager.queueOperation("storage", async () => {
-      await editorStateManager.setEditorContent(request.css, "store-theme-update-message", false);
-
-      const result = await saveToStorageWithFallback(request.css, true);
-      if (result.success && result.strategy) {
-        showSyncSuccess(result.strategy, result.wasRetry);
-        await sendUpdateMessage(request.css, result.strategy);
-        console.log("[StorageManager] Store theme update from message propagated to YouTube Music");
-      }
-    });
+    console.log(LOG_PREFIX_EDITOR, "Storage listeners initialized");
   }
 
   private async handleCSSChange(_change: any): Promise<void> {
     if (editorStateManager.getIsSaving()) {
-      console.log("[StorageManager] Skipping CSS reload (save in progress)");
+      console.log(LOG_PREFIX_EDITOR, "Skipping CSS reload (save in progress)");
       return;
     }
 
     if (editorStateManager.getIsUserTyping()) {
-      console.log("[StorageManager] Skipping CSS reload (user is typing)");
+      console.log(LOG_PREFIX_EDITOR, "Skipping CSS reload (user is typing)");
       return;
     }
 
     const saveCount = editorStateManager.getSaveCount();
-    console.log(`[StorageManager] CSS change detected, saveCount: ${saveCount}`);
+    console.log(LOG_PREFIX_EDITOR, `CSS change detected, saveCount: ${saveCount}`);
 
     if (saveCount > 0) {
-      console.log("[StorageManager] Skipping CSS reload (saveCount > 0)");
+      console.log(LOG_PREFIX_EDITOR, "Skipping CSS reload (saveCount > 0)");
       editorStateManager.decrementSaveCount();
       return;
     }
 
-    console.log("[StorageManager] Loading CSS from storage");
+    console.log(LOG_PREFIX_EDITOR, "Loading CSS from storage");
 
     await editorStateManager.queueOperation("storage", async () => {
       const css = await loadCustomCSS();
-      console.log(`[StorageManager] CSS loaded from storage: ${css.length} bytes`);
+      console.log(LOG_PREFIX_EDITOR, `CSS loaded from storage: ${css.length} bytes`);
 
       await editorStateManager.setEditorContent(css, "storage-change");
     });
@@ -491,75 +451,65 @@ export class StorageManager {
 
   private async handleThemeNameChange(): Promise<void> {
     if (editorStateManager.getIsSaving()) {
-      console.log("[StorageManager] Skipping theme reload (save in progress)");
+      console.log(LOG_PREFIX_EDITOR, "Skipping theme reload (save in progress)");
       return;
     }
 
     if (editorStateManager.getIsUserTyping()) {
-      console.log("[StorageManager] Skipping theme reload (user is typing)");
+      console.log(LOG_PREFIX_EDITOR, "Skipping theme reload (user is typing)");
       await setThemeName();
       return;
     }
 
-    console.log("[StorageManager] Theme name changed, reloading CSS");
+    console.log(LOG_PREFIX_EDITOR, "Theme name changed, reloading CSS");
     await setThemeName();
 
     await editorStateManager.queueOperation("storage", async () => {
       const css = await loadCustomCSS();
-      console.log(`[StorageManager] CSS loaded from theme change: ${css.length} bytes`);
+      console.log(LOG_PREFIX_EDITOR, `CSS loaded from theme change: ${css.length} bytes`);
       await editorStateManager.setEditorContent(css, "theme-name-change", false);
     });
   }
 
-  private async handleStoreThemeUpdate(change: {
-    oldValue?: InstalledStoreTheme[];
-    newValue?: InstalledStoreTheme[];
-  }): Promise<void> {
+  private async handleIndividualThemeUpdate(
+    themeId: string,
+    change: { oldValue?: InstalledStoreTheme; newValue?: InstalledStoreTheme }
+  ): Promise<void> {
     if (editorStateManager.getIsSaving()) {
-      console.log("[StorageManager] Skipping store theme reload (save in progress)");
+      console.log(LOG_PREFIX_EDITOR, "Skipping store theme reload (save in progress)");
+      return;
+    }
+
+    if (editorStateManager.getIsUserTyping()) {
+      console.log(LOG_PREFIX_EDITOR, "Skipping store theme reload (user is typing)");
       return;
     }
 
     const syncData = await chrome.storage.sync.get("themeName");
     const currentThemeName = syncData.themeName as string | undefined;
 
-    if (!currentThemeName?.startsWith("store:")) {
-      console.log("[StorageManager] No store theme active, skipping");
-      return;
-    }
+    if (!currentThemeName?.startsWith("store:")) return;
 
     const activeThemeId = currentThemeName.slice(6);
-    const oldThemes = change.oldValue || [];
-    const newThemes = change.newValue || [];
+    if (activeThemeId !== themeId) return;
 
-    const oldTheme = oldThemes.find(t => t.id === activeThemeId);
-    const newTheme = newThemes.find(t => t.id === activeThemeId);
+    const newTheme = change.newValue;
+    if (!newTheme?.css || !newTheme?.title) return;
 
-    if (!newTheme) {
-      console.log("[StorageManager] Active store theme not found in updated themes");
-      return;
-    }
-
-    if (!newTheme.title || !newTheme.css) {
-      console.log("[StorageManager] Store theme missing required fields, skipping");
-      return;
-    }
-
-    if (oldTheme?.version === newTheme.version && oldTheme?.css === newTheme.css) {
-      console.log("[StorageManager] Store theme unchanged, skipping");
+    if (change.oldValue?.version === newTheme.version && change.oldValue?.css === newTheme.css) {
+      console.log(LOG_PREFIX_EDITOR, "Store theme unchanged, skipping");
       return;
     }
 
     const themeVersion = newTheme.version || "unknown";
     const themeCreators = Array.isArray(newTheme.creators) ? newTheme.creators.join(", ") : "Unknown";
 
-    console.log(`[StorageManager] Store theme updated: ${newTheme.title} v${themeVersion}`);
+    console.log(LOG_PREFIX_EDITOR, `Store theme updated: ${newTheme.title} v${themeVersion}`);
 
     const themeContent = `/* ${newTheme.title}, a marketplace theme by ${themeCreators} */\n\n${newTheme.css}\n`;
     const displayName = newTheme.version ? `${newTheme.title} (v${newTheme.version})` : newTheme.title;
 
     await editorStateManager.queueOperation("storage", async () => {
-      console.log(`[StorageManager] Applying updated marketplace theme to editor: ${themeContent.length} bytes`);
       await editorStateManager.setEditorContent(themeContent, "store-theme-update", false);
 
       editorStateManager.setCurrentThemeName(newTheme.title);
@@ -570,17 +520,17 @@ export class StorageManager {
       if (result.success && result.strategy) {
         showSyncSuccess(result.strategy, result.wasRetry);
         await sendUpdateMessage(themeContent, result.strategy);
-        console.log("[StorageManager] Marketplace theme update propagated to YouTube Music");
+        console.log(LOG_PREFIX_EDITOR, "Store theme update synced to customCSS");
       }
     });
   }
 
   async loadInitialCSS(): Promise<void> {
-    console.log("[StorageManager] Loading initial CSS");
+    console.log(LOG_PREFIX_EDITOR, "Loading initial CSS");
 
     await editorStateManager.queueOperation("init", async () => {
       const css = await loadCustomCSS();
-      console.log(`[StorageManager] Initial CSS loaded: ${css.length} bytes`);
+      console.log(LOG_PREFIX_EDITOR, `Initial CSS loaded: ${css.length} bytes`);
 
       await editorStateManager.setEditorContent(css, "initial-load", false);
     });

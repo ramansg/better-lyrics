@@ -85,6 +85,10 @@ export const romanizationLanguages: string[] = [
 
 // Log Prefixes
 export const LOG_PREFIX: string = "[BetterLyrics]";
+export const LOG_PREFIX_CONTENT: string = "[BetterLyrics:Content]";
+export const LOG_PREFIX_BACKGROUND: string = "[BetterLyrics:Background]";
+export const LOG_PREFIX_EDITOR: string = "[BetterLyrics:Editor]";
+export const LOG_PREFIX_THEME_STORE: string = "[BetterLyrics:ThemeStore]";
 export const IGNORE_PREFIX: string = "(Safe to ignore)";
 
 // Initialization and General Logs
