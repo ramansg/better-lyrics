@@ -313,20 +313,28 @@
 }
 
 #blyrics-loader:after {
-	color: var(--blyrics-ui-text-color);
+	background: linear-gradient(
+		110deg,
+		rgb(var(--blyrics-ui-text-color) / 0.5) 30%,
+		rgb(var(--blyrics-ui-text-color) / 1) 50%,
+		rgb(var(--blyrics-ui-text-color) / 0.5) 70%
+	);
+	background-size: 200% 100%;
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
 	content: "Better Lyrics is searching for lyrics...";
 	font-family: var(--blyrics-font-family);
 	font-size: 2rem;
 	font-weight: 700;
 	isolation: isolate;
 	line-height: 1;
-	opacity: 0.33;
 	white-space: pre;
 	z-index: 1;
 }
 
 #blyrics-loader:not([no-sync-available]):after {
-	animation: blyrics-pulse 1.5s infinite;
+	animation: shimmer 3s linear infinite;
 }
 
 #blyrics-loader[small-loader][active] {
@@ -680,15 +688,12 @@
 	}
 }
 
-@keyframes blyrics-pulse {
+@keyframes blyrics-shimmer {
 	0% {
-		opacity: 0.33;
+		background-position: 200% 0;
 	}
-	50% {
-		opacity: 0.5;
-	}
-	to {
-		opacity: 0.33;
+	100% {
+		background-position: -200% 0;
 	}
 }
 
