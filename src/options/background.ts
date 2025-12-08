@@ -8,11 +8,7 @@
  * @param {Object} [request.settings] - Settings object for updateSettings action
  * @returns {boolean} Returns true to indicate asynchronous response
  */
-import {
-  getInstalledStoreThemes,
-  performSilentUpdates,
-  performUrlThemeUpdates,
-} from "./store/themeStoreManager";
+import { getInstalledStoreThemes, performSilentUpdates, performUrlThemeUpdates } from "./store/themeStoreManager";
 import { checkStorePermissions, fetchAllStoreThemes } from "./store/themeStoreService";
 
 const THEME_UPDATE_ALARM = "theme-update-check";
@@ -74,9 +70,7 @@ chrome.runtime.onMessage.addListener(request => {
     chrome.tabs.query({ url: "*://music.youtube.com/*" }, tabs => {
       tabs.forEach(tab => {
         if (tab.id != null) {
-          chrome.tabs
-            .sendMessage(tab.id, { action: "updateCSS", css: request.css })
-            .catch(() => {});
+          chrome.tabs.sendMessage(tab.id, { action: "updateCSS", css: request.css }).catch(() => {});
         }
       });
     });

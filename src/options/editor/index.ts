@@ -57,7 +57,8 @@ export function initializeEditorKeyboardShortcuts() {
       } else {
         showModal({
           title: "Find & Replace",
-          message: "Find & Replace is only available in the fullscreen editor.<br><br>Click <strong>Open Fullscreen Editor</strong> to access all editor features.",
+          message:
+            "Find & Replace is only available in the fullscreen editor.<br><br>Click <strong>Open Fullscreen Editor</strong> to access all editor features.",
           confirmText: "Open Fullscreen Editor",
           cancelText: "Close",
         }).then(result => {

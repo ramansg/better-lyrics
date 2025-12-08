@@ -185,7 +185,10 @@ export async function applyStoreThemeToEditor(
   title: string,
   source: EditorThemeSource = "marketplace"
 ): Promise<void> {
-  console.log(LOG_PREFIX_EDITOR, `applyStoreThemeToEditor called: ${title}, CSS length: ${css.length}, source: ${source}`);
+  console.log(
+    LOG_PREFIX_EDITOR,
+    `applyStoreThemeToEditor called: ${title}, CSS length: ${css.length}, source: ${source}`
+  );
 
   try {
     await editorStateManager.queueOperation("theme", async () => {
@@ -274,7 +277,11 @@ export function hideThemeName(): void {
 }
 
 export function onChange(_state: string) {
-  console.log(LOG_PREFIX_EDITOR, "onChange triggered, isProgrammaticChange:", editorStateManager.getIsProgrammaticChange());
+  console.log(
+    LOG_PREFIX_EDITOR,
+    "onChange triggered, isProgrammaticChange:",
+    editorStateManager.getIsProgrammaticChange()
+  );
   if (editorStateManager.getIsProgrammaticChange()) {
     return;
   }

@@ -10,7 +10,10 @@ import type {
 const REGISTRY_BASE = "https://raw.githubusercontent.com/better-lyrics/themes/master";
 const DEFAULT_TIMEOUT_MS = 10000;
 
-const REGISTRY_ORIGINS = ["https://raw.githubusercontent.com/better-lyrics/*", "https://better-lyrics-themes-api.boidu.dev/*"];
+const REGISTRY_ORIGINS = [
+  "https://raw.githubusercontent.com/better-lyrics/*",
+  "https://better-lyrics-themes-api.boidu.dev/*",
+];
 
 const URL_INSTALL_ORIGINS = ["https://raw.githubusercontent.com/*", "https://api.github.com/*"];
 
@@ -186,7 +189,10 @@ export async function fetchRegistryShaderConfig(themeId: string): Promise<Record
 async function fetchFullThemeFromRegistry(lockEntry: LockfileEntry): Promise<StoreTheme> {
   const themeId = lockEntry.id;
 
-  const [metadata, descriptionMd] = await Promise.all([fetchRegistryMetadata(themeId), fetchRegistryDescription(themeId)]);
+  const [metadata, descriptionMd] = await Promise.all([
+    fetchRegistryMetadata(themeId),
+    fetchRegistryDescription(themeId),
+  ]);
 
   const description = descriptionMd ?? metadata.description ?? "";
 

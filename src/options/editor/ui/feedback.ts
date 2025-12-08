@@ -26,11 +26,7 @@ function cleanupAlertKeyHandler(): void {
   }
 }
 
-function createToastContent(
-  status: HTMLElement,
-  message: string,
-  action?: AlertAction
-): void {
+function createToastContent(status: HTMLElement, message: string, action?: AlertAction): void {
   const textContainer = document.createElement("span");
   textContainer.className = "toast-text";
   textContainer.textContent = message;

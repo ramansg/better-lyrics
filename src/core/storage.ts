@@ -183,10 +183,7 @@ export function subscribeToCustomCSS(): void {
   getAndApplyCustomCSS();
 }
 
-async function handleStoreThemeChange(
-  key: string,
-  change: { oldValue?: any; newValue?: any }
-): Promise<void> {
+async function handleStoreThemeChange(key: string, change: { oldValue?: any; newValue?: any }): Promise<void> {
   const themeId = key.replace("storeTheme:", "");
   const { activeStoreTheme } = await chrome.storage.sync.get("activeStoreTheme");
 
