@@ -71,14 +71,20 @@ jobs:
         run: npm run build
 
       - name: Commit version changes
+        uses: planetscale/ghcommit-action@v0.2.19
+        with:
+          commit_message: "Release version ${{ github.event.inputs.version }}"
+          repo: ${{ github.repository }}
+          branch: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Create and push tag
         run: |
-          git config --local user.name "better-lyrics-harmonizer[bot]"
-          # https://github.com/orgs/community/discussions/24664#discussioncomment-3880274
-          git config --local user.email "248079304+better-lyrics-harmonizer[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "Release version ${{ github.event.inputs.version }}"
+          git fetch origin ${{ github.ref_name }}
+          git reset --hard origin/${{ github.ref_name }}
           git tag -a "v${{ github.event.inputs.version }}" -m "Version ${{ github.event.inputs.version }}"
-          git push --follow-tags
+          git push origin "v${{ github.event.inputs.version }}"
 
       # Uploading raw build directories for other jobs
       - name: Upload Chrome build
