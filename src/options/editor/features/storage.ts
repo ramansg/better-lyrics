@@ -276,7 +276,10 @@ export function showSyncError(error: any): void {
 }
 
 export async function broadcastRICSToTabs(ricsSource: string, strategy: "local" | "sync" | "chunked"): Promise<void> {
-  console.log(LOG_PREFIX_EDITOR, `Broadcasting RICS to tabs, source length: ${ricsSource.length}, strategy: ${strategy}`);
+  console.log(
+    LOG_PREFIX_EDITOR,
+    `Broadcasting RICS to tabs, source length: ${ricsSource.length}, strategy: ${strategy}`
+  );
   try {
     chrome.runtime
       .sendMessage({
