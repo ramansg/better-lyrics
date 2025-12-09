@@ -69,4 +69,4 @@ function findFiles(dir: string, fileList: string[] = []) {
 
 const sourcemapFiles = findFiles(`./sourcemaps_for_upload/${browser}`);
 
-Promise.all(sourcemapFiles.map(uploadFile));
+await Promise.all(sourcemapFiles.map(uploadFile)).catch(e => console.error("R2 Upload Failed", e));
