@@ -5,9 +5,13 @@ const COMPRESSED_PREFIX = "__COMPRESSED__";
 export function compressString(data: string): string {
   try {
     const compressed = gzipSync(strToU8(data));
-    const base64 = btoa(String.fromCharCode(...compressed));
-    return `${COMPRESSED_PREFIX}${base64}`;
-  } catch {
+    let binary = "";
+    for (let i = 0; i < compressed.length; i++) {
+      binary += String.fromCharCode(compressed[i]);
+    }
+    return `${COMPRESSED_PREFIX}${btoa(binary)}`;
+  } catch (error) {
+    console.warn("[Compression] Failed to compress:", error);
     return data;
   }
 }

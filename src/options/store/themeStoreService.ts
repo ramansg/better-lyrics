@@ -92,7 +92,6 @@ async function getDefaultBranch(repo: string, testFile = "metadata.json"): Promi
     return "main";
   }
 
-  repoBranchCache.set(repo, { branch: "main", timestamp: Date.now() });
   return "main";
 }
 

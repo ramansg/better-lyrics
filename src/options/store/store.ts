@@ -372,7 +372,7 @@ function formatNumber(num: number): string {
   return num.toString();
 }
 
-export function initStoreUI(): void {
+export async function initStoreUI(): Promise<void> {
   detailModalOverlay = document.getElementById("detail-modal-overlay");
   urlModalOverlay = document.getElementById("url-modal-overlay");
 
@@ -381,8 +381,7 @@ export function initStoreUI(): void {
   setupThemeChangeListener();
   setupKeyboardListeners();
 
-  loadUserRatings();
-  loadUserInstalls();
+  await Promise.all([loadUserRatings(), loadUserInstalls()]);
   setTimeout(checkForThemeUpdates, 500);
 }
 
