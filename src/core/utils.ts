@@ -1,7 +1,3 @@
-import { DEFAULT_LINE_SYNCED_WORD_DELAY_MS } from "@constants";
-import { cachedDurations, cachedProperties } from "@modules/ui/animationEngine";
-import * as App from "@/index";
-import { AppState } from "@/index";
 import { getStorage } from "./storage";
 
 /**
@@ -28,6 +24,13 @@ export function setUpLog() {
   });
 }
 
+const LOG_SOURCE_MAX_LENGTH = 500;
+
+export function truncateSource(source: string): string {
+  if (source.length <= LOG_SOURCE_MAX_LENGTH) return source;
+  return source.slice(0, LOG_SOURCE_MAX_LENGTH) + `... (${source.length} chars total)`;
+}
+
 /**
  * Converts time string in MM:SS format to total seconds.
  */
@@ -42,78 +45,6 @@ export function timeToInt(time: string): number {
  */
 export function unEntity(str: string): string {
   return str.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
-}
-
-/**
- * Applies custom CSS to the page by creating or updating a style tag.
- */
-export function applyCustomCSS(css: string): void {
-  let config = parseBlyricsConfig(css);
-
-  let needsLyricReload = false;
-
-  let disableRichSync = config.get("blyrics-disable-richsync") === "true";
-  if (disableRichSync !== AppState.animationSettings.disableRichSynchronization) {
-    needsLyricReload = true;
-    AppState.animationSettings.disableRichSynchronization = disableRichSync;
-  }
-
-  let lineSyncedAnimationDelayMs = Number(
-    config.get("blyrics-line-synced-animation-delay") || DEFAULT_LINE_SYNCED_WORD_DELAY_MS
-  );
-  if (lineSyncedAnimationDelayMs !== AppState.animationSettings.lineSyncedWordDelayMs) {
-    needsLyricReload = true;
-    AppState.animationSettings.lineSyncedWordDelayMs = lineSyncedAnimationDelayMs;
-  }
-
-  if (needsLyricReload) {
-    App.reloadLyrics();
-  }
-
-  let styleTag = document.getElementById("blyrics-custom-style");
-  if (styleTag) {
-    styleTag.textContent = css;
-  } else {
-    styleTag = document.createElement("style");
-    styleTag.id = "blyrics-custom-style";
-    styleTag.textContent = css;
-    document.head.appendChild(styleTag);
-  }
-  cachedDurations.clear();
-  cachedProperties.clear();
-}
-
-/**
- * Parses 'blyrics' configuration options strictly from CSS comments.
- * First extracts comments, then looks for: blyrics-key = value;
- * @param cssContent - The raw CSS string to parse
- * @returns A Map containing the parsed keys and their values (boolean or string)
- */
-function parseBlyricsConfig(cssContent: string): Map<string, string> {
-  const configMap = new Map<string, string>();
-
-  // Regex to match CSS comments: /* ... */
-  // [\s\S]*? matches any character (including newlines) non-greedily until the closing */
-  const commentRegex = /\/\*([\s\S]*?)\*\//g;
-
-  // Regex to match config lines: blyrics-key = value;
-  const configRegex = /(blyrics-[\w-]+)\s*=\s*([^;]+);/g;
-
-  let commentMatch;
-
-  while ((commentMatch = commentRegex.exec(cssContent)) !== null) {
-    const commentContent = commentMatch[1];
-    let configMatch;
-
-    // Search for config patterns within the extracted comment text
-    while ((configMatch = configRegex.exec(commentContent)) !== null) {
-      const key = configMatch[1];
-      let value = configMatch[2].trim();
-      configMap.set(key, value);
-    }
-  }
-
-  return configMap;
 }
 
 /**

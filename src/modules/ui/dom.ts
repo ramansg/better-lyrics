@@ -1,8 +1,27 @@
-import * as Constants from "@constants";
+import {
+  ALBUM_ART_ADDED_FROM_MUTATION_LOG,
+  ALBUM_ART_ADDED_LOG,
+  ALBUM_ART_REMOVED_LOG,
+  DISCORD_INVITE_URL,
+  DISCORD_LOGO_SRC,
+  FONT_LINK,
+  FOOTER_CLASS,
+  FOOTER_NOT_VISIBLE_LOG,
+  LOADER_ANIMATION_END_FAILED,
+  LOADER_TRANSITION_ENDED,
+  LRCLIB_UPLOAD_URL,
+  LYRICS_CLASS,
+  LYRICS_LOADER_ID,
+  LYRICS_WRAPPER_CREATED_LOG,
+  LYRICS_WRAPPER_ID,
+  NO_LYRICS_TEXT_SELECTOR,
+  SONG_IMAGE_SELECTOR,
+  TAB_RENDERER_SELECTOR,
+} from "@constants";
 import { animEngineState, getResumeScrollElement, reflow, toMs } from "@modules/ui/animationEngine";
-import * as Utils from "@utils";
+import { log } from "@utils";
 import { AppState } from "@/index";
-import * as Observer from "./observer";
+import { scrollEventHandler } from "./observer";
 
 let backgroundChangeObserver: MutationObserver | null = null;
 let lyricsObserver: MutationObserver | null = null;
@@ -13,12 +32,12 @@ let lyricsObserver: MutationObserver | null = null;
  * @returns The lyrics wrapper element
  */
 export function createLyricsWrapper(): HTMLElement {
-  const tabRenderer = document.querySelector(Constants.TAB_RENDERER_SELECTOR) as HTMLElement;
+  const tabRenderer = document.querySelector(TAB_RENDERER_SELECTOR) as HTMLElement;
 
-  tabRenderer.removeEventListener("scroll", Observer.scrollEventHandler);
-  tabRenderer.addEventListener("scroll", Observer.scrollEventHandler);
+  tabRenderer.removeEventListener("scroll", scrollEventHandler);
+  tabRenderer.addEventListener("scroll", scrollEventHandler);
 
-  const existingWrapper = document.getElementById(Constants.LYRICS_WRAPPER_ID);
+  const existingWrapper = document.getElementById(LYRICS_WRAPPER_ID);
 
   if (existingWrapper) {
     existingWrapper.innerHTML = "";
@@ -28,10 +47,10 @@ export function createLyricsWrapper(): HTMLElement {
   }
 
   const wrapper = document.createElement("div");
-  wrapper.id = Constants.LYRICS_WRAPPER_ID;
+  wrapper.id = LYRICS_WRAPPER_ID;
   tabRenderer.appendChild(wrapper);
 
-  Utils.log(Constants.LYRICS_WRAPPER_CREATED_LOG);
+  log(LYRICS_WRAPPER_CREATED_LOG);
   return wrapper;
 }
 
@@ -53,13 +72,13 @@ export function addFooter(
   album: string,
   duration: number
 ): void {
-  if (document.getElementsByClassName(Constants.FOOTER_CLASS).length !== 0) {
-    document.getElementsByClassName(Constants.FOOTER_CLASS)[0].remove();
+  if (document.getElementsByClassName(FOOTER_CLASS).length !== 0) {
+    document.getElementsByClassName(FOOTER_CLASS)[0].remove();
   }
 
-  const lyricsElement = document.getElementsByClassName(Constants.LYRICS_CLASS)[0];
+  const lyricsElement = document.getElementsByClassName(LYRICS_CLASS)[0];
   const footer = document.createElement("div");
-  footer.classList.add(Constants.FOOTER_CLASS);
+  footer.classList.add(FOOTER_CLASS);
   lyricsElement.appendChild(footer);
   createFooter(song, artist, album, duration);
 
@@ -80,11 +99,11 @@ export function addFooter(
  */
 export function createFooter(song: string, artist: string, album: string, duration: number): void {
   try {
-    const footer = document.getElementsByClassName(Constants.FOOTER_CLASS)[0] as HTMLElement;
+    const footer = document.getElementsByClassName(FOOTER_CLASS)[0] as HTMLElement;
     footer.innerHTML = "";
 
     const footerContainer = document.createElement("div");
-    footerContainer.className = `${Constants.FOOTER_CLASS}__container`;
+    footerContainer.className = `${FOOTER_CLASS}__container`;
 
     const footerImage = document.createElement("img");
     footerImage.src = "https://better-lyrics.boidu.dev/icon-512.png";
@@ -102,23 +121,23 @@ export function createFooter(song: string, artist: string, album: string, durati
     footerContainer.appendChild(footerLink);
 
     const discordImage = document.createElement("img");
-    discordImage.src = Constants.DISCORD_LOGO_SRC;
+    discordImage.src = DISCORD_LOGO_SRC;
     discordImage.alt = "Better Lyrics Discord";
     discordImage.width = 20;
     discordImage.height = 20;
 
     const discordLink = document.createElement("a");
-    discordLink.className = `${Constants.FOOTER_CLASS}__discord`;
-    discordLink.href = Constants.DISCORD_INVITE_URL;
+    discordLink.className = `${FOOTER_CLASS}__discord`;
+    discordLink.href = DISCORD_INVITE_URL;
     discordLink.target = "_blank";
 
     discordLink.appendChild(discordImage);
 
     const addLyricsContainer = document.createElement("div");
-    addLyricsContainer.className = `${Constants.FOOTER_CLASS}__container`;
+    addLyricsContainer.className = `${FOOTER_CLASS}__container`;
 
     const addLyricsLink = document.createElement("a");
-    const url = new URL(Constants.LRCLIB_UPLOAD_URL);
+    const url = new URL(LRCLIB_UPLOAD_URL);
     if (song) url.searchParams.append("title", song);
     if (artist) url.searchParams.append("artist", artist);
     if (album) url.searchParams.append("album", album);
@@ -138,7 +157,7 @@ export function createFooter(song: string, artist: string, album: string, durati
 
     footer.removeAttribute("is-empty");
   } catch (_err) {
-    Utils.log(Constants.FOOTER_NOT_VISIBLE_LOG);
+    log(FOOTER_NOT_VISIBLE_LOG);
   }
 }
 
@@ -154,11 +173,11 @@ export function renderLoader(small = false): void {
   loaderMayBeActive = true;
   try {
     clearTimeout(AppState.loaderAnimationEndTimeout);
-    const tabRenderer = document.querySelector(Constants.TAB_RENDERER_SELECTOR) as HTMLElement;
-    let loaderWrapper = document.getElementById(Constants.LYRICS_LOADER_ID);
+    const tabRenderer = document.querySelector(TAB_RENDERER_SELECTOR) as HTMLElement;
+    let loaderWrapper = document.getElementById(LYRICS_LOADER_ID);
     if (!loaderWrapper) {
       loaderWrapper = document.createElement("div");
-      loaderWrapper.id = Constants.LYRICS_LOADER_ID;
+      loaderWrapper.id = LYRICS_LOADER_ID;
     }
     let wasActive = loaderWrapper.hasAttribute("active");
     loaderWrapper.setAttribute("active", "");
@@ -182,7 +201,7 @@ export function renderLoader(small = false): void {
       });
     }
   } catch (err) {
-    Utils.log(err);
+    log(err);
   }
 }
 
@@ -191,7 +210,7 @@ export function renderLoader(small = false): void {
  */
 export function flushLoader(showNoSyncAvailable = false): void {
   try {
-    const loaderWrapper = document.getElementById(Constants.LYRICS_LOADER_ID);
+    const loaderWrapper = document.getElementById(LYRICS_LOADER_ID);
 
     if (loaderWrapper && showNoSyncAvailable) {
       loaderWrapper.setAttribute("small-loader", "");
@@ -208,7 +227,7 @@ export function flushLoader(showNoSyncAvailable = false): void {
         loaderWrapper.dataset.animatingOut = "false";
         loaderMayBeActive = false;
         loaderWrapper.removeEventListener("transitionend", handleTransitionEnd);
-        Utils.log(Constants.LOADER_TRANSITION_ENDED);
+        log(LOADER_TRANSITION_ENDED);
       });
 
       let timeout = 1000;
@@ -220,11 +239,11 @@ export function flushLoader(showNoSyncAvailable = false): void {
       AppState.loaderAnimationEndTimeout = window.setTimeout(() => {
         loaderWrapper.dataset.animatingOut = String(false);
         loaderMayBeActive = false;
-        Utils.log(Constants.LOADER_ANIMATION_END_FAILED);
+        log(LOADER_ANIMATION_END_FAILED);
       }, timeout);
     }
   } catch (err) {
-    Utils.log(err);
+    log(err);
   }
 }
 
@@ -238,12 +257,12 @@ export function isLoaderActive(): boolean {
     if (!loaderMayBeActive) {
       return false;
     }
-    const loaderWrapper = document.getElementById(Constants.LYRICS_LOADER_ID);
+    const loaderWrapper = document.getElementById(LYRICS_LOADER_ID);
     if (loaderWrapper) {
       return loaderWrapper.hasAttribute("active") || loaderWrapper.dataset.animatingOut === "true";
     }
   } catch (err) {
-    Utils.log(err);
+    log(err);
   }
   return false;
 }
@@ -253,12 +272,12 @@ export function isLoaderActive(): boolean {
  */
 export function clearLyrics(): void {
   try {
-    const lyricsWrapper = document.getElementById(Constants.LYRICS_WRAPPER_ID);
+    const lyricsWrapper = document.getElementById(LYRICS_WRAPPER_ID);
     if (lyricsWrapper) {
       lyricsWrapper.innerHTML = "";
     }
   } catch (err) {
-    Utils.log(err);
+    log(err);
   }
 }
 
@@ -276,7 +295,7 @@ export function addAlbumArtToLayout(videoId: string): void {
   }
 
   const injectAlbumArtFn = () => {
-    const albumArt = document.querySelector(Constants.SONG_IMAGE_SELECTOR) as HTMLImageElement;
+    const albumArt = document.querySelector(SONG_IMAGE_SELECTOR) as HTMLImageElement;
     if (albumArt.src.startsWith("data:image")) {
       injectAlbumArt("https://img.youtube.com/vi/" + videoId + "/0.jpg");
     } else {
@@ -284,17 +303,17 @@ export function addAlbumArtToLayout(videoId: string): void {
     }
   };
 
-  const albumArt = document.querySelector(Constants.SONG_IMAGE_SELECTOR) as HTMLImageElement;
+  const albumArt = document.querySelector(SONG_IMAGE_SELECTOR) as HTMLImageElement;
   const observer = new MutationObserver(() => {
     injectAlbumArtFn();
-    Utils.log(Constants.ALBUM_ART_ADDED_FROM_MUTATION_LOG);
+    log(ALBUM_ART_ADDED_FROM_MUTATION_LOG);
   });
 
   observer.observe(albumArt, { attributes: true });
   backgroundChangeObserver = observer;
 
   injectAlbumArtFn();
-  Utils.log(Constants.ALBUM_ART_ADDED_LOG);
+  log(ALBUM_ART_ADDED_LOG);
 }
 
 /**
@@ -322,7 +341,7 @@ export function removeAlbumArtFromLayout(): void {
   const layout = document.getElementById("layout");
   if (layout) {
     layout.style.removeProperty("--blyrics-background-img");
-    Utils.log(Constants.ALBUM_ART_REMOVED_LOG);
+    log(ALBUM_ART_REMOVED_LOG);
   }
 }
 
@@ -335,7 +354,7 @@ export function removeAlbumArtFromLayout(): void {
  * @param duration - Song duration in seconds
  */
 export function addNoLyricsButton(song: string, artist: string, album: string, duration: number): void {
-  const lyricsWrapper = document.getElementById(Constants.LYRICS_WRAPPER_ID);
+  const lyricsWrapper = document.getElementById(LYRICS_WRAPPER_ID);
   if (!lyricsWrapper) return;
 
   const buttonContainer = document.createElement("div");
@@ -345,7 +364,7 @@ export function addNoLyricsButton(song: string, artist: string, album: string, d
   addLyricsButton.className = "blyrics-add-lyrics-button";
   addLyricsButton.textContent = "Add Lyrics to LRCLib";
 
-  const url = new URL(Constants.LRCLIB_UPLOAD_URL);
+  const url = new URL(LRCLIB_UPLOAD_URL);
   if (song) url.searchParams.append("title", song);
   if (artist) url.searchParams.append("artist", artist);
   if (album) url.searchParams.append("album", album);
@@ -373,7 +392,7 @@ export async function injectHeadTags(): Promise<void> {
   document.head.appendChild(imagePreload);
 
   const fontLink = document.createElement("link");
-  fontLink.href = Constants.FONT_LINK;
+  fontLink.href = FONT_LINK;
   fontLink.rel = "stylesheet";
   document.head.appendChild(fontLink);
 
@@ -409,12 +428,12 @@ export function cleanup(): void {
     lyricsObserver = null;
   }
 
-  const ytMusicLyrics = (document.querySelector(Constants.NO_LYRICS_TEXT_SELECTOR) as HTMLElement)?.parentElement;
+  const ytMusicLyrics = (document.querySelector(NO_LYRICS_TEXT_SELECTOR) as HTMLElement)?.parentElement;
   if (ytMusicLyrics) {
     ytMusicLyrics.style.display = "";
   }
 
-  const blyricsFooter = document.getElementsByClassName(Constants.FOOTER_CLASS)[0];
+  const blyricsFooter = document.getElementsByClassName(FOOTER_CLASS)[0];
 
   if (blyricsFooter) {
     blyricsFooter.remove();

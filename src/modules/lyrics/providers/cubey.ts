@@ -26,7 +26,7 @@ function handleTurnstile(): Promise<string> {
 
       switch (event.data.type) {
         case "turnstile-token":
-          Utils.log("[BetterLyrics] ✅ Received Success Token:", event.data.token);
+          log("[BetterLyrics] ✅ Received Success Token:", event.data.token);
           cleanup();
           resolve(event.data.token);
           break;
@@ -73,7 +73,7 @@ export type CubeyLyricSourceResult = LyricSourceResult & {
   song: string;
 };
 
-import * as Utils from "@core/utils";
+import { log } from "@core/utils";
 import { lrcFixers, parseLRC, parsePlainLyrics } from "./lrcUtils";
 import { fillTtml } from "@modules/lyrics/providers/blyrics/blyrics";
 
@@ -106,23 +106,23 @@ export default async function cubey(providerParameters: ProviderParameters): Pro
     }
 
     if (forceNew) {
-      Utils.log("[BetterLyrics] Forcing new token, removing any existing one.");
+      log("[BetterLyrics] Forcing new token, removing any existing one.");
       await chrome.storage.local.remove("jwtToken");
     } else {
       const storedData = await chrome.storage.local.get("jwtToken");
       if (storedData.jwtToken) {
         if (isJwtExpired(storedData.jwtToken)) {
-          Utils.log("[BetterLyrics]Local JWT has expired. Removing and requesting a new one.");
+          log("[BetterLyrics]Local JWT has expired. Removing and requesting a new one.");
           await chrome.storage.local.remove("jwtToken");
         } else {
-          Utils.log("[BetterLyrics] 🔑 Using valid, non-expired JWT for bypass.");
+          log("[BetterLyrics] 🔑 Using valid, non-expired JWT for bypass.");
           return storedData.jwtToken;
         }
       }
     }
 
     try {
-      Utils.log("[BetterLyrics] No valid JWT found, initiating Turnstile challenge...");
+      log("[BetterLyrics] No valid JWT found, initiating Turnstile challenge...");
       const turnstileToken = await handleTurnstile();
 
       const response = await fetch(CUBEY_LYRICS_API_URL + "verify-turnstile", {
@@ -140,7 +140,7 @@ export default async function cubey(providerParameters: ProviderParameters): Pro
       if (!newJwt) throw new Error("No JWT returned from API after verification.");
 
       await chrome.storage.local.set({ jwtToken: newJwt });
-      Utils.log("[BetterLyrics] ✅ New JWT received and stored.");
+      log("[BetterLyrics] ✅ New JWT received and stored.");
       return newJwt;
     } catch (error) {
       console.error("[BetterLyrics] Authentication process failed:", error);
@@ -203,7 +203,7 @@ export default async function cubey(providerParameters: ProviderParameters): Pro
       return;
     }
 
-    Utils.log("[BetterLyrics] Retrying API call with new token...");
+    log("[BetterLyrics] Retrying API call with new token...");
     response = await makeApiCall(jwt);
   }
 
@@ -218,7 +218,7 @@ export default async function cubey(providerParameters: ProviderParameters): Pro
   const responseData = await response.json();
 
   if (responseData.album) {
-    Utils.log("[BetterLyrics] Found Album: " + responseData.album);
+    log("[BetterLyrics] Found Album: " + responseData.album);
   }
 
   if (responseData.musixmatchWordByWordLyrics) {

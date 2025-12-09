@@ -10,22 +10,7 @@ import type {
 const REGISTRY_BASE = "https://raw.githubusercontent.com/better-lyrics/themes/master";
 const DEFAULT_TIMEOUT_MS = 10000;
 
-const REGISTRY_ORIGINS = [
-  "https://raw.githubusercontent.com/better-lyrics/*",
-  "https://better-lyrics-themes-api.boidu.dev/*",
-];
-
-const URL_INSTALL_ORIGINS = ["https://raw.githubusercontent.com/*", "https://api.github.com/*"];
-
-interface BranchCacheEntry {
-  branch: string;
-  timestamp: number;
-}
-
-const BRANCH_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const repoBranchCache = new Map<string, BranchCacheEntry>();
-
-async function fetchWithTimeout(
+export async function fetchWithTimeout(
   url: string,
   options: RequestInit = {},
   timeoutMs = DEFAULT_TIMEOUT_MS
@@ -43,6 +28,21 @@ async function fetchWithTimeout(
     clearTimeout(timeoutId);
   }
 }
+
+const REGISTRY_ORIGINS = [
+  "https://raw.githubusercontent.com/better-lyrics/*",
+  "https://better-lyrics-themes-api.boidu.dev/*",
+];
+
+const URL_INSTALL_ORIGINS = ["https://raw.githubusercontent.com/*", "https://api.github.com/*"];
+
+interface BranchCacheEntry {
+  branch: string;
+  timestamp: number;
+}
+
+const BRANCH_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const repoBranchCache = new Map<string, BranchCacheEntry>();
 
 function getRawGitHubUrl(repo: string, branch: string, path: string, bustCache = true): string {
   const base = `https://raw.githubusercontent.com/${repo}/${branch}/${path}`;

@@ -1,14 +1,9 @@
 import { compileWithDetails, type CompileError as RicsError, type CompileWarning as RicsWarning } from "rics";
+import { truncateSource } from "@utils";
 
 const COMPILE_TIMEOUT = 3000;
 const MAX_ITERATIONS = 10000;
 const HARD_TIMEOUT = 5000;
-const LOG_SOURCE_MAX_LENGTH = 500;
-
-function truncateSource(source: string): string {
-  if (source.length <= LOG_SOURCE_MAX_LENGTH) return source;
-  return source.slice(0, LOG_SOURCE_MAX_LENGTH) + `... (${source.length} chars total)`;
-}
 
 function suppressConsoleDuringCompile<T>(fn: () => T): T {
   const original = { log: console.log, warn: console.warn, error: console.error };

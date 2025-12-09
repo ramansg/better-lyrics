@@ -1,5 +1,6 @@
 import { LOG_PREFIX_EDITOR } from "@constants";
 import { compressString, decompressString, isCompressed } from "@core/compression";
+import { loadChunkedStyles } from "@core/storage";
 import type { InstalledStoreTheme } from "../../store/types";
 import { CHUNK_SIZE, LOCAL_STORAGE_SAFE_LIMIT, MAX_RETRY_ATTEMPTS, SYNC_STORAGE_LIMIT } from "../core/editor";
 import { editorStateManager } from "../core/state";
@@ -98,29 +99,6 @@ async function saveChunkedCSS(css: string): Promise<void> {
   console.log(LOG_PREFIX_EDITOR, `Storage usage after save: ${finalUsage.used} / ${finalUsage.total} bytes`);
 }
 
-async function loadChunkedCSS(): Promise<string | null> {
-  const metadata = await chrome.storage.local.get(["customCSS_chunked", "customCSS_chunkCount"]);
-
-  if (!metadata.customCSS_chunked || !metadata.customCSS_chunkCount) {
-    return null;
-  }
-
-  const chunkKeys = Array.from({ length: metadata.customCSS_chunkCount }, (_, i) => `customCSS_chunk_${i}`);
-  const chunksData = await chrome.storage.local.get(chunkKeys);
-
-  const chunks: string[] = [];
-  for (let i = 0; i < metadata.customCSS_chunkCount; i++) {
-    const chunk = chunksData[`customCSS_chunk_${i}`];
-    if (!chunk) {
-      console.error(`Missing chunk ${i}`);
-      return null;
-    }
-    chunks.push(chunk);
-  }
-
-  return chunks.join("");
-}
-
 export const getStorageStrategy = (css: string): "local" | "sync" | "chunked" => {
   const cssSize = new Blob([css]).size;
   if (cssSize > LOCAL_STORAGE_SAFE_LIMIT) {
@@ -199,7 +177,7 @@ export async function loadCustomCSS(): Promise<string> {
     const syncData = await chrome.storage.sync.get(["cssStorageType", "customCSS", "cssCompressed"]);
 
     if (syncData.cssStorageType === "chunked") {
-      css = await loadChunkedCSS();
+      css = await loadChunkedStyles();
       compressed = syncData.cssCompressed || false;
     } else if (syncData.cssStorageType === "local") {
       const localData = await chrome.storage.local.get(["customCSS", "cssCompressed"]);
@@ -212,9 +190,9 @@ export async function loadCustomCSS(): Promise<string> {
   } catch (error) {
     console.error("Error loading CSS:", error);
     try {
-      const chunkedCSS = await loadChunkedCSS();
-      if (chunkedCSS) {
-        css = chunkedCSS;
+      const chunkedStyles = await loadChunkedStyles();
+      if (chunkedStyles) {
+        css = chunkedStyles;
         const syncData = await chrome.storage.sync.get("cssCompressed");
         compressed = syncData.cssCompressed || false;
       } else {

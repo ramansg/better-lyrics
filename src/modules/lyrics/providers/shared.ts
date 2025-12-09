@@ -1,11 +1,11 @@
-import * as Constants from "@constants";
-import * as Utils from "@utils";
+import { LYRIC_SOURCE_KEYS, PROVIDER_SWITCHED_LOG } from "@constants";
+import { log } from "@utils";
 import bLyrics from "./blyrics/blyrics";
 import cubey, { type CubeyLyricSourceResult } from "./cubey";
 import lyricLib from "./lrclib";
 import ytLyrics, { type YTLyricSourceResult } from "./yt";
 import { ytCaptions } from "./ytCaptions";
-import * as Storage from "@core/storage";
+import { getTransientStorage, setTransientStorage } from "@core/storage";
 
 /** Current version of the lyrics cache format */
 const LYRIC_CACHE_VERSION = "2.0.0";
@@ -105,7 +105,7 @@ let defaultPreferredProviderList: LyricSourceKey[] = [
 ] as const;
 
 function isLyricSourceKey(provider: string): provider is LyricSourceKey {
-  return (Constants.LYRIC_SOURCE_KEYS as readonly string[]).includes(provider);
+  return (LYRIC_SOURCE_KEYS as readonly string[]).includes(provider);
 }
 
 export let providerPriority: LyricSourceKey[] = [];
@@ -120,13 +120,13 @@ export function initProviders(): void {
 
     if (!isValid) {
       activeProviderList = [...defaultPreferredProviderList];
-      Utils.log("Invalid preferred provider list, resetting to default");
+      log("Invalid preferred provider list, resetting to default");
     }
 
     // Use the type guard. The resulting array is known to be LyricSourceKey[]
     const finalProviderList = activeProviderList.filter(isLyricSourceKey);
 
-    Utils.log(Constants.PROVIDER_SWITCHED_LOG, finalProviderList);
+    log(PROVIDER_SWITCHED_LOG, finalProviderList);
     providerPriority = finalProviderList;
   };
 
@@ -181,7 +181,7 @@ export async function getLyrics(
   if (!lyricSource.filled) {
     // Check cache first
     const cacheKey = `blyrics_${providerParameters.videoId}_${sourceName}`;
-    const cachedData = await Storage.getTransientStorage(cacheKey);
+    const cachedData = await getTransientStorage(cacheKey);
     if (cachedData) {
       const data = JSON.parse(cachedData);
       if (data && data.version && data.version === LYRIC_CACHE_VERSION) {
@@ -207,7 +207,7 @@ export async function getLyrics(
         ...source.lyricSourceResult,
       };
       const cacheTime = 7 * 24 * 60 * 60 * 1000;
-      Storage.setTransientStorage(cacheKey, JSON.stringify(versionedData), cacheTime);
+      setTransientStorage(cacheKey, JSON.stringify(versionedData), cacheTime);
     }
   });
 

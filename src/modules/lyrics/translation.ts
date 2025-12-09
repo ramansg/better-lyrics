@@ -1,6 +1,6 @@
-import * as Constants from "@constants";
-import * as Storage from "@core/storage";
-import * as Utils from "@utils";
+import { TRANSLATE_IN_ROMAJI, TRANSLATE_LYRICS_URL, TRANSLATION_ERROR_LOG } from "@constants";
+import { getStorage } from "@core/storage";
+import { log } from "@utils";
 
 export interface TranslationResult {
   originalLanguage: string;
@@ -18,7 +18,7 @@ let cache: Cache = {
 };
 
 export async function translateText(text: string, targetLanguage: string): Promise<TranslationResult | null> {
-  let url = Constants.TRANSLATE_LYRICS_URL(targetLanguage, text);
+  let url = TRANSLATE_LYRICS_URL(targetLanguage, text);
 
   const cacheKey = `${targetLanguage}_${text}`;
   if (cache.translation.has(cacheKey)) {
@@ -43,7 +43,7 @@ export async function translateText(text: string, targetLanguage: string): Promi
       }
     })
     .catch(error => {
-      Utils.log(Constants.TRANSLATION_ERROR_LOG, error);
+      log(TRANSLATION_ERROR_LOG, error);
       return null;
     });
 }
@@ -54,7 +54,7 @@ export async function translateTextIntoRomaji(lang: string, text: string): Promi
     return cache.romanization.get(cacheKey) as string;
   }
 
-  let url = Constants.TRANSLATE_IN_ROMAJI(lang, text);
+  let url = TRANSLATE_IN_ROMAJI(lang, text);
   return fetch(url, {
     cache: "force-cache",
   })
@@ -72,13 +72,13 @@ export async function translateTextIntoRomaji(lang: string, text: string): Promi
       }
     })
     .catch(error => {
-      Utils.log(Constants.TRANSLATION_ERROR_LOG, error);
+      log(TRANSLATION_ERROR_LOG, error);
       return null;
     });
 }
 
 export function onRomanizationEnabled(callback: (items: { isRomanizationEnabled: boolean }) => void): void {
-  Storage.getStorage({ isRomanizationEnabled: false }, items => {
+  getStorage({ isRomanizationEnabled: false }, items => {
     if (items.isRomanizationEnabled) {
       callback(items as { isRomanizationEnabled: boolean });
     }
@@ -88,7 +88,7 @@ export function onRomanizationEnabled(callback: (items: { isRomanizationEnabled:
 export function onTranslationEnabled(
   callback: (items: { isTranslateEnabled: boolean; translationLanguage: string }) => void
 ): void {
-  Storage.getStorage({ isTranslateEnabled: false, translationLanguage: "en" }, items => {
+  getStorage({ isTranslateEnabled: false, translationLanguage: "en" }, items => {
     if (items.isTranslateEnabled) {
       callback(items as { isTranslateEnabled: boolean; translationLanguage: string });
     }

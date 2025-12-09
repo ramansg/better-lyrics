@@ -1,11 +1,11 @@
-import * as Constants from "@constants";
-import * as Storage from "@core/storage";
-import * as Utils from "@core/utils";
+import { LOG_PREFIX_CONTENT, LYRICS_DISABLED_ATTR } from "@constants";
+import { clearCache, compileRicsToStyles, getStorage } from "@core/storage";
+import { log, setUpLog } from "@core/utils";
+import { applyCustomStyles, getAndApplyCustomStyles } from "@modules/ui/styleInjector";
 import { calculateLyricPositions } from "@modules/lyrics/injectLyrics";
-import * as Translation from "@modules/lyrics/translation";
-import * as DOM from "@modules/ui/dom";
-import * as BetterLyrics from "@/index";
-import { AppState } from "@/index";
+import { clearCache as clearTranslationCache } from "@modules/lyrics/translation";
+import { removeAlbumArtFromLayout } from "@modules/ui/dom";
+import { reloadLyrics, AppState } from "@/index";
 
 type EnableDisableCallback = () => void;
 
@@ -20,8 +20,8 @@ export function handleSettings(): void {
       const playerPage = document.getElementById("player-page");
 
       if (layout && playerPage) {
-        layout.setAttribute(Constants.LYRICS_DISABLED_ATTR, "");
-        playerPage.setAttribute(Constants.LYRICS_DISABLED_ATTR, "");
+        layout.setAttribute(LYRICS_DISABLED_ATTR, "");
+        playerPage.setAttribute(LYRICS_DISABLED_ATTR, "");
       }
     },
     () => {
@@ -29,8 +29,8 @@ export function handleSettings(): void {
       const playerPage = document.getElementById("player-page");
 
       if (layout && playerPage) {
-        layout.removeAttribute(Constants.LYRICS_DISABLED_ATTR);
-        playerPage.removeAttribute(Constants.LYRICS_DISABLED_ATTR);
+        layout.removeAttribute(LYRICS_DISABLED_ATTR);
+        playerPage.removeAttribute(LYRICS_DISABLED_ATTR);
       }
     }
   );
@@ -58,7 +58,7 @@ export function handleSettings(): void {
 }
 
 export function onAutoSwitchEnabled(enableAutoSwitch: EnableDisableCallback): void {
-  Storage.getStorage({ isAutoSwitchEnabled: false }, items => {
+  getStorage({ isAutoSwitchEnabled: false }, items => {
     if (items.isAutoSwitchEnabled) {
       enableAutoSwitch();
     }
@@ -69,7 +69,7 @@ export function onFullScreenDisabled(
   disableFullScreen: EnableDisableCallback,
   enableFullScreen: EnableDisableCallback
 ): void {
-  Storage.getStorage({ isFullScreenDisabled: false }, items => {
+  getStorage({ isFullScreenDisabled: false }, items => {
     if (items.isFullScreenDisabled) {
       disableFullScreen();
     } else {
@@ -79,7 +79,7 @@ export function onFullScreenDisabled(
 }
 
 export function onAlbumArtEnabled(enableAlbumArt: EnableDisableCallback, disableAlbumArt: EnableDisableCallback): void {
-  Storage.getStorage({ isAlbumArtEnabled: true }, items => {
+  getStorage({ isAlbumArtEnabled: true }, items => {
     if (items.isAlbumArtEnabled) {
       enableAlbumArt();
     } else {
@@ -92,7 +92,7 @@ export function onStylizedAnimationsEnabled(
   enableAnimations: EnableDisableCallback,
   disableAnimations: EnableDisableCallback
 ): void {
-  Storage.getStorage({ isStylizedAnimationsEnabled: true }, items => {
+  getStorage({ isStylizedAnimationsEnabled: true }, items => {
     if (items.isStylizedAnimationsEnabled) {
       enableAnimations();
     } else {
@@ -105,7 +105,7 @@ export function onAutoHideCursor(
   enableCursorAutoHide: EnableDisableCallback,
   disableCursorAutoHide: EnableDisableCallback
 ): void {
-  Storage.getStorage({ isCursorAutoHideEnabled: true }, items => {
+  getStorage({ isCursorAutoHideEnabled: true }, items => {
     if (items.isCursorAutoHideEnabled) {
       enableCursorAutoHide();
     } else {
@@ -161,25 +161,25 @@ export function hideCursorOnIdle(): void {
 
 export function listenForPopupMessages(): void {
   chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
-    Utils.log(Constants.LOG_PREFIX_CONTENT, "Received message:", request.action);
+    log(LOG_PREFIX_CONTENT, "Received message:", request.action);
     if (request.action === "applyStyles") {
-      Utils.log(Constants.LOG_PREFIX_CONTENT, "Processing applyStyles, RICS length:", request.ricsSource?.length);
+      log(LOG_PREFIX_CONTENT, "Processing applyStyles, RICS length:", request.ricsSource?.length);
       if (request.ricsSource) {
-        Utils.log(Constants.LOG_PREFIX_CONTENT, "Compiling RICS and applying styles");
-        const compiledCSS = Storage.compileRicsToCSS(request.ricsSource);
-        Utils.applyCustomCSS(compiledCSS);
+        log(LOG_PREFIX_CONTENT, "Compiling RICS and applying styles");
+        const compiledCSS = compileRicsToStyles(request.ricsSource);
+        applyCustomStyles(compiledCSS);
         calculateLyricPositions();
-        Utils.log(Constants.LOG_PREFIX_CONTENT, "Styles applied successfully");
+        log(LOG_PREFIX_CONTENT, "Styles applied successfully");
       } else {
-        Utils.log(Constants.LOG_PREFIX_CONTENT, "Loading styles from storage");
-        Storage.getAndApplyCustomCSS().then(() => {
+        log(LOG_PREFIX_CONTENT, "Loading styles from storage");
+        getAndApplyCustomStyles().then(() => {
           calculateLyricPositions();
-          Utils.log(Constants.LOG_PREFIX_CONTENT, "Styles loaded from storage and applied");
+          log(LOG_PREFIX_CONTENT, "Styles loaded from storage and applied");
         });
       }
     } else if (request.action === "updateSettings") {
-      Translation.clearCache();
-      Utils.setUpLog();
+      clearTranslationCache();
+      setUpLog();
       hideCursorOnIdle();
       handleSettings();
       loadTranslationSettings();
@@ -188,14 +188,14 @@ export function listenForPopupMessages(): void {
         () => (AppState.shouldInjectAlbumArt = true),
         () => {
           AppState.shouldInjectAlbumArt = false;
-          DOM.removeAlbumArtFromLayout();
+          removeAlbumArtFromLayout();
         }
       );
-      BetterLyrics.reloadLyrics();
+      reloadLyrics();
     } else if (request.action === "clearCache") {
       try {
-        Storage.clearCache();
-        BetterLyrics.reloadLyrics();
+        clearCache();
+        reloadLyrics();
 
         sendResponse({ success: true });
       } catch {
@@ -209,7 +209,7 @@ export function listenForPopupMessages(): void {
  * Loads translation and romanization settings from storage and updates AppState.
  */
 export function loadTranslationSettings(): void {
-  Storage.getStorage({ isTranslateEnabled: false, isRomanizationEnabled: false, translationLanguage: "en" }, items => {
+  getStorage({ isTranslateEnabled: false, isRomanizationEnabled: false, translationLanguage: "en" }, items => {
     AppState.isTranslateEnabled = items.isTranslateEnabled;
     AppState.isRomanizationEnabled = items.isRomanizationEnabled;
     AppState.translationLanguage = items.translationLanguage || "en";

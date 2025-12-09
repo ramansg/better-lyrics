@@ -1,15 +1,20 @@
-import * as Constants from "@constants";
-import { DEFAULT_LINE_SYNCED_WORD_DELAY_MS } from "@constants";
-import * as Storage from "@core/storage";
+import { DEFAULT_LINE_SYNCED_WORD_DELAY_MS, GENERAL_ERROR_LOG, INITIALIZE_LOG } from "@constants";
+import { purgeExpiredKeys, saveCacheInfo } from "@core/storage";
+import { subscribeToCustomStyles } from "@modules/ui/styleInjector";
 import type { LyricsData } from "@modules/lyrics/injectLyrics";
-import * as Lyrics from "@modules/lyrics/lyrics";
+import { createLyrics } from "@modules/lyrics/lyrics";
 import { initProviders } from "@modules/lyrics/providers/shared";
-import * as RequestSniffing from "@modules/lyrics/requestSniffer";
-import * as Settings from "@modules/settings/settings";
-import { animationEngine } from "@modules/ui/animationEngine";
-import * as DOM from "@modules/ui/dom";
-import * as Observer from "@modules/ui/observer";
-import * as Utils from "@utils";
+import { setupRequestSniffer } from "@modules/lyrics/requestSniffer";
+import {
+  handleSettings,
+  hideCursorOnIdle,
+  listenForPopupMessages,
+  loadTranslationSettings,
+  onAlbumArtEnabled,
+} from "@modules/settings/settings";
+import { injectHeadTags } from "@modules/ui/dom";
+import { disableInertWhenFullscreen, enableLyricsTab, initializeLyrics, lyricReloader } from "@modules/ui/observer";
+import { log, setUpLog } from "@utils";
 
 export interface PlayerDetails {
   currentTime: number;
@@ -82,26 +87,26 @@ export let AppState: AppState = {
  * storage, and lyric providers.
  */
 export async function modify(): Promise<void> {
-  Utils.setUpLog();
-  await DOM.injectHeadTags();
-  Observer.enableLyricsTab();
-  Settings.hideCursorOnIdle();
-  Settings.handleSettings();
-  Settings.loadTranslationSettings();
-  Storage.subscribeToCustomCSS();
-  await Storage.purgeExpiredKeys();
-  await Storage.saveCacheInfo();
-  Settings.listenForPopupMessages();
-  Observer.lyricReloader();
-  Observer.initializeLyrics();
-  Observer.disableInertWhenFullscreen();
+  setUpLog();
+  await injectHeadTags();
+  enableLyricsTab();
+  hideCursorOnIdle();
+  handleSettings();
+  loadTranslationSettings();
+  subscribeToCustomStyles();
+  await purgeExpiredKeys();
+  await saveCacheInfo();
+  listenForPopupMessages();
+  lyricReloader();
+  initializeLyrics();
+  disableInertWhenFullscreen();
   initProviders();
-  Utils.log(
-    Constants.INITIALIZE_LOG,
+  log(
+    INITIALIZE_LOG,
     "background: rgba(10,11,12,1) ; color: rgba(214, 250, 214,1) ; padding: 0.5rem 0.75rem; border-radius: 0.5rem; font-size: 1rem; "
   );
 
-  Settings.onAlbumArtEnabled(
+  onAlbumArtEnabled(
     () => (AppState.shouldInjectAlbumArt = true),
     () => (AppState.shouldInjectAlbumArt = false)
   );
@@ -122,8 +127,8 @@ export function handleModifications(detail: PlayerDetails): void {
     });
   } else {
     AppState.lyricAbortController = new AbortController();
-    AppState.lyricInjectionPromise = Lyrics.createLyrics(detail, AppState.lyricAbortController.signal).catch(err => {
-      Utils.log(Constants.GENERAL_ERROR_LOG, err);
+    AppState.lyricInjectionPromise = createLyrics(detail, AppState.lyricAbortController.signal).catch(err => {
+      log(GENERAL_ERROR_LOG, err);
       AppState.areLyricsLoaded = false;
       AppState.lyricInjectionFailed = true;
     });
@@ -149,4 +154,4 @@ export function init(): void {
 // Initialize the application
 init();
 
-RequestSniffing.setupRequestSniffer();
+setupRequestSniffer();

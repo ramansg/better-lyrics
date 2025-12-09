@@ -1,5 +1,5 @@
-import * as Constants from "@constants";
-import * as Utils from "@utils";
+import { MUSIC_NOTES } from "@constants";
+import { log } from "@utils";
 import type { LyricsArray, ProviderParameters } from "./shared";
 
 export async function ytCaptions(providerParameters: ProviderParameters): Promise<void> {
@@ -24,7 +24,7 @@ export async function ytCaptions(providerParameters: ProviderParameters): Promis
   }
 
   if (!langCode) {
-    Utils.log("Found Caption Tracks, but couldn't determine the default", audioTrackData);
+    log("Found Caption Tracks, but couldn't determine the default", audioTrackData);
     providerParameters.sourceMap["yt-captions"].filled = true;
     providerParameters.sourceMap["yt-captions"].lyricSourceResult = null;
   }
@@ -39,7 +39,7 @@ export async function ytCaptions(providerParameters: ProviderParameters): Promis
   }
 
   if (!captionsUrl) {
-    Utils.log("Only found auto generated lyrics for youtube captions, not using", audioTrackData);
+    log("Only found auto generated lyrics for youtube captions, not using", audioTrackData);
     providerParameters.sourceMap["yt-captions"].filled = true;
     providerParameters.sourceMap["yt-captions"].lyricSourceResult = null;
     return;
@@ -61,7 +61,7 @@ export async function ytCaptions(providerParameters: ProviderParameters): Promis
       words += event.segs[segsKey].utf8;
     }
     words = words.replace(/\n/g, " ");
-    for (let c of Constants.MUSIC_NOTES) {
+    for (let c of MUSIC_NOTES) {
       words = words.trim();
       if (words.startsWith(c)) {
         words = words.substring(1);

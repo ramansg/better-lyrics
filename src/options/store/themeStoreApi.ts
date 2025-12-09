@@ -1,7 +1,7 @@
 import type { AllThemeStats, ApiResult, RatingResult } from "./types";
+import { fetchWithTimeout } from "./themeStoreService";
 
 const API_BASE = "https://better-lyrics-themes-api.boidu.dev";
-const DEFAULT_TIMEOUT_MS = 10000;
 const THEME_ID_MAX_LENGTH = 128;
 const THEME_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
@@ -16,25 +16,6 @@ function isValidThemeId(themeId: string): boolean {
 
 function isValidRating(rating: number): boolean {
   return Number.isInteger(rating) && rating >= 1 && rating <= 5;
-}
-
-async function fetchWithTimeout(
-  url: string,
-  options: RequestInit = {},
-  timeoutMs = DEFAULT_TIMEOUT_MS
-): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } catch (err) {
-    if (err instanceof Error && err.name === "AbortError") {
-      throw new Error(`Request timed out after ${timeoutMs}ms`);
-    }
-    throw err;
-  } finally {
-    clearTimeout(timeoutId);
-  }
 }
 
 async function getOdid(): Promise<string> {

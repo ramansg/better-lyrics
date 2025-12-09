@@ -1,5 +1,4 @@
-import * as Utils from "@core/utils";
-import { parseJsonNumber } from "ajv/dist/runtime/parseJson";
+import { log } from "@core/utils";
 import type { LyricPart, LyricsArray } from "./shared";
 
 const possibleIdTags = ["ti", "ar", "al", "au", "lr", "length", "by", "offset", "re", "tool", "ve", "#"];
@@ -146,7 +145,7 @@ export function parseLRC(lrcText: string, songDuration: number): LyricsArray {
     let offset = Number(idTags["offset"]);
     if (isNaN(offset)) {
       offset = 0;
-      Utils.log("[BetterLyrics] Invalid offset in lyrics: " + idTags["offset"]);
+      log("[BetterLyrics] Invalid offset in lyrics: " + idTags["offset"]);
     }
     offset = offset * 1000;
     result.forEach(lyric => {
@@ -207,7 +206,7 @@ export function lrcFixers(lyrics: LyricsArray): void {
     }
   }
   if (durationCount > 0 && shortDurationCount / durationCount > 0.5) {
-    Utils.log("Found a lot of short duration lyrics, fudging durations");
+    log("Found a lot of short duration lyrics, fudging durations");
     for (let i = 0; i < lyrics.length; i++) {
       let lyric = lyrics[i];
       if (!lyric.parts || lyric.parts.length === 0) {

@@ -1,4 +1,4 @@
-import * as Constants from "@constants";
+import { LYRICS_API_URL } from "@constants";
 import type {
   ParagraphElementOrBackground,
   SpanElement,
@@ -177,7 +177,7 @@ export async function fillTtml(responseString: string, providerParameters: Provi
 
 export default async function bLyrics(providerParameters: ProviderParameters): Promise<void> {
   // Fetch from the primary API if cache is empty or invalid
-  const url = new URL(Constants.LYRICS_API_URL);
+  const url = new URL(LYRICS_API_URL);
   url.searchParams.append("s", providerParameters.song);
   url.searchParams.append("a", providerParameters.artist);
   url.searchParams.append("d", String(providerParameters.duration));

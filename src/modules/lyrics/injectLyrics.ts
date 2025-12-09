@@ -1,19 +1,43 @@
-import * as Constants from "@constants";
-import { BACKGROUND_LYRIC_CLASS } from "@constants";
+import {
+  BACKGROUND_LYRIC_CLASS,
+  LYRICS_CLASS,
+  LYRICS_FOUND_LOG,
+  LYRICS_SPACING_ELEMENT_ID,
+  LYRICS_TAB_NOT_DISABLED_LOG,
+  LYRICS_WRAPPER_ID,
+  LYRICS_WRAPPER_NOT_VISIBLE_LOG,
+  NO_LYRICS_FOUND_LOG,
+  NO_LYRICS_TEXT,
+  NO_LYRICS_TEXT_SELECTOR,
+  romanizationLanguages,
+  ROMANIZED_LYRICS_CLASS,
+  RTL_CLASS,
+  SYNC_DISABLED_LOG,
+  TRANSLATED_LYRICS_CLASS,
+  TRANSLATION_ENABLED_LOG,
+  WORD_CLASS,
+  ZERO_DURATION_ANIMATION_CLASS,
+} from "@constants";
 import { containsNonLatin, testRtl } from "@modules/lyrics/lyricParseUtils";
 import { applySegmentMapToLyrics, type LyricSourceResultWithMeta } from "@modules/lyrics/lyrics";
 import type { Lyric, LyricPart } from "@modules/lyrics/providers/shared";
 import type { TranslationResult } from "@modules/lyrics/translation";
-import * as Translation from "@modules/lyrics/translation";
+import {
+  getRomanizationFromCache,
+  getTranslationFromCache,
+  onRomanizationEnabled,
+  onTranslationEnabled,
+  translateText,
+  translateTextIntoRomaji,
+} from "@modules/lyrics/translation";
 import { animEngineState, lyricsElementAdded } from "@modules/ui/animationEngine";
-import * as DOM from "@modules/ui/dom";
-import * as Utils from "@utils";
-import { getRelativeBounds } from "@utils";
+import { addFooter, addNoLyricsButton, cleanup, createLyricsWrapper, flushLoader, renderLoader } from "@modules/ui/dom";
+import { getRelativeBounds, log } from "@utils";
 import { AppState } from "@/index";
 
 const resizeObserver = new ResizeObserver(entries => {
   for (const entry of entries) {
-    if (entry.target.id === Constants.LYRICS_WRAPPER_ID) {
+    if (entry.target.id === LYRICS_WRAPPER_ID) {
       if (AppState.lyricData && entry.target.clientWidth !== AppState.lyricData.lyricWidth) {
         calculateLyricPositions();
       }
@@ -67,21 +91,21 @@ export interface LyricsData {
 export function processLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible = false): void {
   const lyrics = data.lyrics;
   if (!lyrics || lyrics.length === 0) {
-    throw new Error(Constants.NO_LYRICS_FOUND_LOG);
+    throw new Error(NO_LYRICS_FOUND_LOG);
   }
 
-  Utils.log(Constants.LYRICS_FOUND_LOG);
+  log(LYRICS_FOUND_LOG);
 
-  const ytMusicLyrics = document.querySelector(Constants.NO_LYRICS_TEXT_SELECTOR)?.parentElement;
+  const ytMusicLyrics = document.querySelector(NO_LYRICS_TEXT_SELECTOR)?.parentElement;
   if (ytMusicLyrics) {
     ytMusicLyrics.classList.add("blyrics-hidden");
   }
 
   try {
-    const lyricsElement = document.getElementsByClassName(Constants.LYRICS_CLASS)[0] as HTMLElement;
+    const lyricsElement = document.getElementsByClassName(LYRICS_CLASS)[0] as HTMLElement;
     lyricsElement.innerHTML = "";
   } catch (_err) {
-    Utils.log(Constants.LYRICS_TAB_NOT_DISABLED_LOG);
+    log(LYRICS_TAB_NOT_DISABLED_LOG);
   }
 
   injectLyrics(data, keepLoaderVisible);
@@ -105,12 +129,12 @@ function createLyricsLine(parts: LyricPart[], line: LineData, lyricElement: HTML
     }
 
     let span = document.createElement("span");
-    span.classList.add(Constants.WORD_CLASS);
+    span.classList.add(WORD_CLASS);
     if (part.durationMs === 0) {
-      span.classList.add(Constants.ZERO_DURATION_ANIMATION_CLASS);
+      span.classList.add(ZERO_DURATION_ANIMATION_CLASS);
     }
     if (isRtl) {
-      span.classList.add(Constants.RTL_CLASS);
+      span.classList.add(RTL_CLASS);
     }
 
     let partData: PartData = {
@@ -142,7 +166,7 @@ function createLyricsLine(parts: LyricPart[], line: LineData, lyricElement: HTML
 
   //Add remaining rtl elements
   if (isAllRtl && rtlBuffer.length > 0) {
-    lyricElement.classList.add(Constants.RTL_CLASS);
+    lyricElement.classList.add(RTL_CLASS);
     rtlBuffer.forEach(part => {
       lyricElementsBuffer.push(part);
     });
@@ -174,28 +198,28 @@ function createBreakElem(lyricElement: HTMLDivElement, order: number) {
  */
 export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible = false): void {
   const lyrics = data.lyrics!;
-  DOM.cleanup();
+  cleanup();
   resizeObserver.disconnect();
 
-  let lyricsWrapper = DOM.createLyricsWrapper();
+  let lyricsWrapper = createLyricsWrapper();
 
   lyricsWrapper.innerHTML = "";
   const lyricsContainer = document.createElement("div");
-  lyricsContainer.className = Constants.LYRICS_CLASS;
+  lyricsContainer.className = LYRICS_CLASS;
   lyricsWrapper.appendChild(lyricsContainer);
 
   lyricsWrapper.removeAttribute("is-empty");
 
-  Translation.onTranslationEnabled(items => {
-    Utils.log(Constants.TRANSLATION_ENABLED_LOG, items.translationLanguage);
+  onTranslationEnabled(items => {
+    log(TRANSLATION_ENABLED_LOG, items.translationLanguage);
   });
 
   const allZero = lyrics.every(item => item.startTimeMs === 0);
 
   if (keepLoaderVisible) {
-    DOM.renderLoader(true);
+    renderLoader(true);
   } else {
-    DOM.flushLoader(allZero && lyrics[0].words !== Constants.NO_LYRICS_TEXT);
+    flushLoader(allZero && lyrics[0].words !== NO_LYRICS_TEXT);
   }
 
   const langPromise = new Promise<string>(async resolve => {
@@ -209,9 +233,9 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
           break;
         }
       }
-      const translationResult = await Translation.translateText(text, "en");
+      const translationResult = await translateText(text, "en");
       const lang = translationResult?.originalLanguage || "";
-      Utils.log("[BetterLyrics] Lang was missing. Determined it is: " + lang);
+      log("[BetterLyrics] Lang was missing. Determined it is: " + lang);
       return resolve(lang);
     } else {
       resolve(data.language);
@@ -292,17 +316,17 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
     let createRomanizedElem = () => {
       createBreakElem(lyricElement, 4);
       let romanizedLine = document.createElement("div");
-      romanizedLine.classList.add(Constants.ROMANIZED_LYRICS_CLASS);
+      romanizedLine.classList.add(ROMANIZED_LYRICS_CLASS);
       romanizedLine.style.order = "5";
       lyricElement.appendChild(romanizedLine);
       return romanizedLine;
     };
 
-    let romanizedCacheResult = Translation.getRomanizationFromCache(item.words);
+    let romanizedCacheResult = getRomanizationFromCache(item.words);
 
     // Language should always exist if item.timedRomanization exists
     const shouldRomanize =
-      (data.language && Constants.romanizationLanguages.includes(data.language)) || containsNonLatin(item.words);
+      (data.language && romanizationLanguages.includes(data.language)) || containsNonLatin(item.words);
     const canInjectRomanizationsEarly = (shouldRomanize && item.romanization) || romanizedCacheResult !== null;
     if (item.romanization) {
       romanizedCacheResult = item.romanization;
@@ -322,11 +346,11 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
       }
     } else {
       langPromise.then(source_language => {
-        Translation.onRomanizationEnabled(async () => {
+        onRomanizationEnabled(async () => {
           let isNonLatin = containsNonLatin(item.words);
-          if (Constants.romanizationLanguages.includes(source_language) || isNonLatin) {
+          if (romanizationLanguages.includes(source_language) || isNonLatin) {
             let usableLang = source_language;
-            if (isNonLatin && !Constants.romanizationLanguages.includes(source_language)) {
+            if (isNonLatin && !romanizationLanguages.includes(source_language)) {
               usableLang = "auto";
             }
 
@@ -335,7 +359,7 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
               if (item.romanization) {
                 result = item.romanization;
               } else {
-                result = await Translation.translateTextIntoRomaji(usableLang, item.words);
+                result = await translateTextIntoRomaji(usableLang, item.words);
               }
 
               if (result && !isSameText(result, item.words)) {
@@ -351,7 +375,7 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
     let createTranslationElem = () => {
       createBreakElem(lyricElement, 6);
       let translatedLine = document.createElement("div");
-      translatedLine.classList.add(Constants.TRANSLATED_LYRICS_CLASS);
+      translatedLine.classList.add(TRANSLATED_LYRICS_CLASS);
       translatedLine.style.order = "7";
       lyricElement.appendChild(translatedLine);
       return translatedLine;
@@ -367,7 +391,7 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
         translatedText: item.translation.text,
       };
     } else {
-      translationResult = Translation.getTranslationFromCache(item.words, targetTranslationLang);
+      translationResult = getTranslationFromCache(item.words, targetTranslationLang);
     }
 
     if (translationResult && AppState.isTranslateEnabled) {
@@ -376,7 +400,7 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
       }
     } else {
       langPromise.then(source_language => {
-        Translation.onTranslationEnabled(async items => {
+        onTranslationEnabled(async items => {
           let target_language = items.translationLanguage || "en";
 
           if (source_language !== target_language || containsNonLatin(item.words)) {
@@ -388,7 +412,7 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
                   translatedText: item.translation.text,
                 };
               } else {
-                result = await Translation.translateText(item.words, target_language);
+                result = await translateText(item.words, target_language);
               }
 
               if (result && !isSameText(result.translatedText, item.words)) {
@@ -405,7 +429,7 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
       lines.push(line);
       lyricsContainer.appendChild(lyricElement);
     } catch (_err) {
-      Utils.log(Constants.LYRICS_WRAPPER_NOT_VISIBLE_LOG);
+      log(LYRICS_WRAPPER_NOT_VISIBLE_LOG);
     }
   });
 
@@ -416,14 +440,14 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
   }
   animEngineState.scrollResumeTime = 0;
 
-  if (lyrics[0].words !== Constants.NO_LYRICS_TEXT) {
-    DOM.addFooter(data.source, data.sourceHref, data.song, data.artist, data.album, data.duration);
+  if (lyrics[0].words !== NO_LYRICS_TEXT) {
+    addFooter(data.source, data.sourceHref, data.song, data.artist, data.album, data.duration);
   } else {
-    DOM.addNoLyricsButton(data.song, data.artist, data.album, data.duration);
+    addNoLyricsButton(data.song, data.artist, data.album, data.duration);
   }
 
   let spacingElement = document.createElement("div");
-  spacingElement.id = Constants.LYRICS_SPACING_ELEMENT_ID;
+  spacingElement.id = LYRICS_SPACING_ELEMENT_ID;
   spacingElement.style.height = "100px"; // Temp Value; actual is calculated in the tick function
   spacingElement.textContent = "";
   spacingElement.style.padding = "0";
@@ -451,7 +475,7 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
     calculateLyricPositions();
     resizeObserver.observe(lyricsWrapper);
   } else {
-    Utils.log(Constants.SYNC_DISABLED_LOG);
+    log(SYNC_DISABLED_LOG);
   }
 
   AppState.areLyricsLoaded = true;
@@ -459,7 +483,7 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
 
 export function calculateLyricPositions() {
   if (AppState.lyricData && AppState.areLyricsTicking) {
-    const lyricsElement = document.getElementsByClassName(Constants.LYRICS_CLASS)[0] as HTMLElement;
+    const lyricsElement = document.getElementsByClassName(LYRICS_CLASS)[0] as HTMLElement;
     const data = AppState.lyricData;
 
     data.lyricWidth = lyricsElement.clientWidth;

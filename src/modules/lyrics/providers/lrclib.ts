@@ -1,10 +1,10 @@
-import * as Constants from "@constants";
-import * as Utils from "@utils";
+import { LRCLIB_API_URL, LRCLIB_CLIENT_HEADER, LRCLIB_LYRICS_FOUND_LOG } from "@constants";
+import { log } from "@utils";
 import { parseLRC, parsePlainLyrics } from "./lrcUtils";
 import { type ProviderParameters } from "./shared";
 
 export default async function lyricLib(providerParameters: ProviderParameters): Promise<void> {
-  const url = new URL(Constants.LRCLIB_API_URL);
+  const url = new URL(LRCLIB_API_URL);
   url.searchParams.append("track_name", providerParameters.song);
   url.searchParams.append("artist_name", providerParameters.artist);
   if (providerParameters.album) {
@@ -14,7 +14,7 @@ export default async function lyricLib(providerParameters: ProviderParameters): 
 
   const response = await fetch(url.toString(), {
     headers: {
-      "Lrclib-Client": Constants.LRCLIB_CLIENT_HEADER,
+      "Lrclib-Client": LRCLIB_CLIENT_HEADER,
     },
     signal: AbortSignal.any([providerParameters.signal, AbortSignal.timeout(10000)]),
   });
@@ -29,7 +29,7 @@ export default async function lyricLib(providerParameters: ProviderParameters): 
   const data = await response.json();
 
   if (data) {
-    Utils.log(Constants.LRCLIB_LYRICS_FOUND_LOG);
+    log(LRCLIB_LYRICS_FOUND_LOG);
 
     if (data.syncedLyrics) {
       providerParameters.sourceMap["lrclib-synced"].lyricSourceResult = {

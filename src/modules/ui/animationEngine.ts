@@ -1,7 +1,18 @@
-import * as Constants from "@constants";
+import {
+  ANIMATING_CLASS,
+  CURRENT_LYRICS_CLASS,
+  LYRICS_CHECK_INTERVAL_ERROR,
+  LYRICS_CLASS,
+  LYRICS_SPACING_ELEMENT_ID,
+  NO_LYRICS_ELEMENT_LOG,
+  PRE_ANIMATING_CLASS,
+  TAB_HEADER_CLASS,
+  TAB_RENDERER_SELECTOR,
+  USER_SCROLLING_CLASS,
+} from "@constants";
 import { calculateLyricPositions, type LineData } from "@modules/lyrics/injectLyrics";
 import { isLoaderActive } from "@modules/ui/dom";
-import * as Utils from "@utils";
+import { log } from "@utils";
 import { AppState } from "@/index";
 
 const MIRCO_SCROLL_THRESHOLD_S = 0.3;
@@ -105,7 +116,7 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
 
   currentTime += timeOffset / 1000;
 
-  const tabSelector = document.getElementsByClassName(Constants.TAB_HEADER_CLASS)[1] as HTMLElement;
+  const tabSelector = document.getElementsByClassName(TAB_HEADER_CLASS)[1] as HTMLElement;
   console.assert(tabSelector != null);
 
   const playerState = document.getElementById("player-page")?.getAttribute("player-ui-state");
@@ -121,18 +132,18 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
   }
 
   try {
-    const lyricsElement = document.getElementsByClassName(Constants.LYRICS_CLASS)[0] as HTMLElement;
+    const lyricsElement = document.getElementsByClassName(LYRICS_CLASS)[0] as HTMLElement;
     // If lyrics element doesn't exist, clear the interval and return silently
     if (!lyricsElement) {
       AppState.areLyricsTicking = false;
-      Utils.log(Constants.NO_LYRICS_ELEMENT_LOG);
+      log(NO_LYRICS_ELEMENT_LOG);
       return;
     }
 
     let lyricData = AppState.lyricData;
     if (!lyricData) {
       AppState.areLyricsTicking = false;
-      Utils.log("Lyrics are ticking, but lyricData are null!");
+      log("Lyrics are ticking, but lyricData are null!");
       return;
     }
 
@@ -180,12 +191,12 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
         // }
         animEngineState.selectedElementIndex = index;
         if (!lineData.isScrolled) {
-          lineData.lyricElement.classList.add(Constants.CURRENT_LYRICS_CLASS);
+          lineData.lyricElement.classList.add(CURRENT_LYRICS_CLASS);
           lineData.isScrolled = true;
         }
       } else {
         if (lineData.isScrolled) {
-          lineData.lyricElement.classList.remove(Constants.CURRENT_LYRICS_CLASS);
+          lineData.lyricElement.classList.remove(CURRENT_LYRICS_CLASS);
           lineData.isScrolled = false;
         }
       }
@@ -221,7 +232,7 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
             const elTime = part.time;
             const timeDelta = currentTime - elTime;
 
-            part.lyricElement.classList.remove(Constants.ANIMATING_CLASS);
+            part.lyricElement.classList.remove(ANIMATING_CLASS);
 
             //correct for the animation not starting at 0% and instead at -10%
             const swipeAnimationDelay = -timeDelta - elDuration * 0.1 + "s";
@@ -229,9 +240,9 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
             part.lyricElement.style.setProperty("--blyrics-swipe-delay", swipeAnimationDelay);
             part.lyricElement.style.setProperty("--blyrics-anim-delay", everythingElseDelay);
 
-            part.lyricElement.classList.add(Constants.PRE_ANIMATING_CLASS);
+            part.lyricElement.classList.add(PRE_ANIMATING_CLASS);
             reflow(part.lyricElement);
-            part.lyricElement.classList.add(Constants.ANIMATING_CLASS);
+            part.lyricElement.classList.add(ANIMATING_CLASS);
             part.animationStartTimeMs = now - timeDelta * 1000;
           });
 
@@ -246,8 +257,8 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
             const children = [lineData, ...lineData.parts];
             children.forEach(part => {
               if (part.animationStartTimeMs > now) {
-                part.lyricElement.classList.remove(Constants.ANIMATING_CLASS);
-                part.lyricElement.classList.remove(Constants.PRE_ANIMATING_CLASS);
+                part.lyricElement.classList.remove(ANIMATING_CLASS);
+                part.lyricElement.classList.remove(PRE_ANIMATING_CLASS);
               }
             });
           }
@@ -258,8 +269,8 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
           children.forEach(part => {
             part.lyricElement.style.setProperty("--blyrics-swipe-delay", "");
             part.lyricElement.style.setProperty("--blyrics-anim-delay", "");
-            part.lyricElement.classList.remove(Constants.ANIMATING_CLASS);
-            part.lyricElement.classList.remove(Constants.PRE_ANIMATING_CLASS);
+            part.lyricElement.classList.remove(ANIMATING_CLASS);
+            part.lyricElement.classList.remove(PRE_ANIMATING_CLASS);
             part.animationStartTimeMs = Infinity;
           });
           lineData.isSelected = false;
@@ -276,7 +287,7 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
 
     // lyricsHeight can change slightly due to animations
     const lyricsHeight = lyricsElement.getBoundingClientRect().height;
-    const tabRenderer = document.querySelector(Constants.TAB_RENDERER_SELECTOR) as HTMLElement;
+    const tabRenderer = document.querySelector(TAB_RENDERER_SELECTOR) as HTMLElement;
     const tabRendererHeight = tabRenderer.getBoundingClientRect().height;
     let scrollTop = tabRenderer.scrollTop;
 
@@ -285,7 +296,7 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
     if (animEngineState.scrollResumeTime < Date.now() || animEngineState.scrollPos === -1) {
       if (animEngineState.wasUserScrolling) {
         getResumeScrollElement().setAttribute("autoscroll-hidden", "true");
-        lyricsElement.classList.remove(Constants.USER_SCROLLING_CLASS);
+        lyricsElement.classList.remove(USER_SCROLLING_CLASS);
         animEngineState.wasUserScrolling = false;
       }
 
@@ -352,7 +363,7 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
         }
         let extraHeight = Math.max(tabRendererHeight * (1 - topOffsetMultiplier), tabRendererHeight - lyricsHeight);
 
-        (document.getElementById(Constants.LYRICS_SPACING_ELEMENT_ID) as HTMLElement).style.height =
+        (document.getElementById(LYRICS_SPACING_ELEMENT_ID) as HTMLElement).style.height =
           `${extraHeight.toFixed(0)}px`;
         scrollTop = scrollPos;
         animEngineState.scrollPos = scrollPos;
@@ -360,7 +371,7 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
     } else {
       if (!animEngineState.wasUserScrolling) {
         getResumeScrollElement().removeAttribute("autoscroll-hidden");
-        lyricsElement.classList.add(Constants.USER_SCROLLING_CLASS);
+        lyricsElement.classList.add(USER_SCROLLING_CLASS);
         animEngineState.wasUserScrolling = true;
       }
     }
@@ -384,7 +395,7 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
     }
   } catch (err) {
     if (!(err as Error).message?.includes("undefined")) {
-      Utils.log(Constants.LYRICS_CHECK_INTERVAL_ERROR, err);
+      log(LYRICS_CHECK_INTERVAL_ERROR, err);
     }
   }
 }
