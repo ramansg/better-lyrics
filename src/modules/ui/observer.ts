@@ -139,13 +139,12 @@ export function initializeLyrics(): void {
 
     if (currentVideoId !== AppState.lastVideoId || currentVideoDetails !== AppState.lastVideoDetails) {
       AppState.areLyricsTicking = false;
+      AppState.lastVideoId = currentVideoId;
+      AppState.lastVideoDetails = currentVideoDetails;
       if (!detail.song || !detail.artist) {
         Utils.log("Lyrics switched: Still waiting for metadata ", detail.videoId);
         return;
       }
-
-      AppState.lastVideoId = currentVideoId;
-      AppState.lastVideoDetails = currentVideoDetails;
       Utils.log(Constants.SONG_SWITCHED_LOG, detail.videoId);
 
       AppState.queueLyricInjection = true;
