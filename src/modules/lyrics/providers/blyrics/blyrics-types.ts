@@ -17,8 +17,8 @@ interface LyricSpan {
   "#text"?: string;
   span?: TimedWord[];
   ":@"?: {
-    "@_begin": string;
-    "@_end": string;
+    "@_begin"?: string;
+    "@_end"?: string;
   };
 }
 
@@ -40,8 +40,8 @@ interface MetadataTextContainer {
  * Represents the attributes for a paragraph <p> element.
  */
 interface ParagraphAttributes {
-  "@_begin": string;
-  "@_end": string;
+  "@_begin"?: string;
+  "@_end"?: string;
   "@_key": string;
   "@_agent": string;
   "@_role": string;
@@ -68,10 +68,10 @@ export type ParagraphElementOrBackground = SpanElement & {
  * Represents the attributes for a <div> element.
  */
 interface DivAttributes {
-  "@_begin": string;
-  "@_end": string;
+  "@_begin"?: string;
+  "@_end"?: string;
   "@_songPart": string;
-  "@_agent"?: string; // Optional, seen in line-sync example
+  "@_agent"?: string;
 }
 
 /**
