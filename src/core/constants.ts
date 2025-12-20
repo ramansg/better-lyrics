@@ -47,6 +47,7 @@ export const NOTO_SANS_UNIVERSAL_LINK: string =
 export const LYRICS_API_URL: string = "https://lyrics-api-go-better-lyrics-api-pr-12.up.railway.app/getLyrics";
 export const DISCORD_INVITE_URL: string = "https://discord.gg/UsHE3d5fWF";
 export const LRCLIB_API_URL: string = "https://lrclib.net/api/get";
+export const LEGATO_API_URL: string = "https://lyrics-api-go-better-lyrics-api-pr-12.up.railway.app/kugou/getLyrics";
 export const LRCLIB_UPLOAD_URL: string = "https://lrclibup.boidu.dev/";
 export const LRCLIB_CLIENT_HEADER: string = "BetterLyrics Extension (https://github.com/better-lyrics/better-lyrics)";
 export const TRANSLATE_LYRICS_URL = function (lang: string, text: string): string {
