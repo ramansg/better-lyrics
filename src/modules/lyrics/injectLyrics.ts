@@ -188,9 +188,10 @@ function createBreakElem(lyricElement: HTMLDivElement, order: number) {
  * Creates an HTML element representing an instrumental break in the lyrics.
  *
  * @param durationMs - Duration of the instrumental break in milliseconds
+ * @param lineIndex - Line index for unique SVG element IDs
  * @returns HTMLDivElement representing the instrumental break
  */
-function createInstrumentalElement(durationMs: number): HTMLDivElement {
+function createInstrumentalElement(durationMs: number, lineIndex: number): HTMLDivElement {
   const container = document.createElement("div");
   container.classList.add("blyrics--instrumental");
   container.style.setProperty("--blyrics-duration", `${durationMs}ms`);
@@ -202,8 +203,8 @@ function createInstrumentalElement(durationMs: number): HTMLDivElement {
 
   const defs = document.createElementNS(svgNS, "defs");
 
-  const filterId = `blyrics-glow-${Date.now()}`;
-  const clipId = `blyrics-wave-clip-${Date.now()}`;
+  const filterId = `blyrics-glow-${lineIndex}`;
+  const clipId = `blyrics-wave-clip-${lineIndex}`;
 
   const filter = document.createElementNS(svgNS, "filter");
   filter.setAttribute("id", filterId);
@@ -335,7 +336,7 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
 
   lyrics.forEach((lyricItem, lineIndex) => {
     if (lyricItem.isInstrumental) {
-      const instrumentalElement = createInstrumentalElement(lyricItem.durationMs);
+      const instrumentalElement = createInstrumentalElement(lyricItem.durationMs, lineIndex);
       instrumentalElement.classList.add("blyrics--line");
       instrumentalElement.dataset.time = String(lyricItem.startTimeMs / 1000);
       instrumentalElement.dataset.duration = String(lyricItem.durationMs / 1000);
