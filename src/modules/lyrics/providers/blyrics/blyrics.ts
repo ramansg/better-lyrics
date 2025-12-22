@@ -1,3 +1,4 @@
+import { log } from "@/core/utils";
 import * as Constants from "@constants";
 import type {
   ParagraphElementOrBackground,
@@ -178,10 +179,13 @@ export async function fillTtml(responseString: string, providerParameters: Provi
         let line = translation[":@"]["@_for"];
 
         if (lang && text && line) {
-          lyrics.get(line)!.translation = {
-            text,
-            lang,
-          };
+          const lyricLine = lyrics.get(line);
+          if (lyricLine) {
+            lyricLine.translation = {
+              text,
+              lang,
+            };
+          }
         }
       });
     }
@@ -201,7 +205,7 @@ export async function fillTtml(responseString: string, providerParameters: Provi
     }
   }
 
-  let lyricArray = lyrics.values().toArray();
+  let lyricArray = Array.from(lyrics.values());
   const songDurationMs = parseTime(ttMeta["@_dur"]);
   lyricArray = insertInstrumentalBreaks(lyricArray, songDurationMs);
 
