@@ -97,6 +97,7 @@ export async function modify(): Promise<void> {
   Observer.lyricReloader();
   Observer.initializeLyrics();
   Observer.disableInertWhenFullscreen();
+  Observer.setupAltHoverHandler();
   initProviders();
   Utils.log(
     Constants.INITIALIZE_LOG,

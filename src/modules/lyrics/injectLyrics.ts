@@ -278,11 +278,41 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
     }
 
     if (!allZero) {
-      lyricElement.setAttribute(
-        "onClick",
-        `const player = document.getElementById("movie_player"); player.seekTo(${item.startTimeMs / 1000}, true);player.playVideo();`
-      );
-      lyricElement.addEventListener("click", _e => {
+      lyricElement.addEventListener("click", e => {
+        const target = e.target as HTMLElement;
+        const container = lyricElement.closest(`.${Constants.LYRICS_CLASS}`) as HTMLElement | null;
+        const isRichsync = container?.dataset.sync === "richsync";
+
+        let seekTime: number;
+        if (isRichsync) {
+          let wordElement = target.closest(`.${Constants.WORD_CLASS}`) as HTMLElement | null;
+
+          if (!wordElement) {
+            const words = lyricElement.querySelectorAll(`.${Constants.WORD_CLASS}`);
+            let closestDist = Infinity;
+            words.forEach(word => {
+              const rect = word.getBoundingClientRect();
+              const centerX = rect.left + rect.width / 2;
+              const centerY = rect.top + rect.height / 2;
+              const dist = Math.hypot(e.clientX - centerX, e.clientY - centerY);
+              if (dist < closestDist) {
+                closestDist = dist;
+                wordElement = word as HTMLElement;
+              }
+            });
+          }
+
+          if (!wordElement) {
+            return;
+          }
+
+          seekTime = parseFloat(wordElement.dataset.time || "0");
+        } else {
+          seekTime = parseFloat(lyricElement.dataset.time || "0");
+        }
+
+        Utils.log(`[BetterLyrics] Seeking to ${seekTime.toFixed(2)}s`);
+        document.dispatchEvent(new CustomEvent("blyrics-seek-to", { detail: { time: seekTime } }));
         animEngineState.scrollResumeTime = 0;
       });
     } else {
@@ -417,7 +447,7 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
   animEngineState.scrollResumeTime = 0;
 
   if (lyrics[0].words !== Constants.NO_LYRICS_TEXT) {
-    DOM.addFooter(data.source, data.sourceHref, data.song, data.artist, data.album, data.duration);
+    DOM.addFooter(data.source, data.sourceHref, data.song, data.artist, data.album, data.duration, data.providerKey);
   } else {
     DOM.addNoLyricsButton(data.song, data.artist, data.album, data.duration);
   }
