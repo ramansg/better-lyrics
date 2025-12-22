@@ -48,6 +48,13 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
+      - name: Bypass Cloudflare for GitHub Action
+        uses: xiaotianxt/bypass-cloudflare-for-github-action@v2.0.1
+        with:
+          cf_account_id: ${{ secrets.CF_ACCOUNT_ID }}
+          cf_zone_id: ${{ secrets.CF_ZONE_ID }}
+          cf_api_token: ${{ secrets.CF_API_TOKEN }}
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -67,13 +74,6 @@ jobs:
 
       - name: Update version in files
         run: npm run update-version -- ${{ github.event.inputs.version }}
-
-      - name: Bypass Cloudflare for GitHub Action
-        uses: xiaotianxt/bypass-cloudflare-for-github-action@v2.0.1
-        with:
-          cf_account_id: ${{ secrets.CF_ACCOUNT_ID }}
-          cf_zone_id: ${{ secrets.CF_ZONE_ID }}
-          cf_api_token: ${{ secrets.CF_API_TOKEN }}
 
       - name: Build extension
         env:
