@@ -325,3 +325,32 @@ function setupMiniplayerFullscreenHandler(): void {
 
   fullscreenButton.addEventListener("click", interceptFullscreenAction, { capture: true });
 }
+
+export function setupAltHoverHandler(): void {
+  const updateAltState = (isAltPressed: boolean) => {
+    const lyricsWrapper = document.getElementById(Constants.LYRICS_WRAPPER_ID);
+    if (!lyricsWrapper) return;
+
+    if (isAltPressed) {
+      lyricsWrapper.setAttribute("blyrics-alt-hover", "");
+    } else {
+      lyricsWrapper.removeAttribute("blyrics-alt-hover");
+    }
+  };
+
+  document.addEventListener("keydown", (e: KeyboardEvent) => {
+    if (e.key === "Alt") {
+      updateAltState(true);
+    }
+  });
+
+  document.addEventListener("keyup", (e: KeyboardEvent) => {
+    if (e.key === "Alt") {
+      updateAltState(false);
+    }
+  });
+
+  window.addEventListener("blur", () => {
+    updateAltState(false);
+  });
+}

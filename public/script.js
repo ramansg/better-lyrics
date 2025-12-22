@@ -97,4 +97,12 @@ const stopLyricsTick = () => {
 
 window.addEventListener("unload", stopLyricsTick);
 
+document.addEventListener("blyrics-seek-to", event => {
+  const player = document.getElementById("movie_player");
+  if (player) {
+    player.seekTo(event.detail.time, true);
+    player.playVideo();
+  }
+});
+
 startLyricsTick();
