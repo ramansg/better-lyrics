@@ -191,6 +191,7 @@ const restoreOptions = (): void => {
       "yt-captions",
       "bLyrics-synced",
       "lrclib-synced",
+      "legato-synced",
       "musixmatch-synced",
       "yt-lyrics",
       "lrclib-plain",
@@ -225,6 +226,7 @@ const setOptionsInForm = (items: Options): void => {
     "yt-captions",
     "bLyrics-synced",
     "lrclib-synced",
+    "legato-synced",
     "musixmatch-synced",
     "yt-lyrics",
     "lrclib-plain",
@@ -262,6 +264,7 @@ const providerIdToInfoMap: { [key: string]: ProviderInfo } = {
   "lrclib-synced": { name: "LRClib", syncType: "line" },
   "bLyrics-richsynced": { name: "Better Lyrics", syncType: "syllable" },
   "bLyrics-synced": { name: "Better Lyrics", syncType: "line" },
+  "legato-synced": { name: "Better Lyrics Legato", syncType: "line" },
   "yt-lyrics": { name: "Youtube", syncType: "unsynced" },
   "lrclib-plain": { name: "LRClib", syncType: "unsynced" },
 };

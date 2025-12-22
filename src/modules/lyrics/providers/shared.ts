@@ -5,6 +5,7 @@ import cubey, { type CubeyLyricSourceResult } from "./cubey";
 import lyricLib from "./lrclib";
 import ytLyrics, { type YTLyricSourceResult } from "./yt";
 import { ytCaptions } from "./ytCaptions";
+import legato from "./legato";
 import * as Storage from "@core/storage";
 
 /** Current version of the lyrics cache format */
@@ -97,9 +98,10 @@ let defaultPreferredProviderList: LyricSourceKey[] = [
   "bLyrics-richsynced",
   "musixmatch-richsync",
   "yt-captions",
-  "lrclib-synced",
-  "musixmatch-synced",
   "bLyrics-synced",
+  "lrclib-synced",
+  "legato-synced",
+  "musixmatch-synced",
   "yt-lyrics",
   "lrclib-plain",
 ] as const;
@@ -150,6 +152,7 @@ const sourceKeyToFillFn = {
   "lrclib-plain": lyricLib,
   "yt-captions": ytCaptions,
   "yt-lyrics": ytLyrics,
+  "legato-synced": legato,
 } as const;
 
 export type LyricSourceKey = Readonly<keyof typeof sourceKeyToFillFn>;
