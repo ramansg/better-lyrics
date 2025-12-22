@@ -249,7 +249,6 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
         if (isPlaying !== lineData.isAnimationPlayStatePlaying) {
           lineData.isAnimationPlayStatePlaying = isPlaying;
           if (!isPlaying) {
-            lineData.isSelected = false;
             const children = [lineData, ...lineData.parts];
             children.forEach(part => {
               if (part.animationStartTimeMs > now) {
