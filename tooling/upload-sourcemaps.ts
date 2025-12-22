@@ -1,3 +1,4 @@
+import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 
@@ -17,13 +18,15 @@ if (!SOURCEMAPS_API_KEY) {
 
 const packageJson = JSON.parse(fs.readFileSync("./package.json", "utf-8"));
 const version = packageJson.version;
+const gitHash = execSync("git rev-parse --short HEAD").toString().trim();
+const versionWithHash = `${version}-${gitHash}`;
 
 async function uploadFile(filePath: string) {
   const fileName = path.basename(filePath);
   const fileContent = fs.readFileSync(filePath);
 
-  // Construct the URL: /<browser>/v<version>/<filename>
-  const url = `${SOURCEMAPS_BASE_URL}/${browser}/v${version}/${fileName}`;
+  // Construct the URL: /<browser>/v<version>-<hash>/<filename>
+  const url = `${SOURCEMAPS_BASE_URL}/${browser}/v${versionWithHash}/${fileName}`;
 
   try {
     const response = await fetch(url, {

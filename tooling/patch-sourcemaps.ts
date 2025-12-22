@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { execSync } from "child_process";
 
 const browser = process.argv[2];
 if (!browser) {
@@ -9,6 +10,7 @@ if (!browser) {
 
 const packageJson = JSON.parse(fs.readFileSync("./package.json", "utf-8"));
 const version = packageJson.version;
+const gitHash = execSync("git rev-parse --short HEAD").toString().trim();
 const SOURCEMAPS_BASE_URL = process.env.SOURCEMAPS_BASE_URL || "https://better-lyrics-sourcemaps.dacubeking.com";
 
 function findFiles(dir: string, extension: string, fileList: string[] = []) {
@@ -32,7 +34,7 @@ const jsFiles = findFiles(`./dist/${browser}`, ".js");
 
 jsFiles.forEach(file => {
   const fileName = path.basename(file);
-  const sourceMappingURL = `\n//# sourceMappingURL=${SOURCEMAPS_BASE_URL}/${browser}/v${version}/${fileName}.map`;
+  const sourceMappingURL = `\n//# sourceMappingURL=${SOURCEMAPS_BASE_URL}/${browser}/v${version}-${gitHash}/${fileName}.map`;
   let fileString = fs.readFileSync(file, "utf-8");
   // Replace the sourceMappingURL at the bottom:
   fileString = fileString.replace(/\/\/# sourceMappingURL=.*\.map$/, sourceMappingURL);
