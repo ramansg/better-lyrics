@@ -3,8 +3,8 @@
   --blyrics-video-panel-size: 30%;
   --blyrics-fullscreen-panel-size: 66%;
   --blyrics-fullscreen-video-panel-size: 25%;
+  --blyrics-no-lyrics-slide-delay: 1.8s;
 }
-
 
 /* Player page styles */
 ytmusic-player-page:before {
@@ -202,9 +202,7 @@ ytmusic-player-page:not([is-mweb-modernization-enabled]):not([player-ui-state=MI
   justify-content: center;
 }
 
-/*
-Keep album art small
- */
+/* Keep album art small */
 ytmusic-player-page:not([is-mweb-modernization-enabled]):not([video-mode]):not([player-ui-state=MINIPLAYER]) #player.ytmusic-player-page {
   width: 100%;
   margin-left: auto;
@@ -323,4 +321,39 @@ ytmusic-player-page[is-mweb-modernization-enabled][player-fullscreened]
 
 .ytmusic-av-toggle{
   border-radius: 1000rem !important;
+}
+
+/* Center Player When No Lyrics */
+ytmusic-player-page[player-fullscreened]:not([video-mode]):not([blyrics-dfs]):has(.blyrics-container[data-no-lyrics="true"]) #main-panel {
+  position: relative;
+  z-index: 2;
+  transform: translateX(calc(50vw - 50% - var(--ytmusic-player-page-horizontal-padding)));
+  transition: transform 0.3s ease-in-out;
+  transition-delay: var(--blyrics-no-lyrics-slide-delay);
+}
+
+ytmusic-player-page[player-fullscreened][video-mode]:not([blyrics-dfs]):has(.blyrics-container[data-no-lyrics="true"]) #main-panel {
+  transform: translateX(calc(50vw - 50% - var(--ytmusic-player-page-horizontal-padding) / 2));
+  transition: transform 0.3s ease-in-out;
+  transition-delay: var(--blyrics-no-lyrics-slide-delay);
+}
+
+ytmusic-player-page[player-fullscreened]:not([video-mode]):not([blyrics-dfs]):has(.blyrics-container[data-no-lyrics="true"]) #player {
+  max-width: 500px !important;
+  transition: max-width 0.5s ease-in-out;
+  transition-delay: var(--blyrics-no-lyrics-slide-delay);
+}
+
+ytmusic-player-page[player-fullscreened]:not([blyrics-dfs]) .blyrics-no-lyrics-button-container {
+  display: none;
+}
+
+ytmusic-player-page[player-fullscreened]:not([blyrics-dfs]) #blyrics-wrapper:has(.blyrics-container[data-no-lyrics="true"]) {
+  display: flex !important;
+  height: 100%;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  transition-delay: var(--blyrics-no-lyrics-slide-delay);
 }
