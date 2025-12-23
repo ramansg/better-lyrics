@@ -2,6 +2,12 @@ import * as Utils from "@utils";
 import * as Constants from "@constants";
 import { cachedDurations, cachedProperties } from "@modules/ui/animationEngine";
 
+interface TransientStorageItem {
+  type: "transient";
+  value: any;
+  expiry: number;
+}
+
 async function decompress(data: string): Promise<string> {
   if (!data.startsWith("__COMPRESSED__")) {
     return data;
@@ -158,7 +164,7 @@ export function subscribeToCustomCSS(): void {
 export async function getTransientStorage(key: string): Promise<any | null> {
   try {
     const result = await chrome.storage.local.get(key);
-    const item = result[key];
+    const item = result[key] as TransientStorageItem | undefined;
 
     if (!item) return null;
 
@@ -188,14 +194,12 @@ export async function getTransientStorage(key: string): Promise<any | null> {
  */
 export async function setTransientStorage(key: string, value: any, ttl: number): Promise<void> {
   try {
-    const expiry = Date.now() + ttl;
-    await chrome.storage.local.set({
-      [key]: {
-        type: "transient",
-        value,
-        expiry,
-      },
-    });
+    const item: TransientStorageItem = {
+      type: "transient",
+      value,
+      expiry: Date.now() + ttl,
+    };
+    await chrome.storage.local.set({ [key]: item });
     Utils.log(Constants.STORAGE_TRANSIENT_SET_LOG, key);
     await saveCacheInfo();
   } catch (error) {
@@ -212,12 +216,21 @@ export async function getUpdatedCacheInfo(): Promise<{ count: number; size: numb
   try {
     const result = await chrome.storage.local.get(null);
     const lyricsKeys = Object.keys(result).filter(key => key.startsWith("blyrics_"));
+
+    const uniqueSongs = new Set(
+      lyricsKeys.map(key => {
+        const parts = key.split("_");
+        return parts[1];
+      })
+    );
+
     const totalSize = lyricsKeys.reduce((acc, key) => {
       const item = result[key];
       return acc + JSON.stringify(item).length;
     }, 0);
+
     return {
-      count: lyricsKeys.length,
+      count: uniqueSongs.size,
       size: totalSize,
     };
   } catch (error) {
@@ -260,8 +273,8 @@ export async function purgeExpiredKeys(): Promise<void> {
 
     Object.keys(result).forEach(key => {
       if (key.startsWith("blyrics_")) {
-        const { expiryTime } = result[key];
-        if (expiryTime && now >= expiryTime) {
+        const item = result[key] as TransientStorageItem;
+        if (item.expiry && now >= item.expiry) {
           keysToRemove.push(key);
         }
       }
