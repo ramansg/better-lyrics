@@ -508,7 +508,7 @@ export function addNoLyricsButton(song: string, artist: string, album: string, d
     window.open(url.toString(), "_blank");
   });
 
-  const searchQuery = encodeURIComponent(`${artist.trim()} - ${song}`);
+  const searchQuery = encodeURIComponent(`${artist.trim()} - ${song.trim()}`);
   const geniusSearchUrl = `https://genius.com/search?q=${searchQuery}`;
 
   const geniusSearch = document.createElement("button");
