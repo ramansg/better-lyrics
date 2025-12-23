@@ -498,6 +498,7 @@ Note: The background animation may be CPU-intensive on your PC.
 
     ytmusic-app-layout:not([is-mweb-modernization-enabled])[player-fullscreened]:not([blyrics-dfs]) > [slot=player-page] {
         padding-bottom: 0;
+				padding-left: 0;
     }
 
     ytmusic-player[player-ui-state=MINIPLAYER] {
