@@ -1,3 +1,4 @@
+import { LOG_PREFIX } from "@constants";
 import { log } from "@core/utils";
 import type { LyricPart, LyricsArray } from "./shared";
 
@@ -151,7 +152,7 @@ export function parseLRC(lrcText: string, songDuration: number): LyricsArray {
     let offset = Number(idTags["offset"]);
     if (isNaN(offset)) {
       offset = 0;
-      log("[BetterLyrics] Invalid offset in lyrics: " + idTags["offset"]);
+      log(LOG_PREFIX, "Invalid offset in lyrics: " + idTags["offset"]);
     }
     offset = offset * 1000;
     result.forEach(lyric => {

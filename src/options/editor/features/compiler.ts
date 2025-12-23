@@ -1,4 +1,5 @@
 import { compileWithDetails, type CompileError as RicsError, type CompileWarning as RicsWarning } from "rics";
+import { LOG_PREFIX_EDITOR } from "@constants";
 import { truncateSource } from "@utils";
 
 const COMPILE_TIMEOUT = 3000;
@@ -66,7 +67,7 @@ export class RicsCompilerService {
       return state;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`[rics] Compilation failed: ${message}\nSource:\n${truncateSource(sourceCode)}`);
+      console.error(LOG_PREFIX_EDITOR, `Compilation failed: ${message}\nSource:\n${truncateSource(sourceCode)}`);
       return this.createErrorState(sourceCode, message);
     }
   }

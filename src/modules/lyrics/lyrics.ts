@@ -5,6 +5,7 @@
 
 import {
   FETCH_LYRICS_LOG,
+  LOG_PREFIX,
   LYRICS_TAB_HIDDEN_LOG,
   NO_LYRICS_TEXT,
   SERVER_ERROR_LOG,
@@ -161,7 +162,7 @@ export async function createLyrics(detail: PlayerDetails, signal: AbortSignal): 
 
   let ytLyricsPromise = getLyrics(providerParameters, "yt-lyrics").then(lyrics => {
     if (!AppState.areLyricsLoaded && lyrics) {
-      log("[BetterLyrics] Temporarily Using YT Music Lyrics while we wait for synced lyrics to load");
+      log(LOG_PREFIX, "Temporarily Using YT Music Lyrics while we wait for synced lyrics to load");
 
       let lyricsWithMeta = {
         ...lyrics,

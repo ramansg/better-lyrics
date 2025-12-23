@@ -1,5 +1,6 @@
 import {
   BACKGROUND_LYRIC_CLASS,
+  LOG_PREFIX,
   LYRICS_CLASS,
   LYRICS_FOUND_LOG,
   LYRICS_SPACING_ELEMENT_ID,
@@ -256,7 +257,7 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
       }
       const translationResult = await translateText(text, "en");
       const lang = translationResult?.originalLanguage || "";
-      log("[BetterLyrics] Lang was missing. Determined it is: " + lang);
+      log(LOG_PREFIX, "Lang was missing. Determined it is: " + lang);
       return resolve(lang);
     } else {
       resolve(data.language);
@@ -403,7 +404,7 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
           seekTime = parseFloat(lyricElement.dataset.time || "0");
         }
 
-        log(`[BetterLyrics] Seeking to ${seekTime.toFixed(2)}s`);
+        log(LOG_PREFIX, `Seeking to ${seekTime.toFixed(2)}s`);
         document.dispatchEvent(new CustomEvent("blyrics-seek-to", { detail: { time: seekTime } }));
         animEngineState.scrollResumeTime = 0;
       });

@@ -198,6 +198,7 @@ export async function applyStoreThemeToEditor(
 
       editorStateManager.setCurrentThemeName(title);
       editorStateManager.setIsCustomTheme(false);
+      editorStateManager.setIsStoreTheme(true);
 
       showThemeName(title, source);
       updateThemeSelectorButton();

@@ -51,6 +51,9 @@ export const LRCLIB_API_URL: string = "https://lrclib.net/api/get";
 export const LEGATO_API_URL: string = "https://lyrics-api.boidu.dev/kugou/getLyrics";
 export const LRCLIB_UPLOAD_URL: string = "https://lrclibup.boidu.dev/";
 export const LRCLIB_CLIENT_HEADER: string = "BetterLyrics Extension (https://github.com/better-lyrics/better-lyrics)";
+export const THEME_STORE_API_URL: string = "https://better-lyrics-themes-api.boidu.dev";
+export const THEME_REGISTRY_BASE: string = "https://raw.githubusercontent.com/better-lyrics/themes";
+export const THEME_REGISTRY_URL: string = `${THEME_REGISTRY_BASE}/master`;
 export const TRANSLATE_LYRICS_URL = function (lang: string, text: string): string {
   return `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${lang}&dt=t&q=${encodeURIComponent(text)}`;
 };
@@ -93,6 +96,7 @@ export const LOG_PREFIX: string = "[BetterLyrics]";
 export const LOG_PREFIX_CONTENT: string = "[BetterLyrics:Content]";
 export const LOG_PREFIX_BACKGROUND: string = "[BetterLyrics:Background]";
 export const LOG_PREFIX_EDITOR: string = "[BetterLyrics:Editor]";
+export const LOG_PREFIX_STORE: string = "[BetterLyrics:Store]";
 export const IGNORE_PREFIX: string = "(Safe to ignore)";
 
 // Initialization and General Logs

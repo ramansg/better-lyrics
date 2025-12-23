@@ -1,4 +1,5 @@
 import { gzipSync, gunzipSync, strToU8, strFromU8 } from "fflate";
+import { LOG_PREFIX } from "@constants";
 
 const COMPRESSED_PREFIX = "__COMPRESSED__";
 
@@ -11,7 +12,7 @@ export function compressString(data: string): string {
     }
     return `${COMPRESSED_PREFIX}${btoa(binary)}`;
   } catch (error) {
-    console.warn("[Compression] Failed to compress:", error);
+    console.warn(LOG_PREFIX, "Failed to compress:", error);
     return data;
   }
 }
@@ -29,7 +30,8 @@ export function decompressString(data: string): string {
       bytes[i] = binaryString.charCodeAt(i);
     }
     return strFromU8(gunzipSync(bytes));
-  } catch {
+  } catch (err) {
+    console.warn(LOG_PREFIX, "Failed to decompress:", err);
     return data;
   }
 }

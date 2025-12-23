@@ -1,3 +1,4 @@
+import { LOG_PREFIX_STORE } from "@constants";
 import {
   fetchFullTheme,
   fetchRegistryShaderConfig,
@@ -50,7 +51,7 @@ async function migrateFromLegacyStorage(): Promise<void> {
 
   if (!legacyThemes || legacyThemes.length === 0) return;
 
-  console.log(`[ThemeStoreManager] Migrating ${legacyThemes.length} themes from legacy storage`);
+  console.log(LOG_PREFIX_STORE, `Migrating ${legacyThemes.length} themes from legacy storage`);
 
   const themeIds: string[] = [];
 
@@ -59,14 +60,14 @@ async function migrateFromLegacyStorage(): Promise<void> {
       await chrome.storage.local.set({ [getThemeStorageKey(theme.id)]: theme });
       themeIds.push(theme.id);
     } catch (err) {
-      console.warn(`[ThemeStoreManager] Failed to migrate theme ${theme.id}:`, err);
+      console.warn(LOG_PREFIX_STORE, `Failed to migrate theme ${theme.id}:`, err);
     }
   }
 
   await setThemeIndex({ themeIds });
   await chrome.storage.local.remove(LEGACY_STORAGE_KEY);
 
-  console.log(`[ThemeStoreManager] Migration complete: ${themeIds.length} themes migrated`);
+  console.log(LOG_PREFIX_STORE, `Migration complete: ${themeIds.length} themes migrated`);
 }
 
 let migrationPromise: Promise<void> | null = null;
@@ -223,7 +224,7 @@ export function parseVersion(version: string): number[] {
   return cleanVersion.split(".").map(part => {
     const num = parseInt(part, 10);
     if (isNaN(num)) {
-      console.warn(`[ThemeStoreManager] Non-numeric version part "${part}" in "${version}", treating as 0`);
+      console.warn(LOG_PREFIX_STORE, `Non-numeric version part "${part}" in "${version}", treating as 0`);
       return 0;
     }
     return num;
@@ -284,14 +285,14 @@ export async function performSilentUpdates(storeThemes: StoreTheme[]): Promise<s
     try {
       await updateTheme(storeTheme);
       updatedIds.push(themeId);
-      console.log(`[ThemeStore] Auto-updated theme: ${storeTheme.title} to v${storeTheme.version}`);
+      console.log(LOG_PREFIX_STORE, `Auto-updated theme: ${storeTheme.title} to v${storeTheme.version}`);
 
       if (activeThemeId === themeId) {
         await applyStoreTheme(themeId);
-        console.log(`[ThemeStore] Re-applied active theme after update: ${storeTheme.title}`);
+        console.log(LOG_PREFIX_STORE, `Re-applied active theme after update: ${storeTheme.title}`);
       }
     } catch (err) {
-      console.warn(`[ThemeStore] Failed to auto-update theme ${themeId}:`, err);
+      console.warn(LOG_PREFIX_STORE, `Failed to auto-update theme ${themeId}:`, err);
     }
   }
 
@@ -325,7 +326,7 @@ export async function performUrlThemeUpdates(): Promise<string[]> {
         await applyStoreTheme(theme.id);
       }
     } catch (err) {
-      console.warn(`[ThemeStore] Failed to check/update URL theme ${theme.id}:`, err);
+      console.warn(LOG_PREFIX_STORE, `Failed to check/update URL theme ${theme.id}:`, err);
     }
   }
 
@@ -347,7 +348,7 @@ export async function refreshUrlThemesMetadata(): Promise<number> {
       });
       refreshedCount++;
     } catch (err) {
-      console.warn(`[ThemeStore] Failed to refresh URL theme ${theme.id}:`, err);
+      console.warn(LOG_PREFIX_STORE, `Failed to refresh URL theme ${theme.id}:`, err);
     }
   }
 

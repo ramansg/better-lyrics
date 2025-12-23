@@ -1,6 +1,7 @@
 import autoAnimate, { type AnimationController } from "@formkit/auto-animate";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
+import { LOG_PREFIX_STORE } from "@constants";
 import { applyStoreThemeComplete } from "../editor/features/storage";
 import type { AllThemeStats, InstalledStoreTheme, StoreTheme, ThemeStats } from "./types";
 
@@ -124,7 +125,8 @@ let isMarketplacePage = false;
 function getTestThemes(): StoreTheme[] {
   try {
     if (process.env.EXTENSION_PUBLIC_ENABLE_TEST_THEMES !== "true") return [];
-  } catch {
+  } catch (err) {
+    console.error(LOG_PREFIX_STORE, "Failed to check test themes env:", err);
     return [];
   }
 
@@ -254,7 +256,8 @@ function getTestThemes(): StoreTheme[] {
 function getTestStats(): AllThemeStats {
   try {
     if (process.env.EXTENSION_PUBLIC_ENABLE_TEST_THEMES !== "true") return {};
-  } catch {
+  } catch (err) {
+    console.error(LOG_PREFIX_STORE, "Failed to check test stats env:", err);
     return {};
   }
 
@@ -874,7 +877,7 @@ async function loadMarketplace(): Promise<void> {
     gridAnimationController = autoAnimate(grid, { duration: 200, easing: "cubic-bezier(0.2, 0, 0, 1)" });
     gridAnimationController.enable();
   } catch (err) {
-    console.error("[Marketplace] Failed to load themes:", err);
+    console.error(LOG_PREFIX_STORE, "Failed to load themes:", err);
     if (loading) loading.style.display = "none";
     if (error) {
       error.style.display = "flex";
@@ -918,7 +921,7 @@ async function checkForThemeUpdates(): Promise<void> {
       updateYourThemesDropdown();
     }
   } catch (err) {
-    console.warn("[ThemeStore] Update check failed:", err);
+    console.warn(LOG_PREFIX_STORE, "Update check failed:", err);
   }
 }
 
@@ -1450,13 +1453,13 @@ async function handleThemeAction(theme: StoreTheme, button: HTMLButtonElement): 
               }
             }
           })
-          .catch(() => {});
+          .catch(err => console.error(LOG_PREFIX_STORE, "Failed to track install:", err));
       }
     }
 
     updateYourThemesDropdown();
   } catch (err) {
-    console.error("[ThemeStore] Action failed:", err);
+    console.error(LOG_PREFIX_STORE, "Action failed:", err);
     button.className = `store-card-btn ${isRemoveButton ? "store-card-btn-remove" : "store-card-btn-install"}`;
     button.textContent = isRemoveButton ? "Remove" : "Install";
     showAlert(`Failed: ${err}`);
@@ -1683,7 +1686,7 @@ async function openDetailModal(theme: StoreTheme, urlThemeInfo?: UrlThemeInfo): 
                     }
                   }
                 })
-                .catch(() => {});
+                .catch(err => console.error(LOG_PREFIX_STORE, "Failed to track install:", err));
             }
           }
         }
@@ -1959,7 +1962,7 @@ async function handleUrlInstall(): Promise<void> {
     await applyFiltersToGrid();
     await refreshStoreCards();
   } catch (err) {
-    console.error("[ThemeStore] URL install failed:", err);
+    console.error(LOG_PREFIX_STORE, "URL install failed:", err);
     if (error) {
       error.textContent = `${err}`;
       error.style.display = "block";
@@ -2062,7 +2065,7 @@ async function handleApplyTheme(theme: InstalledStoreTheme): Promise<void> {
     updateYourThemesDropdown();
     toggleYourThemesDropdown(false);
   } catch (err) {
-    console.error("[ThemeStore] Failed to apply theme:", err);
+    console.error(LOG_PREFIX_STORE, "Failed to apply theme:", err);
     showAlert(`Failed to apply theme: ${err}`);
   }
 }
