@@ -74,6 +74,12 @@ const themes: Theme[] = [
     link: "https://github.com/chengggit/Youtube-Music-Dynamic-Theme",
     path: "Dynamic Background.css",
   },
+  {
+    name: "Apple Music",
+    author: "tposejank",
+    link: "https://x.com/tposejank",
+    path: "Apple Music.css",
+  },
 ];
 
 export async function getCustomThemes(): Promise<CustomTheme[]> {
