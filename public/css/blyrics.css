@@ -913,9 +913,6 @@
 	#blyrics-wrapper {
 		margin-top: 0;
 	}
-	#blyrics-spacing-element {
-		height: 48px !important;
-	}
 	.blyrics-footer {
 		row-gap: 1.25rem;
 	}
