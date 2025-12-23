@@ -115,6 +115,24 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "SashaGonch228",
+      "name": "SashaGonch228",
+      "avatar_url": "https://avatars.githubusercontent.com/u/78559764?v=4",
+      "profile": "https://github.com/SashaGonch228",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "chengggit",
+      "name": "chengg",
+      "avatar_url": "https://avatars.githubusercontent.com/u/118322222?v=4",
+      "profile": "https://github.com/chengggit",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "badgeTemplate": "<img src=\"https://img.shields.io/badge/all_contributors-<%= contributors.length %>-orange.svg\" alt=\"\"/>",
