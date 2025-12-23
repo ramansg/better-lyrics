@@ -62,7 +62,7 @@ export const TRANSLATE_IN_ROMAJI = function (lang: string, text: string): string
 
 export const CUBEY_LYRICS_API_URL_TURNSTILE = "https://lyrics.api.dacubeking.com/";
 
-export const CUBEY_LYRICS_API_URL = "https://go-api-proxy-better-lyrics-cf-api.dacubeking.workers.dev/";
+export const CUBEY_LYRICS_API_URL = "https://lyrics.api.dacubeking.com/";
 
 // Supported Languages
 export const romanizationLanguages: string[] = [
@@ -173,6 +173,8 @@ export const MUSIC_NOTES: string = "♪𝅘𝅥𝅮𝅘𝅥𝅯𝅘𝅥𝅰𝅘𝅥𝅱𝅘𝅥𝅲";
 
 export const DEFAULT_LINE_SYNCED_WORD_DELAY_MS = 50;
 export const BLYRICS_INSTRUMENTAL_GAP_MS = 5000;
+
+export const STORAGE_CACHE_TTL = 30 * 24 * 60 * 60 * 1000;
 
 export const PLAYER_BAR_SELECTOR: string = "ytmusic-player-bar";
 export const AD_PLAYING_ATTR: string = "is-advertisement";

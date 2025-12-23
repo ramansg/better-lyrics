@@ -216,8 +216,7 @@ export async function getLyrics(
         version: LYRIC_CACHE_VERSION,
         ...source.lyricSourceResult,
       };
-      const cacheTime = 7 * 24 * 60 * 60 * 1000;
-      Storage.setTransientStorage(cacheKey, JSON.stringify(versionedData), cacheTime);
+      Storage.setTransientStorage(cacheKey, JSON.stringify(versionedData), Constants.STORAGE_CACHE_TTL);
     }
   });
 
