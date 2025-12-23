@@ -182,7 +182,29 @@ export function createFooter(song: string, artist: string, album: string, durati
 
     addLyricsContainer.appendChild(addLyricsLink);
 
+    const geniusContainer = document.createElement("div");
+    geniusContainer.className = `${Constants.FOOTER_CLASS}__container`;
+
+    const searchQuery = encodeURIComponent(`${artist.trim()} - ${song}`);
+    const geniusSearchUrl = `https://genius.com/search?q=${searchQuery}`;
+
+    const geniusLink = document.createElement("a");
+    geniusLink.href = geniusSearchUrl;
+    geniusLink.target = "_blank";
+    geniusLink.textContent = "Search on Genius";
+    geniusLink.style.height = "100%";
+
+    const geniusImage = document.createElement("img");
+    geniusImage.src = Constants.GENIUS_LOGO_SRC;
+    geniusImage.alt = "Genius";
+    geniusImage.width = 20;
+    geniusImage.height = 20;
+
+    geniusContainer.appendChild(geniusImage);
+    geniusContainer.appendChild(geniusLink);
+
     footer.appendChild(footerContainer);
+    footer.appendChild(geniusContainer);
     footer.appendChild(addLyricsContainer);
     footer.appendChild(discordLink);
 
