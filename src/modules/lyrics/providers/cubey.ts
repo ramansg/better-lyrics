@@ -63,6 +63,9 @@ function handleTurnstile(): Promise<string> {
   });
 }
 
+const CUBEY_LYRICS_API_URL_TURNSTILE = "https://lyrics.api.dacubeking.com/";
+const CUBEY_LYRICS_API_URL = "https://lyrics.api.dacubeking.com/";
+
 export type CubeyLyricSourceResult = LyricSourceResult & {
   album: string;
   artist: string;
