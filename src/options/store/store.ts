@@ -128,10 +128,7 @@ let currentPage = 1;
 let isMarketplacePage = false;
 
 function getTestThemes(): StoreTheme[] {
-  try {
-    if (process.env.EXTENSION_PUBLIC_ENABLE_TEST_THEMES !== "true") return [];
-  } catch (err) {
-    console.error(LOG_PREFIX_STORE, "Failed to check test themes env:", err);
+  if (typeof process === "undefined" || process.env?.EXTENSION_PUBLIC_ENABLE_TEST_THEMES !== "true") {
     return [];
   }
 
@@ -259,10 +256,7 @@ function getTestThemes(): StoreTheme[] {
 }
 
 function getTestStats(): AllThemeStats {
-  try {
-    if (process.env.EXTENSION_PUBLIC_ENABLE_TEST_THEMES !== "true") return {};
-  } catch (err) {
-    console.error(LOG_PREFIX_STORE, "Failed to check test stats env:", err);
+  if (typeof process === "undefined" || process.env?.EXTENSION_PUBLIC_ENABLE_TEST_THEMES !== "true") {
     return {};
   }
 
