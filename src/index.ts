@@ -1,8 +1,8 @@
-import { INITIALIZE_LOG } from "@constants";
 import { AppState } from "@core/appState";
+import { INITIALIZE_LOG } from "@constants";
 import { purgeExpiredKeys, saveCacheInfo } from "@core/storage";
 import { initProviders } from "@modules/lyrics/providers/shared";
-import { setupRequestSniffer } from "@modules/lyrics/requestSniffer";
+import { setupRequestSniffer } from "@modules/lyrics/requestSniffer/requestSniffer";
 import {
   handleSettings,
   hideCursorOnIdle,

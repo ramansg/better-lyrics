@@ -20,8 +20,11 @@ import type { CubeyLyricSourceResult } from "./providers/cubey";
 import type { LyricSourceResult, ProviderParameters } from "./providers/shared";
 import { getLyrics, newSourceMap, providerPriority } from "./providers/shared";
 import type { YTLyricSourceResult } from "./providers/yt";
-import type { SegmentMap } from "./requestSniffer";
-import { getMatchingSong, getSongAlbum } from "./requestSniffer";
+import type { SegmentMap } from "./requestSniffer/requestSniffer";
+import * as RequestSniffer from "./requestSniffer/requestSniffer";
+import * as RequestSniffing from "./requestSniffer/requestSniffer";
+import * as Translation from "./translation";
+import { getMatchingSong, getSongAlbum } from "./requestSniffer/requestSniffer";
 import { clearCache } from "./translation";
 
 export type LyricSourceResultWithMeta = LyricSourceResult & {

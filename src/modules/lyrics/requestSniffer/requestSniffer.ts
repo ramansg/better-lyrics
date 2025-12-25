@@ -1,5 +1,5 @@
 import { log } from "@utils";
-import type {NextResponse} from "@modules/lyrics/requestSnifferTypes/Next";
+import type {NextResponse} from "@modules/lyrics/requestSniffer/NextResponse";
 
 interface Segment {
   primaryVideoStartTimeMilliseconds: number;

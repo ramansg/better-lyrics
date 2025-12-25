@@ -1,4 +1,4 @@
-import { getLyrics as getRequestSnifferLyrics } from "@modules/lyrics/requestSniffer";
+import { getLyrics as getRequestSnifferLyrics } from "@modules/lyrics/requestSniffer/requestSniffer";
 import { parsePlainLyrics } from "./lrcUtils";
 import { type LyricSourceResult, type ProviderParameters } from "./shared";
 
