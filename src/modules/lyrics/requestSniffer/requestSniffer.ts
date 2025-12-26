@@ -140,7 +140,7 @@ export function setupRequestSniffer(): void {
   document.addEventListener("blyrics-send-response", (event: Event) => {
     if (!(event instanceof CustomEvent)) return;
     let { /** @type string */ url, requestJson, responseJson } = event.detail;
-    if (url.includes("https://music.youtube.com/youtubei/v1/next")) {
+    if (matchesPath(url, "/youtubei/v1/next")) {
       let nextResponse = responseJson as NextResponse;
       let playlistPanelRendererContents =
           nextResponse.contents.singleColumnMusicWatchNextResultsRenderer.tabbedRenderer.watchNextTabbedResultsRenderer
@@ -362,7 +362,7 @@ export function setupRequestSniffer(): void {
           browseIdToVideoIdMap.set(browseId, videoId);
         }
       }
-    } else if (url.includes("https://music.youtube.com/youtubei/v1/browse")) {
+    } else if (matchesPath(url, "/youtubei/v1/browse")) {
       let browseId = requestJson.browseId;
       let videoId = browseIdToVideoIdMap.get(browseId);
 
@@ -390,4 +390,14 @@ export function setupRequestSniffer(): void {
       }
     }
   });
+}
+
+
+function matchesPath(urlString: string, path: string) {
+  try {
+    let url = new URL(urlString);
+    return url && url.pathname.startsWith(path) && url.origin === "https://music.youtube.com";
+  } catch (e) {
+    return false;
+  }
 }
