@@ -157,9 +157,9 @@ export function setupRequestSniffer(): void {
                 ?.contents;
 
         if (!playlistPanelRendererContents) {
-          Utils.log("PlaylistPanelRendererContents not found.");
+          log("PlaylistPanelRendererContents not found.");
         } else {
-          Utils.log("PlaylistPanelRendererContents found in onResponseReceivedEndpoints!");
+          log("PlaylistPanelRendererContents found in onResponseReceivedEndpoints!");
         }
       }
 
