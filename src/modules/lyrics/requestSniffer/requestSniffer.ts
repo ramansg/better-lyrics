@@ -1,5 +1,5 @@
 import { log } from "@utils";
-import type {Continuation, LongBylineText, NextResponse} from "@modules/lyrics/requestSniffer/NextResponse";
+import type {LongBylineText, NextResponse} from "@modules/lyrics/requestSniffer/NextResponse";
 import {parseTime} from "@modules/lyrics/providers/lrcUtils";
 
 interface Segment {
@@ -42,10 +42,10 @@ const videoIdToLyricsMap = new Map<string, LyricsInfo>();
 const videoMetaDataMap = new Map<string, VideoMetadata>();
 const videoIdToAlbumMap = new Map<string, string | null>();
 
-/**
- * ContinuationId -> Last song in the playlist (before the continuation)
- */
-const continuationMap = new Map<string, VideoMetadata>();
+// /**
+//  * ContinuationId -> Last song in the playlist (before the continuation)
+//  */
+// const continuationMap = new Map<string, VideoMetadata>();
 
 let firstRequestMissedVideoId: string | null = null;
 
@@ -323,6 +323,14 @@ export function setupRequestSniffer(): void {
           }
           videoIdToAlbumMap.set(videoPair.primary.id, videoPair.primary.album);
         }
+      }
+
+
+      let continuation = nextResponse.contents.singleColumnMusicWatchNextResultsRenderer.tabbedRenderer
+          .watchNextTabbedResultsRenderer.tabs[0].tabRenderer.content?.musicQueueRenderer.content?.playlistPanelRenderer
+          .continuations?.[0].nextRadioContinuationData.continuation
+      if (continuation) {
+          // TODO track continuations
       }
 
       let videoId = requestJson.videoId;

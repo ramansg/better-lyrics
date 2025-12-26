@@ -213,22 +213,22 @@ export async function createLyrics(detail: PlayerDetails, signal: AbortSignal): 
       let sourceLyrics = await getLyrics(providerParameters, provider);
 
       if (sourceLyrics && sourceLyrics.lyrics && sourceLyrics.lyrics.length > 0) {
-        let ytLyrics = (await ytLyricsPromise) as YTLyricSourceResult;
-
-        if (ytLyrics !== null) {
-          let lyricText = "";
-          sourceLyrics.lyrics.forEach(lyric => {
-            lyricText += lyric.words + "\n";
-          });
-
-          let matchAmount = stringSimilarity(lyricText.toLowerCase(), ytLyrics.text.toLowerCase());
-          if (matchAmount < 0.5) {
-            log(
-              `Got lyrics from ${sourceLyrics.source}, but they don't match yt lyrics. Rejecting: Match: ${matchAmount}%`
-            );
-            continue;
-          }
-        }
+        // let ytLyrics = (await ytLyricsPromise) as YTLyricSourceResult;
+        //
+        // if (ytLyrics !== null) {
+        //   let lyricText = "";
+        //   sourceLyrics.lyrics.forEach(lyric => {
+        //     lyricText += lyric.words + "\n";
+        //   });
+        //
+        //   let matchAmount = stringSimilarity(lyricText.toLowerCase(), ytLyrics.text.toLowerCase());
+        //   if (matchAmount < 0.5) {
+        //     log(
+        //       `Got lyrics from ${sourceLyrics.source}, but they don't match yt lyrics. Rejecting: Match: ${matchAmount}%`
+        //     );
+        //     continue;
+        //   }
+        // }
         lyrics = sourceLyrics;
         selectedProvider = provider;
         break;
