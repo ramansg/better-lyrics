@@ -21,7 +21,7 @@
 
     ytmusic-app-layout:not([is-mweb-modernization-enabled])[player-fullscreened]:not([blyrics-dfs])
       > [slot="player-page"] {
-      padding-inline: inherit;
+      padding-inline: 64px;
     }
 
     ytmusic-app-layout[player-fullscreened][blyrics-dfs] #player-page {
