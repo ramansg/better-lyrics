@@ -8,6 +8,7 @@ export const modalCloseBtn = document.getElementById("modal-close") as HTMLButto
 export const syncIndicator = document.getElementById("sync-indicator")!;
 export const themeNameDisplay = document.getElementById("theme-name-display");
 export const themeNameText = document.getElementById("theme-name-text");
+export const themeSourceBadge = document.getElementById("theme-source-badge");
 export const editThemeBtn = document.getElementById("edit-theme-btn");
 export const deleteThemeBtn = document.getElementById("delete-theme-btn");
 export const themeSelectorBtn = document.getElementById("theme-selector-btn") as HTMLButtonElement | null;

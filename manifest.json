@@ -14,10 +14,17 @@
     "*://music.youtube.com/*"
   ],
   "permissions": [
-    "storage"
+    "storage",
+    "alarms"
   ],
   "optional_permissions": [
     "downloads"
+  ],
+  "optional_host_permissions": [
+    "https://raw.githubusercontent.com/better-lyrics/themes/*",
+    "https://better-lyrics-themes-api.boidu.dev/*",
+    "https://raw.githubusercontent.com/*",
+    "https://api.github.com/*"
   ],
   "options_ui": {
     "page": "src/options/options.html",
@@ -35,7 +42,8 @@
         "css/themesong.css",
         "css/themes/*.css",
         "*.js.map",
-        "pages/standalone-editor.html"
+        "pages/standalone-editor.html",
+        "pages/marketplace.html"
       ]
     }
   ],

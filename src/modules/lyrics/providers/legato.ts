@@ -1,6 +1,6 @@
 import { type ProviderParameters } from "./shared";
-import * as Constants from "@constants";
-import * as Utils from "@utils";
+import { GENERAL_ERROR_LOG, LEGATO_API_URL } from "@constants";
+import { log } from "@utils";
 import { parseLRC } from "./lrcUtils";
 
 export default async function legato(providerParameters: ProviderParameters): Promise<void> {
@@ -10,7 +10,7 @@ export default async function legato(providerParameters: ProviderParameters): Pr
   };
 
   try {
-    const url = new URL(Constants.LEGATO_API_URL);
+    const url = new URL(LEGATO_API_URL);
     url.searchParams.append("s", providerParameters.song);
     url.searchParams.append("a", providerParameters.artist);
     url.searchParams.append("d", String(providerParameters.duration));
@@ -42,7 +42,7 @@ export default async function legato(providerParameters: ProviderParameters): Pr
     };
     providerParameters.sourceMap["legato-synced"].filled = true;
   } catch (err) {
-    Utils.log(Constants.GENERAL_ERROR_LOG, "Legato provider error:", err);
+    log(GENERAL_ERROR_LOG, "Legato provider error:", err);
     markFailed();
   }
 }

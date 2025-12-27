@@ -80,8 +80,7 @@ try {
 
   // Run biome
   console.log("Running biome...");
-  execSync("npx @biomejs/biome lint --fix");
-  execSync("npx @biomejs/biome format --fix");
+  execSync("npm run lint");
 
   console.log("Version bump complete.");
 } catch (error) {

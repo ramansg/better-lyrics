@@ -33,7 +33,18 @@ module.exports = {
       profile: "dist/firefox-profile",
     },
   },
-  output: {
-    publicPath: "chrome-extension://effdbpeggelllpfkjppbokhmmiinhlmg/",
-  },
+  config: (config) => {
+    const isCanaryRelease = process.env.RELEASE_TYPE === "canary";
+    const isDevelopment = config.mode !== "production";
+
+		if (!isDevelopment){
+			console.log("\x1b[31m[BetterLyrics]\x1b[0m Building for", isCanaryRelease ? "canary release" : "standard release");
+		}
+    config.devtool = (isDevelopment || isCanaryRelease) ? "source-map" : false;
+    config.output = {
+      ...config.output,
+      publicPath: "chrome-extension://effdbpeggelllpfkjppbokhmmiinhlmg/",
+    };
+    return config;
+  }
 };

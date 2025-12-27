@@ -1,5 +1,4 @@
-import { log } from "@/core/utils";
-import * as Constants from "@constants";
+import { BLYRICS_INSTRUMENTAL_GAP_MS, LYRICS_API_URL } from "@constants";
 import type {
   ParagraphElementOrBackground,
   SpanElement,
@@ -66,7 +65,7 @@ function parseLyricPart(p: ParagraphElementOrBackground[], beginTime: number, ig
 function insertInstrumentalBreaks(lyrics: Lyric[], songDurationMs: number): Lyric[] {
   if (lyrics.length === 0) return lyrics;
 
-  const gapThreshold = Constants.BLYRICS_INSTRUMENTAL_GAP_MS;
+  const gapThreshold = BLYRICS_INSTRUMENTAL_GAP_MS;
   const result: Lyric[] = [];
 
   const createInstrumental = (startTimeMs: number, durationMs: number): Lyric => ({
@@ -232,7 +231,7 @@ export async function fillTtml(responseString: string, providerParameters: Provi
 
 export default async function bLyrics(providerParameters: ProviderParameters): Promise<void> {
   // Fetch from the primary API if cache is empty or invalid
-  const url = new URL(Constants.LYRICS_API_URL);
+  const url = new URL(LYRICS_API_URL);
   url.searchParams.append("s", providerParameters.song);
   url.searchParams.append("a", providerParameters.artist);
   url.searchParams.append("d", String(providerParameters.duration));

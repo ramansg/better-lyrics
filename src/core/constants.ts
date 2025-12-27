@@ -1,3 +1,5 @@
+import type { LyricSourceKey } from "@modules/lyrics/providers/shared";
+
 // DOM Class Names
 export const TITLE_CLASS: string = "title ytmusic-player-bar";
 export const SUBTITLE_CLASS: string = "subtitle style-scope ytmusic-player-bar";
@@ -53,6 +55,9 @@ export const LRCLIB_API_URL: string = "https://lrclib.net/api/get";
 export const LEGATO_API_URL: string = "https://lyrics-api.boidu.dev/kugou/getLyrics";
 export const LRCLIB_UPLOAD_URL: string = "https://lrclibup.boidu.dev/";
 export const LRCLIB_CLIENT_HEADER: string = "BetterLyrics Extension (https://github.com/better-lyrics/better-lyrics)";
+export const THEME_STORE_API_URL: string = "https://better-lyrics-themes-api.boidu.dev";
+export const THEME_REGISTRY_BASE: string = "https://raw.githubusercontent.com/better-lyrics/themes";
+export const THEME_REGISTRY_URL: string = `${THEME_REGISTRY_BASE}/master`;
 export const TRANSLATE_LYRICS_URL = function (lang: string, text: string): string {
   return `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${lang}&dt=t&q=${encodeURIComponent(text)}`;
 };
@@ -96,7 +101,10 @@ export const romanizationLanguages: string[] = [
 
 // Log Prefixes
 export const LOG_PREFIX: string = "[BetterLyrics]";
+export const LOG_PREFIX_CONTENT: string = "[BetterLyrics:Content]";
+export const LOG_PREFIX_BACKGROUND: string = "[BetterLyrics:Background]";
 export const LOG_PREFIX_EDITOR: string = "[BetterLyrics:Editor]";
+export const LOG_PREFIX_STORE: string = "[BetterLyrics:Store]";
 export const IGNORE_PREFIX: string = "(Safe to ignore)";
 
 // Initialization and General Logs
@@ -180,3 +188,26 @@ export const STORAGE_CACHE_TTL = 30 * 24 * 60 * 60 * 1000;
 export const PLAYER_BAR_SELECTOR: string = "ytmusic-player-bar";
 export const AD_PLAYING_ATTR: string = "is-advertisement";
 export const LYRICS_AD_OVERLAY_ID: string = "blyrics-ad-overlay";
+
+export type SyncType = "syllable" | "word" | "line" | "unsynced";
+
+export interface ProviderConfig {
+  key: LyricSourceKey;
+  displayName: string;
+  syncType: SyncType;
+  priority: number;
+}
+
+export const PROVIDER_CONFIGS: ProviderConfig[] = [
+  { key: "bLyrics-richsynced", displayName: "Better Lyrics", syncType: "syllable", priority: 0 },
+  { key: "musixmatch-richsync", displayName: "Musixmatch", syncType: "word", priority: 1 },
+  { key: "yt-captions", displayName: "Youtube Captions", syncType: "line", priority: 2 },
+  { key: "bLyrics-synced", displayName: "Better Lyrics", syncType: "line", priority: 3 },
+  { key: "lrclib-synced", displayName: "LRCLib", syncType: "line", priority: 4 },
+  { key: "legato-synced", displayName: "Legato", syncType: "line", priority: 5 },
+  { key: "musixmatch-synced", displayName: "Musixmatch", syncType: "line", priority: 6 },
+  { key: "yt-lyrics", displayName: "Youtube", syncType: "unsynced", priority: 7 },
+  { key: "lrclib-plain", displayName: "LRCLib", syncType: "unsynced", priority: 8 },
+] as const;
+
+export const LYRIC_SOURCE_KEYS = PROVIDER_CONFIGS.map(p => p.key);

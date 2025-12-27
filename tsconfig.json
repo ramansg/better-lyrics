@@ -29,8 +29,6 @@
   "exclude": [
     "node_modules",
     "dist",
-    "tooling",
-		"stylelint-bundle.min.js",
-		"stylelint-bundle.min.js.map"
+    "tooling"
   ]
 }

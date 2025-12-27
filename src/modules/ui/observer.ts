@@ -1,25 +1,32 @@
-import * as Settings from "@modules/settings/settings";
-import * as Dom from "./dom";
-import * as Constants from "@constants";
-import { AppState, handleModifications, reloadLyrics, type PlayerDetails } from "@core/appState";
-import * as Utils from "@utils";
-import { animEngineState, getResumeScrollElement, animationEngine } from "@modules/ui/animationEngine";
 import {
-  isPlayerPageOpen,
-  isNavigating,
-  openPlayerPageForFullscreen,
+  AUTO_SWITCH_ENABLED_LOG,
+  FULLSCREEN_BUTTON_SELECTOR,
+  GENERAL_ERROR_LOG,
+  LYRICS_TAB_CLICKED_LOG,
+  LYRICS_WRAPPER_ID,
+  PAUSING_LYRICS_SCROLL_LOG,
+  SONG_SWITCHED_LOG,
+  TAB_CONTENT_CLASS,
+  TAB_HEADER_CLASS,
+  TAB_RENDERER_SELECTOR,
+} from "@constants";
+import { AppState, handleModifications, reloadLyrics, type PlayerDetails } from "@core/appState";
+import { onAutoSwitchEnabled, onFullScreenDisabled } from "@modules/settings/settings";
+import { animationEngine, animEngineState, getResumeScrollElement } from "@modules/ui/animationEngine";
+import {
   closePlayerPageIfOpenedForFullscreen,
+  isNavigating,
+  isPlayerPageOpen,
+  openPlayerPageForFullscreen,
 } from "@modules/ui/navigation";
+import { log } from "@utils";
+import { addAlbumArtToLayout, cleanup, injectSongAttributes, isLoaderActive, renderLoader } from "./dom";
 
-/**
- * Manages the Wake Lock API to prevent the screen from dimming or locking.
- * Requests a wake lock and re-requests it if released due to visibility changes.
- */
 let wakeLock: WakeLockSentinel | null = null;
 
 async function requestWakeLock(): Promise<void> {
   if (!("wakeLock" in navigator)) {
-    Utils.log(Constants.GENERAL_ERROR_LOG, "Wake Lock API not supported in this browser.");
+    log(GENERAL_ERROR_LOG, "Wake Lock API not supported in this browser.");
     return;
   }
 
@@ -29,7 +36,7 @@ async function requestWakeLock(): Promise<void> {
       wakeLock = null;
     });
   } catch (err) {
-    Utils.log(Constants.GENERAL_ERROR_LOG, "Wake Lock request failed:", err);
+    log(GENERAL_ERROR_LOG, "Wake Lock request failed:", err);
   }
 }
 
@@ -90,7 +97,7 @@ export function setupWakeLockForFullscreen(): void {
  * Sets up a MutationObserver to watch for attribute changes.
  */
 export function enableLyricsTab(): void {
-  const tabSelector = document.getElementsByClassName(Constants.TAB_HEADER_CLASS)[1] as HTMLElement;
+  const tabSelector = document.getElementsByClassName(TAB_HEADER_CLASS)[1] as HTMLElement;
   if (!tabSelector) {
     setTimeout(() => {
       enableLyricsTab();
@@ -123,14 +130,14 @@ export function disableInertWhenFullscreen(): void {
     return;
   }
   const observer = new MutationObserver(mutations => {
-    Settings.onFullScreenDisabled(
+    onFullScreenDisabled(
       () => {},
       () =>
         mutations.forEach(mutation => {
           if (mutation.attributeName === "inert") {
             // entering fullscreen mode
             (mutation.target as HTMLElement).removeAttribute("inert");
-            const tabSelector = document.getElementsByClassName(Constants.TAB_HEADER_CLASS)[1] as HTMLElement;
+            const tabSelector = document.getElementsByClassName(TAB_HEADER_CLASS)[1] as HTMLElement;
             if (tabSelector && tabSelector.getAttribute("aria-selected") !== "true") {
               // ensure lyrics tab is selected
               tabSelector.click();
@@ -151,14 +158,14 @@ let scrollPositions = [0, 0, 0];
  * Handles lyrics reloading when the lyrics tab is clicked.
  */
 export function lyricReloader(): void {
-  const tabs = document.getElementsByClassName(Constants.TAB_CONTENT_CLASS);
+  const tabs = document.getElementsByClassName(TAB_CONTENT_CLASS);
 
   const [tab1, tab2, tab3] = Array.from(tabs);
 
   if (tab1 !== undefined && tab2 !== undefined && tab3 !== undefined) {
     for (let i = 0; i < tabs.length; i++) {
       tabs[i].addEventListener("click", () => {
-        const tabRenderer = document.querySelector(Constants.TAB_RENDERER_SELECTOR) as HTMLElement;
+        const tabRenderer = document.querySelector(TAB_RENDERER_SELECTOR) as HTMLElement;
         scrollPositions[currentTab] = tabRenderer.scrollTop;
         tabRenderer.scrollTop = scrollPositions[i];
         setTimeout(() => {
@@ -178,9 +185,9 @@ export function lyricReloader(): void {
     tab2.addEventListener("click", () => {
       getResumeScrollElement().classList.remove("blyrics-hidden");
       if (!AppState.areLyricsLoaded) {
-        Utils.log(Constants.LYRICS_TAB_CLICKED_LOG);
-        Dom.cleanup();
-        Dom.renderLoader();
+        log(LYRICS_TAB_CLICKED_LOG);
+        cleanup();
+        renderLoader();
         reloadLyrics();
       }
     });
@@ -213,10 +220,10 @@ export function initializeLyrics(): void {
       AppState.lastVideoId = currentVideoId;
       AppState.lastVideoDetails = currentVideoDetails;
       if (!detail.song || !detail.artist) {
-        Utils.log("Lyrics switched: Still waiting for metadata ", detail.videoId);
+        log("Lyrics switched: Still waiting for metadata ", detail.videoId);
         return;
       }
-      Utils.log(Constants.SONG_SWITCHED_LOG, detail.videoId);
+      log(SONG_SWITCHED_LOG, detail.videoId);
 
       AppState.queueLyricInjection = true;
       AppState.queueAlbumArtInjection = true;
@@ -226,30 +233,30 @@ export function initializeLyrics(): void {
 
     if (AppState.queueSongDetailsInjection && detail.song && detail.artist && document.getElementById("main-panel")) {
       AppState.queueSongDetailsInjection = false;
-      Dom.injectSongAttributes(detail.song, detail.artist);
+      injectSongAttributes(detail.song, detail.artist);
     }
 
     if (AppState.queueAlbumArtInjection && AppState.shouldInjectAlbumArt === true) {
       AppState.queueAlbumArtInjection = false;
-      Dom.addAlbumArtToLayout(currentVideoId);
+      addAlbumArtToLayout(currentVideoId);
     }
 
     if (AppState.lyricInjectionFailed) {
-      const tabSelector = document.getElementsByClassName(Constants.TAB_HEADER_CLASS)[1];
+      const tabSelector = document.getElementsByClassName(TAB_HEADER_CLASS)[1];
       if (tabSelector && tabSelector.getAttribute("aria-selected") !== "true") {
         return; // wait to resolve until tab is visible
       }
     }
 
     if (AppState.queueLyricInjection || AppState.lyricInjectionFailed) {
-      const tabSelector = document.getElementsByClassName(Constants.TAB_HEADER_CLASS)[1] as HTMLElement;
+      const tabSelector = document.getElementsByClassName(TAB_HEADER_CLASS)[1] as HTMLElement;
       if (tabSelector) {
         AppState.queueLyricInjection = false;
         AppState.lyricInjectionFailed = false;
         if (tabSelector.getAttribute("aria-selected") !== "true") {
-          Settings.onAutoSwitchEnabled(() => {
+          onAutoSwitchEnabled(() => {
             tabSelector.click();
-            Utils.log(Constants.AUTO_SWITCH_ENABLED_LOG);
+            log(AUTO_SWITCH_ENABLED_LOG);
             getResumeScrollElement().classList.remove("blyrics-hidden");
           });
         }
@@ -268,7 +275,7 @@ export function initializeLyrics(): void {
  * Manages autoscroll pause/resume functionality.
  */
 export function scrollEventHandler(): void {
-  const tabSelector = document.getElementsByClassName(Constants.TAB_HEADER_CLASS)[1];
+  const tabSelector = document.getElementsByClassName(TAB_HEADER_CLASS)[1];
   if (tabSelector.getAttribute("aria-selected") !== "true" || !AppState.areLyricsTicking) {
     return;
   }
@@ -276,12 +283,11 @@ export function scrollEventHandler(): void {
   if (animEngineState.skipScrolls > 0) {
     animEngineState.skipScrolls--;
     animEngineState.skipScrollsDecayTimes.shift();
-    // Utils.log("[BetterLyrics] Skipping Lyrics Scroll");
     return;
   }
-  if (!Dom.isLoaderActive()) {
+  if (!isLoaderActive()) {
     if (animEngineState.scrollResumeTime < Date.now()) {
-      Utils.log(Constants.PAUSING_LYRICS_SCROLL_LOG);
+      log(PAUSING_LYRICS_SCROLL_LOG);
     }
     animEngineState.scrollResumeTime = Date.now() + 25000;
   }
@@ -370,7 +376,7 @@ function setupFullscreenExitListener(): void {
 }
 
 function triggerFullscreen(): void {
-  const fullscreenButton = document.querySelector(Constants.FULLSCREEN_BUTTON_SELECTOR) as HTMLElement;
+  const fullscreenButton = document.querySelector(FULLSCREEN_BUTTON_SELECTOR) as HTMLElement;
 
   if (fullscreenButton) {
     fullscreenButton.click();
@@ -399,7 +405,7 @@ function setupMiniplayerFullscreenHandler(): void {
 
 export function setupAltHoverHandler(): void {
   const updateAltState = (isAltPressed: boolean) => {
-    const lyricsWrapper = document.getElementById(Constants.LYRICS_WRAPPER_ID);
+    const lyricsWrapper = document.getElementById(LYRICS_WRAPPER_ID);
     if (!lyricsWrapper) return;
 
     if (isAltPressed) {

@@ -97,9 +97,9 @@ const stopLyricsTick = () => {
 
 window.addEventListener("unload", stopLyricsTick);
 
-document.addEventListener("blyrics-seek-to", () => {
+document.addEventListener("blyrics-seek-to", event => {
   const player = document.getElementById("movie_player");
-  const seekTime = parseFloat(document.body.dataset.blyricsSeekTime || "0");
+  const seekTime = event.detail?.time ?? 0;
   if (player && seekTime >= 0) {
     player.seekTo(seekTime, true);
     player.playVideo();

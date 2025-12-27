@@ -27,9 +27,3 @@ export interface ThemeCardOptions {
   isCustom: boolean;
   index: number;
 }
-
-declare global {
-  interface Window {
-    stylelint: any;
-  }
-}

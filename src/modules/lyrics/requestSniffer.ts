@@ -1,4 +1,4 @@
-import * as Utils from "@utils";
+import { log } from "@utils";
 
 interface Segment {
   primaryVideoStartTimeMilliseconds: number;
@@ -59,7 +59,7 @@ export async function getLyrics(videoId: string, maxRetries = 250): Promise<Lyri
         }
         if (checkCount > maxRetries) {
           clearInterval(checkInterval);
-          Utils.log("Failed to sniff lyrics");
+          log("Failed to sniff lyrics");
           resolve({ hasLyrics: false, lyrics: "", sourceText: "" });
         }
         checkCount += 1;
@@ -88,7 +88,7 @@ export async function getMatchingSong(videoId: string, maxCheckCount = 250): Pro
         }
         if (checkCount > maxCheckCount) {
           clearInterval(checkInterval);
-          Utils.log("Failed to find Segment Map for video");
+          log("Failed to find Segment Map for video");
           resolve(null);
         }
         checkCount += 1;
@@ -108,7 +108,7 @@ export async function getSongAlbum(videoId: string): Promise<string | null | und
     }
     await delay(20);
   }
-  Utils.log("Song album information didn't come in time for: ", videoId);
+  log("Song album information didn't come in time for: ", videoId);
 }
 
 export function setupRequestSniffer(): void {
