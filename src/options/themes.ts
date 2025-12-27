@@ -1,3 +1,5 @@
+import { getLocalStorage } from "@core/storage";
+
 interface Theme {
   name: string;
   author: string;
@@ -83,7 +85,7 @@ const themes: Theme[] = [
 ];
 
 export async function getCustomThemes(): Promise<CustomTheme[]> {
-  const result = (await chrome.storage.local.get("customThemes")) as { customThemes?: CustomTheme[] };
+  const result = await getLocalStorage<{ customThemes?: CustomTheme[] }>(["customThemes"]);
   return result.customThemes || [];
 }
 

@@ -1,12 +1,13 @@
+import { LOG_PREFIX_EDITOR } from "@constants";
 import { editorStateManager } from "../core/state";
-import { saveToStorageWithFallback, sendUpdateMessage, showSyncSuccess } from "./storage";
-import { hideThemeName, updateThemeSelectorButton } from "./themes";
 import { showAlert } from "../ui/feedback";
+import { broadcastRICSToTabs, saveToStorageWithFallback, showSyncSuccess } from "./storage";
+import { hideThemeName, updateThemeSelectorButton } from "./themes";
 
 export const generateDefaultFilename = (): string => {
   const date = new Date();
   const timestamp = date.toISOString().replace(/[:.]/g, "-").slice(0, -5);
-  return `blyrics-theme-${timestamp}.css`;
+  return `blyrics-theme-${timestamp}.rics`;
 };
 
 export const saveCSSToFile = (css: string, defaultFilename: string): void => {
@@ -25,8 +26,8 @@ export const saveCSSToFile = (css: string, defaultFilename: string): void => {
   });
 };
 
-const downloadFile = (css: string, defaultFilename: string): void => {
-  const blob = new Blob([css], { type: "text/css" });
+const downloadFile = (content: string, defaultFilename: string): void => {
+  const blob = new Blob([content], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
 
   if (chrome.downloads) {
@@ -37,7 +38,7 @@ const downloadFile = (css: string, defaultFilename: string): void => {
         saveAs: true,
       })
       .then(() => {
-        showAlert("CSS file save dialog opened. Choose where to save your file.");
+        showAlert("Theme file save dialog opened. Choose where to save your file.");
         URL.revokeObjectURL(url);
       })
       .catch(error => {
@@ -46,12 +47,12 @@ const downloadFile = (css: string, defaultFilename: string): void => {
         URL.revokeObjectURL(url);
       });
   } else {
-    fallbackSaveMethod(css, defaultFilename);
+    fallbackSaveMethod(content, defaultFilename);
   }
 };
 
-const fallbackSaveMethod = (css: string, defaultFilename: string): void => {
-  const blob = new Blob([css], { type: "text/css" });
+const fallbackSaveMethod = (content: string, defaultFilename: string): void => {
+  const blob = new Blob([content], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
 
   const a = document.createElement("a");
@@ -64,21 +65,21 @@ const fallbackSaveMethod = (css: string, defaultFilename: string): void => {
 
   setTimeout(() => URL.revokeObjectURL(url), 100);
 
-  showAlert("CSS file download initiated. Check your downloads folder.");
+  showAlert("Theme file download initiated. Check your downloads folder.");
 };
 
 export class ImportManager {
   async importCSSFile(file: File): Promise<void> {
-    console.log(`[ImportManager] Starting import of file: ${file.name}`);
+    console.log(LOG_PREFIX_EDITOR, ` Starting import of file: ${file.name}`);
 
     try {
       const css = await this.readFileContent(file);
-      console.log(`[ImportManager] File read successfully: ${css.length} bytes`);
+      console.log(LOG_PREFIX_EDITOR, ` File read successfully: ${css.length} bytes`);
 
       await this.performImport(css, file.name);
     } catch (error) {
-      console.error(`[ImportManager] Import failed:`, error);
-      showAlert("Error importing CSS file! Please try again.");
+      console.error(LOG_PREFIX_EDITOR, "Import failed:", error);
+      showAlert("Error importing theme file! Please try again.");
       throw error;
     }
   }
@@ -105,35 +106,35 @@ export class ImportManager {
   }
 
   private async performImport(css: string, filename: string): Promise<void> {
-    console.log(`[ImportManager] Performing import operation`);
+    console.log(LOG_PREFIX_EDITOR, ` Performing import operation`);
 
     await editorStateManager.queueOperation("import", async () => {
-      console.log(`[ImportManager] Step 1: Clearing theme state`);
+      console.log(LOG_PREFIX_EDITOR, ` Step 1: Clearing theme state`);
       await editorStateManager.clearThemeState();
       hideThemeName();
       updateThemeSelectorButton();
 
-      console.log(`[ImportManager] Step 2: Incrementing save count`);
+      console.log(LOG_PREFIX_EDITOR, ` Step 2: Incrementing save count`);
       editorStateManager.incrementSaveCount();
       editorStateManager.setIsSaving(true);
 
       try {
-        console.log(`[ImportManager] Step 3: Setting editor content`);
-        await editorStateManager.setEditorContent(css, `file-import:${filename}`);
+        console.log(LOG_PREFIX_EDITOR, ` Step 3: Setting editor content`);
+        await editorStateManager.setEditorContent(css, `file-import:${filename}`, false);
 
-        console.log(`[ImportManager] Step 4: Saving to storage`);
+        console.log(LOG_PREFIX_EDITOR, ` Step 4: Saving to storage`);
         const result = await saveToStorageWithFallback(css);
 
         if (!result.success || !result.strategy) {
           throw new Error(`Storage save failed: ${result.error?.message || "Unknown error"}`);
         }
 
-        console.log(`[ImportManager] Step 5: Sending update message`);
+        console.log(LOG_PREFIX_EDITOR, ` Step 5: Sending update message`);
         showSyncSuccess(result.strategy, result.wasRetry);
-        await sendUpdateMessage(css, result.strategy);
+        await broadcastRICSToTabs(css, result.strategy);
 
-        console.log(`[ImportManager] Import completed successfully`);
-        showAlert(`CSS file "${filename}" imported successfully!`);
+        console.log(LOG_PREFIX_EDITOR, ` Import completed successfully`);
+        showAlert(`Theme file "${filename}" imported successfully!`);
       } finally {
         editorStateManager.setIsSaving(false);
         editorStateManager.resetSaveCount();

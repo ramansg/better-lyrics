@@ -40,7 +40,9 @@ jobs:
           echo "NIGHTLY_VERSION=$VERSION.${{ github.run_number }}-dev ($HASH)" >> $GITHUB_ENV
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm install
+          npm install --no-save @biomejs/cli-linux-x64@2.0.4 @rspack/binding-linux-x64-gnu@1.5.8
 
       - name: Run Typescript
         run: npm run typecheck

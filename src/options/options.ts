@@ -1,5 +1,6 @@
 // Function to save user options
 import Sortable from "sortablejs";
+import { initStoreUI, setupYourThemesButton } from "./store/store";
 
 interface Options {
   isLogsEnabled: boolean;
@@ -383,5 +384,12 @@ document.addEventListener("DOMContentLoaded", () => {
     ghostClass: "dragging",
     forceFallback: true,
     onUpdate: saveOptions,
+  });
+
+  initStoreUI();
+  setupYourThemesButton();
+
+  document.getElementById("browse-themes-btn")?.addEventListener("click", () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL("pages/marketplace.html") });
   });
 });

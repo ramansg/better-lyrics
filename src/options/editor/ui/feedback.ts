@@ -9,17 +9,99 @@ import {
   modalTitle,
 } from "./dom";
 
-export const showAlert = (message: string): void => {
-  const status = document.getElementById("status-css")!;
-  status.innerText = message;
+let alertTimeoutId: ReturnType<typeof setTimeout> | null = null;
+let alertKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+const ALERT_DURATION = 2000;
+const ALERT_DURATION_WITH_ACTION = 5000;
+
+export interface AlertAction {
+  label: string;
+  callback: () => void;
+}
+
+function cleanupAlertKeyHandler(): void {
+  if (alertKeyHandler) {
+    document.removeEventListener("keydown", alertKeyHandler);
+    alertKeyHandler = null;
+  }
+}
+
+function createToastContent(status: HTMLElement, message: string, action?: AlertAction): void {
+  const textContainer = document.createElement("span");
+  textContainer.className = "toast-text";
+  textContainer.textContent = message;
+  status.appendChild(textContainer);
+
+  const actionWrapper = document.createElement("div");
+  actionWrapper.className = "toast-action-wrapper";
+  status.appendChild(actionWrapper);
+
+  if (action) {
+    const triggerAction = () => {
+      if (alertTimeoutId) {
+        clearTimeout(alertTimeoutId);
+        alertTimeoutId = null;
+      }
+      cleanupAlertKeyHandler();
+      action.callback();
+    };
+
+    const actionBtn = document.createElement("button");
+    actionBtn.className = "toast-action";
+    actionBtn.appendChild(document.createTextNode(action.label));
+    const kbd = document.createElement("kbd");
+    kbd.textContent = "Enter";
+    actionBtn.appendChild(kbd);
+    actionBtn.addEventListener("click", triggerAction);
+    actionWrapper.appendChild(actionBtn);
+
+    alertKeyHandler = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && status.classList.contains("active")) {
+        e.preventDefault();
+        triggerAction();
+      }
+    };
+    document.addEventListener("keydown", alertKeyHandler);
+  }
+}
+
+export const showAlert = (message: string, action?: AlertAction): void => {
+  const status = document.getElementById("status-css");
+  if (!status) return;
+
+  const isAlreadyActive = status.classList.contains("active");
+
+  cleanupAlertKeyHandler();
+
+  if (isAlreadyActive && status.children.length > 0) {
+    status.classList.add("exiting");
+    setTimeout(() => {
+      status.classList.remove("exiting");
+      status.replaceChildren();
+      createToastContent(status, message, action);
+    }, 150);
+  } else {
+    status.replaceChildren();
+    createToastContent(status, message, action);
+  }
+
   status.classList.add("active");
 
-  setTimeout(() => {
+  if (alertTimeoutId) {
+    clearTimeout(alertTimeoutId);
+  }
+
+  const baseDuration = action ? ALERT_DURATION_WITH_ACTION : ALERT_DURATION;
+  const duration = isAlreadyActive ? baseDuration * 1.5 : baseDuration;
+
+  alertTimeoutId = setTimeout(() => {
     status.classList.remove("active");
+    cleanupAlertKeyHandler();
     setTimeout(() => {
-      status.innerText = "";
+      status.replaceChildren();
     }, 200);
-  }, 2000);
+    alertTimeoutId = null;
+  }, duration);
 };
 
 export function showModal(options: ModalOptions): Promise<string | null> {

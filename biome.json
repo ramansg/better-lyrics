@@ -13,8 +13,7 @@
       "!www/.next/**/*",
       "!src/options.html",
       "!.all-contributorsrc",
-      "!STYLING.md",
-      "!public/stylelint/**/*"
+      "!STYLING.md"
     ],
     "ignoreUnknown": true
   },
@@ -55,8 +54,7 @@
         "dist/**/*",
         "src/options.html",
         ".all-contributorsrc",
-        "STYLING.md",
-        "public/stylelint/**/*"
+        "STYLING.md"
       ],
       "linter": {
         "enabled": false

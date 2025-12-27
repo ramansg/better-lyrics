@@ -1,3 +1,5 @@
+import { LOG_PREFIX } from "@constants";
+import { getLocalStorage } from "@core/storage";
 import { type LyricSourceKey, type LyricSourceResult, type ProviderParameters } from "./shared";
 
 /**
@@ -26,26 +28,26 @@ function handleTurnstile(): Promise<string> {
 
       switch (event.data.type) {
         case "turnstile-token":
-          Utils.log("[BetterLyrics] ✅ Received Success Token:", event.data.token);
+          log(LOG_PREFIX, "Received Success Token:", event.data.token);
           cleanup();
           resolve(event.data.token);
           break;
 
         case "turnstile-error":
-          console.error("[BetterLyrics] ❌ Received Challenge Error:", event.data.error);
+          console.error(LOG_PREFIX, "Received Challenge Error:", event.data.error);
           cleanup();
-          reject(new Error(`[BetterLyrics] Turnstile challenge error: ${event.data.error}`));
+          reject(new Error(`${LOG_PREFIX} Turnstile challenge error: ${event.data.error}`));
           break;
 
         case "turnstile-expired":
-          console.warn("⚠️ Token expired. Resetting challenge.");
+          console.warn(LOG_PREFIX, "Token expired. Resetting challenge.");
           iframe.contentWindow!.postMessage({ type: "reset-turnstile" }, "*");
           break;
 
         case "turnstile-timeout":
-          console.warn("[BetterLyrics] ⏳ Challenge timed out.");
+          console.warn(LOG_PREFIX, "Challenge timed out.");
           cleanup();
-          reject(new Error("[BetterLyrics] Turnstile challenge timed out."));
+          reject(new Error(`${LOG_PREFIX} Turnstile challenge timed out.`));
           break;
         default:
           break;
@@ -70,7 +72,7 @@ export type CubeyLyricSourceResult = LyricSourceResult & {
   song: string;
 };
 
-import * as Utils from "@core/utils";
+import { log } from "@core/utils";
 import { lrcFixers, parseLRC, parsePlainLyrics } from "./lrcUtils";
 import { fillTtml } from "@modules/lyrics/providers/blyrics/blyrics";
 import { CUBEY_LYRICS_API_URL, CUBEY_LYRICS_API_URL_TURNSTILE } from "@/core/constants";
@@ -98,29 +100,29 @@ export default async function cubey(providerParameters: ProviderParameters): Pro
         const nowInSeconds = Date.now() / 1000;
         return nowInSeconds > expirationTimeInSeconds;
       } catch (e) {
-        console.error("[BetterLyrics] Error decoding JWT on client-side:", e);
+        console.error(LOG_PREFIX, "Error decoding JWT on client-side:", e);
         return true;
       }
     }
 
     if (forceNew) {
-      Utils.log("[BetterLyrics] Forcing new token, removing any existing one.");
+      log(LOG_PREFIX, "Forcing new token, removing any existing one.");
       await chrome.storage.local.remove("jwtToken");
     } else {
-      const storedData = (await chrome.storage.local.get("jwtToken")) as { jwtToken?: string };
+      const storedData = await getLocalStorage<{ jwtToken?: string }>(["jwtToken"]);
       if (storedData.jwtToken) {
         if (isJwtExpired(storedData.jwtToken)) {
-          Utils.log("[BetterLyrics]Local JWT has expired. Removing and requesting a new one.");
+          log(LOG_PREFIX, "Local JWT has expired. Removing and requesting a new one.");
           await chrome.storage.local.remove("jwtToken");
         } else {
-          Utils.log("[BetterLyrics] 🔑 Using valid, non-expired JWT for bypass.");
+          log(LOG_PREFIX, "Using valid, non-expired JWT for bypass.");
           return storedData.jwtToken;
         }
       }
     }
 
     try {
-      Utils.log("[BetterLyrics] No valid JWT found, initiating Turnstile challenge...");
+      log(LOG_PREFIX, "No valid JWT found, initiating Turnstile challenge...");
       const turnstileToken = await handleTurnstile();
 
       const response = await fetch(CUBEY_LYRICS_API_URL + "verify-turnstile", {
@@ -138,10 +140,10 @@ export default async function cubey(providerParameters: ProviderParameters): Pro
       if (!newJwt) throw new Error("No JWT returned from API after verification.");
 
       await chrome.storage.local.set({ jwtToken: newJwt });
-      Utils.log("[BetterLyrics] ✅ New JWT received and stored.");
+      log(LOG_PREFIX, "New JWT received and stored.");
       return newJwt;
     } catch (error) {
-      console.error("[BetterLyrics] Authentication process failed:", error);
+      console.error(LOG_PREFIX, "Authentication process failed:", error);
       return null;
     }
   }
@@ -173,7 +175,7 @@ export default async function cubey(providerParameters: ProviderParameters): Pro
 
   let jwt = await getAuthenticationToken();
   if (!jwt) {
-    console.error("[BetterLyrics] Could not obtain an initial authentication token. Aborting lyrics fetch.");
+    console.error(LOG_PREFIX, "Could not obtain an initial authentication token. Aborting lyrics fetch.");
     // Mark sources as filled to prevent retries
     (["musixmatch-synced", "musixmatch-richsync", "lrclib-synced", "lrclib-plain"] as LyricSourceKey[]).forEach(
       source => {
@@ -188,25 +190,23 @@ export default async function cubey(providerParameters: ProviderParameters): Pro
   // If the request is forbidden (403), it's likely a WAF block.
   // Invalidate the current JWT and try one more time with a fresh one.
   if (response.status === 403) {
-    console.warn(
-      "[BetterLyrics] Request was blocked (403 Forbidden), possibly by WAF. Forcing new Turnstile challenge."
-    );
+    console.warn(LOG_PREFIX, "Request was blocked (403 Forbidden), possibly by WAF. Forcing new Turnstile challenge.");
     jwt = await getAuthenticationToken(true); // `true` forces a new token
 
     if (!jwt) {
-      console.error("[BetterLyrics] Could not obtain a new token after WAF block. Aborting.");
+      console.error(LOG_PREFIX, "Could not obtain a new token after WAF block. Aborting.");
       (["musixmatch-synced", "musixmatch-richsync", "lrclib-synced", "lrclib-plain"] as const).forEach(source => {
         providerParameters.sourceMap[source].filled = true;
       });
       return;
     }
 
-    Utils.log("[BetterLyrics] Retrying API call with new token...");
+    log(LOG_PREFIX, "Retrying API call with new token...");
     response = await makeApiCall(jwt);
   }
 
   if (!response.ok) {
-    console.error(`[BetterLyrics] API request failed with status: ${response.status}`);
+    console.error(LOG_PREFIX, `API request failed with status: ${response.status}`);
     (["musixmatch-synced", "musixmatch-richsync", "lrclib-synced", "lrclib-plain"] as const).forEach(source => {
       providerParameters.sourceMap[source].filled = true;
     });
@@ -216,7 +216,7 @@ export default async function cubey(providerParameters: ProviderParameters): Pro
   const responseData = await response.json();
 
   if (responseData.album) {
-    Utils.log("[BetterLyrics] Found Album: " + responseData.album);
+    log(LOG_PREFIX, "Found Album: " + responseData.album);
   }
 
   if (responseData.musixmatchWordByWordLyrics) {

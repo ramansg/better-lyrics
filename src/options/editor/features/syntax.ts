@@ -1,52 +1,6 @@
-import { linter, type Diagnostic } from "@codemirror/lint";
 import { Decoration, EditorView, ViewPlugin } from "@codemirror/view";
-import { stylelintConfig, BRACKET_NESTING_LEVELS } from "../core/editor";
+import { BRACKET_NESTING_LEVELS } from "../core/editor";
 import type { BracketStackItem } from "../types";
-
-const stylelint = window.stylelint;
-
-export const cssLinter = linter(async view => {
-  const diagnostics: Diagnostic[] = [];
-  const code = view.state.doc.toString();
-
-  const getPosition = (line: number, column: number) => {
-    const lines = code.split("\n");
-    let offset = 0;
-    for (let i = 0; i < line - 1; i++) {
-      offset += lines[i].length + 1;
-    }
-    return Math.min(offset + column - 1, code.length);
-  };
-
-  try {
-    const result = await stylelint.lint({
-      code,
-      config: stylelintConfig,
-    });
-
-    if (result.results && result.results.length > 0) {
-      const warnings = result.results[0].warnings;
-
-      warnings.forEach((warning: any) => {
-        const from = getPosition(warning.line, warning.column);
-        const to = warning.endLine && warning.endColumn ? getPosition(warning.endLine, warning.endColumn) : from + 1;
-
-        const cleanMessage = warning.text.replace(/\s*\([^)]+\)\s*$/, "").trim();
-
-        diagnostics.push({
-          from: Math.max(0, from),
-          to: Math.max(from + 1, to),
-          severity: warning.severity as "error" | "warning",
-          message: cleanMessage,
-        });
-      });
-    }
-  } catch (error) {
-    console.error("[BetterLyrics] Stylelint error:", error);
-  }
-
-  return diagnostics;
-});
 
 const bracketColors = ["#7186f0", "#56c8d8", "#cf6edf", "#6abf69", "#ffad42", "#ff6e40", "#ff5f52"];
 

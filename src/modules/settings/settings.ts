@@ -1,10 +1,11 @@
-import * as DOM from "@modules/ui/dom";
-import * as Constants from "@constants";
-import * as Utils from "@core/utils";
-import * as Translation from "@modules/lyrics/translation";
-import * as Storage from "@core/storage";
+import { LOG_PREFIX_CONTENT, LYRICS_DISABLED_ATTR } from "@constants";
 import { AppState, reloadLyrics } from "@core/appState";
+import { clearCache, compileRicsToStyles, getStorage } from "@core/storage";
+import { log, setUpLog } from "@core/utils";
 import { calculateLyricPositions } from "@modules/lyrics/injectLyrics";
+import { clearCache as clearTranslationCache } from "@modules/lyrics/translation";
+import { removeAlbumArtFromLayout } from "@modules/ui/dom";
+import { applyCustomStyles, getAndApplyCustomStyles } from "@modules/ui/styleInjector";
 
 type EnableDisableCallback = () => void;
 
@@ -19,8 +20,8 @@ export function handleSettings(): void {
       const playerPage = document.getElementById("player-page");
 
       if (layout && playerPage) {
-        layout.setAttribute(Constants.LYRICS_DISABLED_ATTR, "");
-        playerPage.setAttribute(Constants.LYRICS_DISABLED_ATTR, "");
+        layout.setAttribute(LYRICS_DISABLED_ATTR, "");
+        playerPage.setAttribute(LYRICS_DISABLED_ATTR, "");
       }
     },
     () => {
@@ -28,8 +29,8 @@ export function handleSettings(): void {
       const playerPage = document.getElementById("player-page");
 
       if (layout && playerPage) {
-        layout.removeAttribute(Constants.LYRICS_DISABLED_ATTR);
-        playerPage.removeAttribute(Constants.LYRICS_DISABLED_ATTR);
+        layout.removeAttribute(LYRICS_DISABLED_ATTR);
+        playerPage.removeAttribute(LYRICS_DISABLED_ATTR);
       }
     }
   );
@@ -57,7 +58,7 @@ export function handleSettings(): void {
 }
 
 export function onAutoSwitchEnabled(enableAutoSwitch: EnableDisableCallback): void {
-  Storage.getStorage({ isAutoSwitchEnabled: false }, items => {
+  getStorage({ isAutoSwitchEnabled: false }, items => {
     if (items.isAutoSwitchEnabled) {
       enableAutoSwitch();
     }
@@ -68,7 +69,7 @@ export function onFullScreenDisabled(
   disableFullScreen: EnableDisableCallback,
   enableFullScreen: EnableDisableCallback
 ): void {
-  Storage.getStorage({ isFullScreenDisabled: false }, items => {
+  getStorage({ isFullScreenDisabled: false }, items => {
     if (items.isFullScreenDisabled) {
       disableFullScreen();
     } else {
@@ -78,7 +79,7 @@ export function onFullScreenDisabled(
 }
 
 export function onAlbumArtEnabled(enableAlbumArt: EnableDisableCallback, disableAlbumArt: EnableDisableCallback): void {
-  Storage.getStorage({ isAlbumArtEnabled: true }, items => {
+  getStorage({ isAlbumArtEnabled: true }, items => {
     if (items.isAlbumArtEnabled) {
       enableAlbumArt();
     } else {
@@ -91,7 +92,7 @@ export function onStylizedAnimationsEnabled(
   enableAnimations: EnableDisableCallback,
   disableAnimations: EnableDisableCallback
 ): void {
-  Storage.getStorage({ isStylizedAnimationsEnabled: true }, items => {
+  getStorage({ isStylizedAnimationsEnabled: true }, items => {
     if (items.isStylizedAnimationsEnabled) {
       enableAnimations();
     } else {
@@ -104,7 +105,7 @@ export function onAutoHideCursor(
   enableCursorAutoHide: EnableDisableCallback,
   disableCursorAutoHide: EnableDisableCallback
 ): void {
-  Storage.getStorage({ isCursorAutoHideEnabled: true }, items => {
+  getStorage({ isCursorAutoHideEnabled: true }, items => {
     if (items.isCursorAutoHideEnabled) {
       enableCursorAutoHide();
     } else {
@@ -160,21 +161,25 @@ export function hideCursorOnIdle(): void {
 
 export function listenForPopupMessages(): void {
   chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
-    if (request.action === "updateCSS") {
-      // Enhanced CSS handling - use the new loadCustomCSS method
-      if (request.css) {
-        // Direct CSS provided (from editor)
-        Utils.applyCustomCSS(request.css);
+    log(LOG_PREFIX_CONTENT, "Received message:", request.action);
+    if (request.action === "applyStyles") {
+      log(LOG_PREFIX_CONTENT, "Processing applyStyles, RICS length:", request.ricsSource?.length);
+      if (request.ricsSource) {
+        log(LOG_PREFIX_CONTENT, "Compiling RICS and applying styles");
+        const compiledCSS = compileRicsToStyles(request.ricsSource);
+        applyCustomStyles(compiledCSS);
         calculateLyricPositions();
+        log(LOG_PREFIX_CONTENT, "Styles applied successfully");
       } else {
-        // Load CSS from storage (hybrid storage support)
-        Storage.getAndApplyCustomCSS().then(() => {
+        log(LOG_PREFIX_CONTENT, "Loading styles from storage");
+        getAndApplyCustomStyles().then(() => {
           calculateLyricPositions();
+          log(LOG_PREFIX_CONTENT, "Styles loaded from storage and applied");
         });
       }
     } else if (request.action === "updateSettings") {
-      Translation.clearCache();
-      Utils.setUpLog();
+      clearTranslationCache();
+      setUpLog();
       hideCursorOnIdle();
       handleSettings();
       loadTranslationSettings();
@@ -183,13 +188,13 @@ export function listenForPopupMessages(): void {
         () => (AppState.shouldInjectAlbumArt = true),
         () => {
           AppState.shouldInjectAlbumArt = false;
-          DOM.removeAlbumArtFromLayout();
+          removeAlbumArtFromLayout();
         }
       );
       reloadLyrics();
     } else if (request.action === "clearCache") {
       try {
-        Storage.clearCache();
+        clearCache();
         reloadLyrics();
 
         sendResponse({ success: true });
@@ -204,7 +209,7 @@ export function listenForPopupMessages(): void {
  * Loads translation and romanization settings from storage and updates AppState.
  */
 export function loadTranslationSettings(): void {
-  Storage.getStorage({ isTranslateEnabled: false, isRomanizationEnabled: false, translationLanguage: "en" }, items => {
+  getStorage({ isTranslateEnabled: false, isRomanizationEnabled: false, translationLanguage: "en" }, items => {
     AppState.isTranslateEnabled = items.isTranslateEnabled;
     AppState.isRomanizationEnabled = items.isRomanizationEnabled;
     AppState.translationLanguage = items.translationLanguage || "en";

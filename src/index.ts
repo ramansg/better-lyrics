@@ -1,12 +1,27 @@
-import * as Utils from "@utils";
-import * as DOM from "@modules/ui/dom";
-import * as Observer from "@modules/ui/observer";
-import * as Settings from "@modules/settings/settings";
-import * as Constants from "@constants";
-import * as RequestSniffing from "@modules/lyrics/requestSniffer";
-import * as Storage from "@core/storage";
-import { initProviders } from "@modules/lyrics/providers/shared";
+import { INITIALIZE_LOG } from "@constants";
 import { AppState } from "@core/appState";
+import { purgeExpiredKeys, saveCacheInfo } from "@core/storage";
+import { initProviders } from "@modules/lyrics/providers/shared";
+import { setupRequestSniffer } from "@modules/lyrics/requestSniffer";
+import {
+  handleSettings,
+  hideCursorOnIdle,
+  listenForPopupMessages,
+  loadTranslationSettings,
+  onAlbumArtEnabled,
+} from "@modules/settings/settings";
+import { injectHeadTags, setupAdObserver } from "@modules/ui/dom";
+import {
+  disableInertWhenFullscreen,
+  enableLyricsTab,
+  initializeLyrics,
+  lyricReloader,
+  setupAltHoverHandler,
+  setupHomepageFullscreenHandler,
+  setupWakeLockForFullscreen,
+} from "@modules/ui/observer";
+import { subscribeToCustomStyles } from "@modules/ui/styleInjector";
+import { log, setUpLog } from "@utils";
 
 /**
  * Initializes the BetterLyrics extension by setting up all required components.
@@ -14,30 +29,30 @@ import { AppState } from "@core/appState";
  * storage, and lyric providers.
  */
 export async function modify(): Promise<void> {
-  Utils.setUpLog();
-  await DOM.injectHeadTags();
-  DOM.setupAdObserver();
-  Observer.enableLyricsTab();
-  Observer.setupHomepageFullscreenHandler();
-  Settings.hideCursorOnIdle();
-  Settings.handleSettings();
-  Observer.setupWakeLockForFullscreen();
-  Settings.loadTranslationSettings();
-  Storage.subscribeToCustomCSS();
-  await Storage.purgeExpiredKeys();
-  await Storage.saveCacheInfo();
-  Settings.listenForPopupMessages();
-  Observer.lyricReloader();
-  Observer.initializeLyrics();
-  Observer.disableInertWhenFullscreen();
-  Observer.setupAltHoverHandler();
+  setUpLog();
+  await injectHeadTags();
+  setupAdObserver();
+  enableLyricsTab();
+  setupHomepageFullscreenHandler();
+  hideCursorOnIdle();
+  handleSettings();
+  setupWakeLockForFullscreen();
+  loadTranslationSettings();
+  subscribeToCustomStyles();
+  await purgeExpiredKeys();
+  await saveCacheInfo();
+  listenForPopupMessages();
+  lyricReloader();
+  initializeLyrics();
+  disableInertWhenFullscreen();
+  setupAltHoverHandler();
   initProviders();
-  Utils.log(
-    Constants.INITIALIZE_LOG,
+  log(
+    INITIALIZE_LOG,
     "background: rgba(10,11,12,1) ; color: rgba(214, 250, 214,1) ; padding: 0.5rem 0.75rem; border-radius: 0.5rem; font-size: 1rem; "
   );
 
-  Settings.onAlbumArtEnabled(
+  onAlbumArtEnabled(
     () => (AppState.shouldInjectAlbumArt = true),
     () => (AppState.shouldInjectAlbumArt = false)
   );
@@ -54,4 +69,4 @@ export function init(): void {
 // Initialize the application
 init();
 
-RequestSniffing.setupRequestSniffer();
+setupRequestSniffer();

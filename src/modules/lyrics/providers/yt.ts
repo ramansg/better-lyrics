@@ -1,13 +1,13 @@
-import { type LyricSourceResult, type ProviderParameters } from "./shared";
-import * as RequestSniffing from "@modules/lyrics/requestSniffer";
+import { getLyrics as getRequestSnifferLyrics } from "@modules/lyrics/requestSniffer";
 import { parsePlainLyrics } from "./lrcUtils";
+import { type LyricSourceResult, type ProviderParameters } from "./shared";
 
 export type YTLyricSourceResult = LyricSourceResult & {
   text: string;
 };
 
 export default async function ytLyrics(providerParameters: ProviderParameters): Promise<void> {
-  let lyricsObj = await RequestSniffing.getLyrics(providerParameters.videoId);
+  let lyricsObj = await getRequestSnifferLyrics(providerParameters.videoId);
   if (lyricsObj.hasLyrics) {
     let lyricsText = lyricsObj.lyrics!;
     let sourceText = lyricsObj.sourceText!.substring(8) + " (via YT)";
