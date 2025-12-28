@@ -43,9 +43,6 @@
       margin-bottom: 64px !important;
     }
 
-    #av-id {
-      top: 64px;
-    }
     ytmusic-app #layout[player-ui-state="PLAYER_PAGE_OPEN"] #mini-guide-background,
     ytmusic-app #layout[player-ui-state="PLAYER_PAGE_OPEN"] #nav-bar-background,
     ytmusic-app #layout[player-ui-state="PLAYER_PAGE_OPEN"] #guide-wrapper {
