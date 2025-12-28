@@ -16,7 +16,7 @@ import {
 import { bracketMatching, foldGutter, foldKeymap, indentOnInput, indentUnit } from "@codemirror/language";
 import { lintGutter, lintKeymap } from "@codemirror/lint";
 import { highlightSelectionMatches, search, searchKeymap } from "@codemirror/search";
-import { EditorState, type Extension } from "@codemirror/state";
+import { EditorState, type Extension, Prec } from "@codemirror/state";
 import {
   crosshairCursor,
   drawSelection,
@@ -80,11 +80,11 @@ export function createEditorState(initialContents: string, options: EditorOption
     highlightActiveLine(),
     highlightSelectionMatches(),
     ...searchExtensions,
+    Prec.high(keymap.of(commentKeymap)),
     keymap.of([
       { key: "Tab", run: acceptCompletion },
       indentWithTab,
       ...closeBracketsKeymap,
-      ...commentKeymap,
       ...defaultKeymap,
       ...historyKeymap,
       ...foldKeymap,

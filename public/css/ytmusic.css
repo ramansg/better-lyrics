@@ -112,7 +112,8 @@ ytmusic-message-renderer.ytmusic-tab-renderer {
 
 #tab-renderer:not([page-type="MUSIC_PAGE_TYPE_TRACK_LYRICS"]) #blyrics-loader,
 #tab-renderer:not([page-type="MUSIC_PAGE_TYPE_TRACK_LYRICS"]) #blyrics-wrapper,
-#tab-renderer:not([page-type="MUSIC_PAGE_TYPE_TRACK_LYRICS"]) .blyrics-footer {
+#tab-renderer:not([page-type="MUSIC_PAGE_TYPE_TRACK_LYRICS"]) #blyrics-ad-overlay,
+#tab-renderer:not([page-type="MUSIC_PAGE_TYPE_TRACK_LYRICS"]) .blyrics-footer{
   display: none !important;
 }
 

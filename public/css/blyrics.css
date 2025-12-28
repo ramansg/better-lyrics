@@ -471,38 +471,15 @@
 	display: none !important;
 }
 
-/* No lyrics button styles */
+/* No lyrics button container */
 .blyrics-no-lyrics-button-container {
 	display: flex;
 	justify-content: flex-start;
 	opacity: 0.9;
 	z-index: 1;
-	position:relative;
+	position: relative;
 	transition: opacity 0.3s ease;
 	gap: 1rem;
-}
-
-.blyrics-no-lyrics-button {
-	background-color: var(--blyrics-footer-bg-color);
-	border: 1px solid var(--blyrics-footer-border-color);
-	border-radius: var(--blyrics-border-radius);
-	color: var(--blyrics-ui-text-color);
-	cursor: pointer;
-	font-family: var(--blyrics-font-family);
-	font-size: 1.5rem;
-	font-weight: 600;
-	padding: 1rem 2rem;
-	transition: all 0.3s ease;
-}
-
-.blyrics-no-lyrics-button:hover {
-	background-color: rgba(255, 255, 255, 0.2);
-	border-color: rgba(255, 255, 255, 0.3);
-	transform: translateY(-2px);
-}
-
-.blyrics-no-lyrics-button:active {
-	transform: translateY(0);
 }
 
 /* Footer styles */
