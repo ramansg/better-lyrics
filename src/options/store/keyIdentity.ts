@@ -339,8 +339,11 @@ function canonicalJson(obj: unknown): string {
   if (Array.isArray(obj)) {
     return `[${obj.map(canonicalJson).join(",")}]`;
   }
-  const sorted = Object.keys(obj).sort();
-  return `{${sorted.map(k => `${JSON.stringify(k)}:${canonicalJson((obj as Record<string, unknown>)[k])}`).join(",")}}`;
+  const record = obj as Record<string, unknown>;
+  const sorted = Object.keys(record)
+    .filter(k => record[k] !== undefined)
+    .sort();
+  return `{${sorted.map(k => `${JSON.stringify(k)}:${canonicalJson(record[k])}`).join(",")}}`;
 }
 
 function bufferToBase64(buffer: ArrayBuffer): string {
