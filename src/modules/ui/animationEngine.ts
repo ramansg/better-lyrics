@@ -15,11 +15,17 @@ import { AppState } from "@core/appState";
 import { calculateLyricPositions, type LineData } from "@modules/lyrics/injectLyrics";
 import { hideAdOverlay, isAdPlaying, isLoaderActive, showAdOverlay } from "@modules/ui/dom";
 import { log } from "@utils";
-import type { Lyric } from "@modules/lyrics/providers/shared";
-
+import {ctx, resetDebugRender} from "./animationEngineDebug";
 const MIRCO_SCROLL_THRESHOLD_S = 0.5 as const;
 const EARLY_SCROLL_CONSIDER = 0.6 as const;
 const QUEUE_SCROLL_THRESHOLD = 150 as const;
+const TIME_JUMP_THRESHOLD = 0.5 as const;
+
+const ENABLE_DEBUG_RENDER = true;
+
+
+const TOP_OFFSET_RATIO = 0.37; // 0.5 means the selected lyric will be in the middle of the screen, 0 means top, 1 means bottom
+
 
 interface AnimEngineState {
   skipScrolls: number;
@@ -38,6 +44,11 @@ interface AnimEngineState {
    * Track if this is the first new tick to avoid rescrolls when opening the lyrics
    */
   doneFirstInstantScroll: boolean;
+  lastScrollDebugContext: {
+    activeElms: LineData[];
+    centers: number[]
+    lyricScrollTime: number;
+  }
 }
 
 export let animEngineState: AnimEngineState = {
@@ -54,6 +65,11 @@ export let animEngineState: AnimEngineState = {
   doneFirstInstantScroll: true,
   lastActiveElements: [],
   queuedScroll: false,
+  lastScrollDebugContext: {
+    activeElms: [],
+    centers: [],
+    lyricScrollTime: 0,
+  }
 };
 
 export let cachedDurations: Map<string, number> = new Map();
@@ -102,7 +118,7 @@ export function getCSSProperty(lyricsElement: HTMLElement, property: string): st
  * Main lyrics synchronization function that handles timing, highlighting, and scrolling.
  *
  * @param currentTime - Current playback time in seconds
- * @param eventCreationTime - Timestamp when the event was created
+ * @param eventCreationTime - Timestamp when the event was created (ms)
  * @param [isPlaying=true] - Whether audio is currently playing
  * @param [smoothScroll=true] - Whether to use smooth scrolling
  */
@@ -111,6 +127,10 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
   if (isLoaderActive() || !AppState.areLyricsTicking || (currentTime === 0 && !isPlaying)) {
     return;
   }
+
+  const timeJumped = Math.abs((currentTime - animEngineState.lastTime) -
+      (eventCreationTime - animEngineState.lastEventCreationTime) / 1000) > TIME_JUMP_THRESHOLD;
+
   animEngineState.lastTime = currentTime;
   animEngineState.lastPlayState = isPlaying;
   animEngineState.lastEventCreationTime = eventCreationTime;
@@ -170,7 +190,7 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
 
     const lyricScrollTime = currentTime + getCSSDurationInMs(lyricsElement, "--blyrics-scroll-timing-offset") / 1000;
     let activeElems = [] as LineData[];
-    let newLyricSelected = false;
+    let newLyricSelected = timeJumped;
 
     lines.every((lineData, index) => {
       const time = lineData.time;
@@ -300,7 +320,9 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
     const tabRendererHeight = tabRenderer.getBoundingClientRect().height;
     let scrollTop = tabRenderer.scrollTop;
 
-    const topOffsetMultiplier = 0.37; // 0.5 means the selected lyric will be in the middle of the screen, 0 means top, 1 means bottom
+    if (ENABLE_DEBUG_RENDER) {
+       resetDebugRender(scrollTop);
+    }
 
     if (animEngineState.scrollResumeTime < Date.now() || animEngineState.scrollPos === -1) {
       if (activeElems.length == 0) {
@@ -312,7 +334,7 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
       );
 
       // Offset so lyrics appear towards the center of the screen.
-      const scrollPosOffset = tabRendererHeight * topOffsetMultiplier;
+      const scrollPosOffset = tabRendererHeight * TOP_OFFSET_RATIO;
 
       let lastActiveLyric = activeElems[activeElems.length - 1];
 
@@ -346,6 +368,78 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
       // Make sure we're not trying to scroll to negative values
       scrollPos = Math.max(0, scrollPos);
 
+      if (ENABLE_DEBUG_RENDER && ctx) {
+        ctx.strokeStyle = "green";
+        ctx.fillStyle = "green";
+        ctx?.fillText("visible top", 0, scrollTop);
+        ctx?.beginPath();
+        ctx?.moveTo(40, scrollTop);
+        ctx?.lineTo(1000, scrollTop);
+        ctx.stroke()
+
+        ctx.strokeStyle = "blue";
+        ctx.fillStyle = "blue";
+        ctx?.fillText("visible bottom", 0, scrollTop + tabRendererHeight);
+        ctx?.beginPath();
+        ctx?.moveTo(40, scrollTop + tabRendererHeight);
+        ctx?.lineTo(1000, scrollTop + tabRendererHeight);
+        ctx.stroke()
+
+        ctx.strokeStyle = "yellow";
+        ctx.fillStyle = "yellow";
+        ctx?.fillText("target", 0, scrollTop + scrollPosOffset);
+        ctx?.beginPath();
+        ctx?.moveTo(40, scrollTop + scrollPosOffset);
+        ctx?.lineTo(1000, scrollTop + scrollPosOffset);
+        ctx.stroke()
+
+        function debugLyrics(xOffset: number, name: string, activeElems: LineData[], lyricPositions: number[], lyricScrollTime: number,) {
+          ctx!.strokeStyle = "red";
+          ctx!.fillStyle = "red";
+          ctx!.fillText(name, xOffset + 2, scrollTop + 45);
+          ctx!.fillText("scroll time: " + lyricScrollTime.toFixed(3), xOffset + 2, scrollTop + 60);
+
+          activeElems.forEach(elm => {
+            let timeTillActive = elm.time - lyricScrollTime
+            let endTime = elm.time + elm.duration;
+            let timeTillEnd = endTime - lyricScrollTime;
+            if (timeTillEnd < MIRCO_SCROLL_THRESHOLD_S) {
+              ctx!.strokeStyle = "gray";
+              ctx!.fillStyle = "gray";
+            } else if (timeTillActive > 0) {
+              ctx!.strokeStyle = "magenta";
+              ctx!.fillStyle = "magenta";
+            } else {
+              ctx!.strokeStyle = "orange";
+              ctx!.fillStyle = "orange";
+            }
+
+            ctx?.beginPath();
+            ctx?.moveTo(xOffset + 5, elm.position);
+            ctx?.lineTo(xOffset + 5, elm.position + elm.height);
+            ctx?.stroke()
+            ctx?.fillText("time: start=" + elm.time.toFixed(2) + " end=" + endTime.toFixed(2), xOffset + 15, elm.position);
+            ctx?.fillText("till active: " + timeTillActive.toFixed(2), xOffset + 15, elm.position + 15);
+            ctx?.fillText("till end: " + timeTillEnd.toFixed(2), xOffset + 15, elm.position + 30);
+          })
+
+          ctx!.strokeStyle = "pink";
+          ctx!.fillStyle = "pink";
+          lyricPositions.forEach(lyricPosition => {
+            ctx?.beginPath()
+            ctx?.arc(xOffset + 5, lyricPosition, 5, 0, 2 * Math.PI, false);
+            ctx?.fill();
+          });
+        }
+
+        debugLyrics(0, "realtime", activeElems, lyricPositions, lyricScrollTime);
+        debugLyrics(160, "last scroll", animEngineState.lastScrollDebugContext.activeElms,
+            animEngineState.lastScrollDebugContext.centers,
+            animEngineState.lastScrollDebugContext.lyricScrollTime)
+
+      }
+
+
       if (scrollTop === 0 && !animEngineState.doneFirstInstantScroll) {
         // For some reason when the panel is opened our pos is set to zero. This instant scrolls to the correct position
         // to avoid always scrolling from the top when the panel is opened.
@@ -357,6 +451,10 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
       if (animEngineState.wasUserScrolling || newLyricSelected || animEngineState.queuedScroll) {
         if (Date.now() > animEngineState.nextScrollAllowedTime) {
           animEngineState.queuedScroll = false;
+          animEngineState.lastScrollDebugContext.lyricScrollTime = lyricScrollTime;
+          animEngineState.lastScrollDebugContext.centers = lyricPositions;
+          animEngineState.lastScrollDebugContext.activeElms = activeElems;
+
           if (smoothScroll) {
             lyricsElement.style.transitionTimingFunction = "";
             lyricsElement.style.transitionProperty = "";
@@ -372,13 +470,13 @@ export function animationEngine(currentTime: number, eventCreationTime: number, 
 
             animEngineState.nextScrollAllowedTime = scrollTime + Date.now() + 20;
           }
-          let extraHeight = Math.max(tabRendererHeight * (1 - topOffsetMultiplier), tabRendererHeight - lyricsHeight);
+          let extraHeight = Math.max(tabRendererHeight * (1 - TOP_OFFSET_RATIO), tabRendererHeight - lyricsHeight);
 
           (document.getElementById(LYRICS_SPACING_ELEMENT_ID) as HTMLElement).style.height =
             `${extraHeight.toFixed(0)}px`;
           scrollTop = scrollPos;
           animEngineState.scrollPos = scrollPos;
-        } else if (animEngineState.nextScrollAllowedTime - Date.now() < QUEUE_SCROLL_THRESHOLD) {
+        } else if (animEngineState.nextScrollAllowedTime - Date.now() < QUEUE_SCROLL_THRESHOLD || timeJumped) {
           // just missed out on being able to scroll, queue this once we finish our current lyric
           console.log("queueing a scroll", animEngineState.nextScrollAllowedTime - Date.now());
           animEngineState.queuedScroll = true;
