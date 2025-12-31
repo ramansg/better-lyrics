@@ -49,8 +49,6 @@ export function applyCustomStyles(css: string): void {
   if (needsLyricReload) {
     reloadLyrics();
   }
-
-  AppState.queueAlbumArtSizeChange = true;
   
   let styleTag = document.getElementById("blyrics-custom-style");
   if (styleTag) {

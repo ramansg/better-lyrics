@@ -29,7 +29,6 @@ export interface AppStateType {
   lyricInjectionPromise: Promise<any> | null;
   queueLyricInjection: boolean;
   queueAlbumArtInjection: boolean;
-  queueAlbumArtSizeChange: boolean;
   shouldInjectAlbumArt: string | boolean;
   queueSongDetailsInjection: boolean;
   loaderAnimationEndTimeout: number | undefined;
@@ -55,7 +54,6 @@ export const AppState: AppStateType = {
   lyricInjectionPromise: null,
   queueLyricInjection: false,
   queueAlbumArtInjection: false,
-  queueAlbumArtSizeChange: false,
   shouldInjectAlbumArt: "Unknown",
   queueSongDetailsInjection: false,
   loaderAnimationEndTimeout: undefined,
