@@ -1,6 +1,8 @@
 // Function to save user options
 import Sortable from "sortablejs";
+import { LOG_PREFIX } from "@constants";
 import { initStoreUI, setupYourThemesButton } from "./store/store";
+import { getIdentity, exportIdentity, importIdentity, type KeyIdentity } from "./store/keyIdentity";
 
 interface Options {
   isLogsEnabled: boolean;
@@ -392,4 +394,118 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("browse-themes-btn")?.addEventListener("click", () => {
     chrome.tabs.create({ url: chrome.runtime.getURL("pages/marketplace.html") });
   });
+
+  initIdentityUI();
 });
+
+async function initIdentityUI(): Promise<void> {
+  const displayNameEl = document.getElementById("identity-display-name");
+  if (!displayNameEl) return;
+
+  try {
+    const identity = await getIdentity();
+    displayNameEl.textContent = identity.displayName;
+  } catch (error) {
+    console.error(LOG_PREFIX, "Failed to load identity:", error);
+    displayNameEl.textContent = "Error loading identity";
+  }
+
+  document.getElementById("export-identity-btn")?.addEventListener("click", handleExportIdentity);
+  document.getElementById("import-identity-btn")?.addEventListener("click", handleImportIdentity);
+}
+
+async function handleExportIdentity(): Promise<void> {
+  try {
+    const identity = await getIdentity();
+    const exportData = await exportIdentity();
+    const filename = `better-lyrics-identity-${identity.displayName}.json`;
+
+    chrome.permissions.contains({ permissions: ["downloads"] }, hasPermission => {
+      if (hasPermission) {
+        downloadIdentityFile(exportData, filename);
+      } else {
+        chrome.permissions.request({ permissions: ["downloads"] }, granted => {
+          if (granted) {
+            downloadIdentityFile(exportData, filename);
+          } else {
+            fallbackDownloadIdentity(exportData, filename);
+          }
+        });
+      }
+    });
+  } catch (error) {
+    console.error(LOG_PREFIX, "Failed to export identity:", error);
+    showAlert("Failed to export identity");
+  }
+}
+
+function downloadIdentityFile(content: string, filename: string): void {
+  const blob = new Blob([content], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  if (chrome.downloads) {
+    chrome.downloads
+      .download({
+        url: url,
+        filename: filename,
+        saveAs: true,
+      })
+      .then(() => {
+        showAlert("Identity file save dialog opened.");
+        URL.revokeObjectURL(url);
+      })
+      .catch(() => {
+        showAlert("Error saving file. Please try again.");
+        URL.revokeObjectURL(url);
+      });
+  } else {
+    fallbackDownloadIdentity(content, filename);
+  }
+}
+
+function fallbackDownloadIdentity(content: string, filename: string): void {
+  const blob = new Blob([content], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  setTimeout(() => URL.revokeObjectURL(url), 100);
+
+  showAlert("Identity file download initiated.");
+}
+
+async function handleImportIdentity(): Promise<void> {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json";
+
+  input.onchange = async e => {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const imported = await importIdentity(text);
+      updateIdentityDisplay(imported);
+      showAlert("Identity imported successfully!");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Invalid identity file";
+      showAlert(message);
+    }
+  };
+
+  input.click();
+}
+
+function updateIdentityDisplay(identity: KeyIdentity): void {
+  const displayNameEl = document.getElementById("identity-display-name");
+  if (displayNameEl) {
+    displayNameEl.textContent = identity.displayName;
+  }
+}

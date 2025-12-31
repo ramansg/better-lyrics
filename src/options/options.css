@@ -234,6 +234,12 @@ select option {
     height: 0.875rem;
 }
 
+.button-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
 #css {
     display: none;
 }
@@ -813,6 +819,15 @@ hr {
 
 .checkbox-container input:checked + .checkmark:before {
     transform: translateX(16px);
+}
+
+#identity-display-name {
+	font-family: "JetBrains Mono", Consolas, "Courier New", monospace !important;
+	background: rgba(0, 0, 0, 0.15);
+	padding: 0.25rem 0.5rem;
+	font-size: 0.875em;
+	border-radius: 0.25rem;
+	border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .provider-name {
