@@ -3,6 +3,8 @@ import { LYRICS_CLASS } from "@constants";
 const CANVAS_ID = "blyrics-lyric-debug-canvas";
 
 export let ctx: CanvasRenderingContext2D | null = null;
+
+let canvas: HTMLCanvasElement | null = null;
 function createDebugCanvas() {
   let tabRenderer = document.querySelector("#tab-renderer") as HTMLElement;
   if (!tabRenderer) {
@@ -15,7 +17,7 @@ function createDebugCanvas() {
     prevCanvas.remove();
   }
 
-  let canvas = document.createElement("canvas");
+  canvas = document.createElement("canvas");
   canvas.id = CANVAS_ID;
   canvas.style.position = "fixed";
   // canvas.style.top = "0";
@@ -33,18 +35,7 @@ function createDebugCanvas() {
     console.error("Can't find canvas context");
     return;
   }
-  const dpr = window.devicePixelRatio || 1;
-
-  // Get the size of the canvas in CSS pixels
-  const styleHeight = Number(getComputedStyle(canvas).getPropertyValue("height").slice(0, -2));
-  const styleWidth = Number(getComputedStyle(canvas).getPropertyValue("width").slice(0, -2));
-
-  // Set the canvas buffer size to the actual device pixels
-  canvas.width = styleWidth * dpr;
-  canvas.height = styleHeight * dpr;
-
-  // Scale the context so drawing commands use the CSS pixel size
-  ctx.scale(dpr, dpr);
+  resizeCanvas()
 }
 
 export function resetDebugRender(scrollPos: number) {
@@ -63,6 +54,19 @@ export function resetDebugRender(scrollPos: number) {
   return ctx;
 }
 
-export function recreateDebugCanvas() {
-  ctx = null;
+export function resizeCanvas() {
+  if (canvas) {
+    const dpr = window.devicePixelRatio || 1;
+
+    // Get the size of the canvas in CSS pixels
+    const styleHeight = Number(getComputedStyle(canvas).getPropertyValue("height").slice(0, -2));
+    const styleWidth = Number(getComputedStyle(canvas).getPropertyValue("width").slice(0, -2));
+
+    // Set the canvas buffer size to the actual device pixels
+    canvas.width = styleWidth * dpr;
+    canvas.height = styleHeight * dpr;
+
+    // Scale the context so drawing commands use the CSS pixel size
+    ctx?.scale(dpr, dpr);
+  }
 }
