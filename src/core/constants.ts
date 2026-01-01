@@ -139,6 +139,7 @@ export const SONG_SWITCHED_LOG: string = "[BetterLyrics] Song has been switched"
 export const ALBUM_ART_ADDED_LOG: string = "[BetterLyrics] Album art added to the layout";
 export const ALBUM_ART_ADDED_FROM_MUTATION_LOG: string =
   "[BetterLyrics] Album art added to the layout from mutation event";
+export const ALBUM_ART_SIZE_CHANGED: string = "[BetterLyrics] Album art size changed to"
 export const ALBUM_ART_REMOVED_LOG: string = "[BetterLyrics] Album art removed from the layout";
 export const LOADING_WITHOUT_SONG_META: string = "[BetterLyrics] Trying to load without Song/Artist info";
 export const SKIPPING_LOAD_WITH_META: string = "[BetterLyrics] Skipping Reload From Metadata Available: Already Loaded";

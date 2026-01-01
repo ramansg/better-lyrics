@@ -3,6 +3,7 @@ import {
   ALBUM_ART_ADDED_FROM_MUTATION_LOG,
   ALBUM_ART_ADDED_LOG,
   ALBUM_ART_REMOVED_LOG,
+  ALBUM_ART_SIZE_CHANGED,
   DISCORD_INVITE_URL,
   DISCORD_LOGO_SRC,
   FONT_LINK,
@@ -94,6 +95,7 @@ function createActionButton(options: ActionButtonOptions): HTMLElement {
 }
 
 let backgroundChangeObserver: MutationObserver | null = null;
+let albumArtResizeObserver: ResizeObserver | null = null;
 let lyricsObserver: MutationObserver | null = null;
 
 /**
@@ -496,13 +498,20 @@ export function clearLyrics(): void {
 }
 
 /**
- * Adds album art as a background image to the layout.
+ * Adds album art as a background image to the layout
+ * and resizes the album art resolution to match user's
+ * screen height.
+ * 
  * Sets up mutation observer to watch for art changes.
  *
  * @param videoId - YouTube video ID for fallback image
  */
 export function addAlbumArtToLayout(videoId: string): void {
   if (!videoId) return;
+
+  if (albumArtResizeObserver) {
+    albumArtResizeObserver.disconnect();
+  }
 
   if (backgroundChangeObserver) {
     backgroundChangeObserver.disconnect();
@@ -518,6 +527,17 @@ export function addAlbumArtToLayout(videoId: string): void {
   };
 
   const albumArt = document.querySelector(SONG_IMAGE_SELECTOR) as HTMLImageElement;
+
+  const resizeObserver = new ResizeObserver(() => {
+    setTimeout(() => {
+      setAlbumArtSize(screen.height);
+    }, 1000);
+  });
+
+  // the observer firing up probably a rare case (only fires when user change screenres)
+  resizeObserver.observe(document.documentElement);
+  albumArtResizeObserver = resizeObserver;
+
   const observer = new MutationObserver(() => {
     injectAlbumArtFn();
     log(ALBUM_ART_ADDED_FROM_MUTATION_LOG);
@@ -701,6 +721,31 @@ export function injectSongAttributes(title: string, artist: string): void {
   songInfoWrapper.appendChild(titleElm);
   songInfoWrapper.appendChild(artistElm);
   mainPanel.appendChild(songInfoWrapper);
+}
+
+/**
+ * Sets the size of the album art image
+ */ 
+function setAlbumArtSize(size: string | number): void {
+  const albumArt = document.querySelector(SONG_IMAGE_SELECTOR) as HTMLImageElement;
+  const origSrc = albumArt.src;
+  const origSize = albumArt.src.match(/\d+/)
+
+  // If the size is the same, discard the changes
+  if (origSize && origSize[0] == size) return;
+
+  const img = new Image();
+  img.src = albumArt.src;
+
+  if (/w\d+-h\d+/.test(albumArt.src)) {
+    img.src = albumArt.src.replace(/w\d+-h\d+/, `w${size}-h${size}`);
+  }
+
+  img.onload = () => {
+    if (origSrc == albumArt.src) albumArt.src = img.src;
+  }
+  
+  log(ALBUM_ART_SIZE_CHANGED, size)
 }
 
 /**
