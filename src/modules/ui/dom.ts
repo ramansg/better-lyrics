@@ -501,7 +501,7 @@ export function clearLyrics(): void {
  * Adds album art as a background image to the layout
  * and resizes the album art resolution to match user's
  * screen height.
- * 
+ *
  * Sets up mutation observer to watch for art changes.
  *
  * @param videoId - YouTube video ID for fallback image
@@ -725,11 +725,11 @@ export function injectSongAttributes(title: string, artist: string): void {
 
 /**
  * Sets the size of the album art image
- */ 
+ */
 function setAlbumArtSize(size: string | number): void {
   const albumArt = document.querySelector(SONG_IMAGE_SELECTOR) as HTMLImageElement;
   const origSrc = albumArt.src;
-  const origSize = albumArt.src.match(/\d+/)
+  const origSize = albumArt.src.match(/\d+/);
 
   // If the size is the same, discard the changes
   if (origSize && origSize[0] == size) return;
@@ -743,9 +743,9 @@ function setAlbumArtSize(size: string | number): void {
 
   img.onload = () => {
     if (origSrc == albumArt.src) albumArt.src = img.src;
-  }
-  
-  log(ALBUM_ART_SIZE_CHANGED, size)
+  };
+
+  log(ALBUM_ART_SIZE_CHANGED, size);
 }
 
 /**
