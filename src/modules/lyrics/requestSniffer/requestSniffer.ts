@@ -165,7 +165,7 @@ export function setupRequestSniffer(): void {
         // let's first map this into a sensible type
         let videoPairs = playlistPanelRendererContents
           .map(content => {
-            let counterPartRenderer = content.playlistPanelVideoWrapperRenderer?.counterpart[0].counterpartRenderer;
+            let counterPartRenderer = content.playlistPanelVideoWrapperRenderer?.counterpart?.[0]?.counterpartRenderer;
 
             let primaryRenderer = content.playlistPanelVideoRenderer;
             if (!primaryRenderer) {
@@ -359,7 +359,7 @@ export function setupRequestSniffer(): void {
           ?.tabs[1]?.tabRenderer;
       if (lyricsTab && lyricsTab.unselectable) {
         videoIdToLyricsMap.set(videoId, { hasLyrics: false, lyrics: "", sourceText: "" });
-      } else {
+      } else if (lyricsTab) {
         let browseId = lyricsTab.endpoint?.browseEndpoint?.browseId;
         if (browseId) {
           browseIdToVideoIdMap.set(browseId, videoId);

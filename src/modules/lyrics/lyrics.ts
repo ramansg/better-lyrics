@@ -293,7 +293,7 @@ export async function preFetchLyrics(
   detail: Pick<PlayerDetails, "song" | "artist" | "videoId" | "duration">,
   isMusicVideo: boolean
 ): Promise<void> {
-  console.log("Prefetching next song", detail, isMusicVideo);
+  log(LOG_PREFIX, "Prefetching next song", detail, isMusicVideo);
   let song = detail.song;
   let artist = detail.artist;
   let videoId = detail.videoId;

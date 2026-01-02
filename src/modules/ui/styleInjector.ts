@@ -3,7 +3,6 @@ import { decompressString, isCompressed } from "@core/compression";
 import { compileRicsToStyles, getLocalStorage, getSyncStorage, loadChunkedStyles } from "@core/storage";
 import { log } from "@utils";
 import { cachedDurations, cachedProperties } from "./animationEngine";
-import {AppState} from "@core/appState";
 import {setThemeSettings} from "@modules/settings/themeOptions";
 
 function parseBlyricsConfig(cssContent: string): Map<string, string> {
