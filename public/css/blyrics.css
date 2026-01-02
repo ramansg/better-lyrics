@@ -803,10 +803,12 @@
 }
 
 /* If paused, we freeze the flattening where it is */
-.blyrics--paused .blyrics--wave-path {
+.blyrics--instrumental.blyrics--animating.blyrics--paused .blyrics--wave-path {
 	transform: scaleY(0.0001); /* slightly different to force recalculation */
-	transition-duration: 0.5s; !important;
-	transition-timing-function: ease-out; !important;
+	transition-duration: 2s;
+	transition-property: transform;
+	transition-timing-function: ease-out;
+	transition-delay: 0s;
 }
 
 .blyrics--instrumental.blyrics--animating:not(.blyrics--paused) .blyrics--wave-path {
