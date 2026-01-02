@@ -21,9 +21,6 @@ import type { LyricSourceResult, ProviderParameters } from "./providers/shared";
 import { getLyrics, newSourceMap, providerPriority } from "./providers/shared";
 import type { YTLyricSourceResult } from "./providers/yt";
 import { getSongMetadata, getSongAlbum, type SegmentMap } from "./requestSniffer/requestSniffer";
-import * as RequestSniffer from "./requestSniffer/requestSniffer";
-import * as RequestSniffing from "./requestSniffer/requestSniffer";
-import * as Translation from "./translation";
 import { clearCache as clearTranslationCache } from "./translation";
 
 export type LyricSourceResultWithMeta = LyricSourceResult & {
