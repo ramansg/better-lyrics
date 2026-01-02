@@ -2,6 +2,7 @@ import {
   AUTO_SWITCH_ENABLED_LOG,
   FULLSCREEN_BUTTON_SELECTOR,
   GENERAL_ERROR_LOG,
+  LOG_PREFIX,
   LYRICS_TAB_CLICKED_LOG,
   LYRICS_WRAPPER_ID,
   PAUSING_LYRICS_SCROLL_LOG,
@@ -19,6 +20,8 @@ import {
   isPlayerPageOpen,
   openPlayerPageForFullscreen,
 } from "@modules/ui/navigation";
+import { getSongMetadata } from "@modules/lyrics/requestSniffer/requestSniffer";
+import { preFetchLyrics } from "@modules/lyrics/lyrics";
 import { log } from "@utils";
 import { addAlbumArtToLayout, cleanup, injectSongAttributes, isLoaderActive, renderLoader } from "./dom";
 
@@ -229,6 +232,35 @@ export function initializeLyrics(): void {
       AppState.queueAlbumArtInjection = true;
       AppState.queueSongDetailsInjection = true;
       AppState.suppressZeroTime = Date.now() + 5000;
+      AppState.hasPreloadedNextSong = false;
+    }
+
+    if (AppState.areLyricsTicking && AppState.areLyricsLoaded && !AppState.hasPreloadedNextSong) {
+      AppState.hasPreloadedNextSong = true;
+      log(LOG_PREFIX, "Trying to preload next song");
+      getSongMetadata(AppState.lastVideoId).then(async data => {
+        if (data && data.nextVideoId) {
+          let next = await getSongMetadata(data.nextVideoId);
+          if ((!next || next.isVideo) && data.counterpartVideoId) {
+            // try to find the next counterpart
+            next = await getSongMetadata(data.counterpartVideoId).then(counterpart =>
+              counterpart?.nextVideoId ? getSongMetadata(counterpart.nextVideoId) : null
+            );
+          }
+
+          if (next) {
+            await preFetchLyrics(
+              {
+                song: next.title,
+                artist: next.artist,
+                duration: String(Math.round(next.durationMs / 1000)),
+                videoId: next.id,
+              },
+              next.isVideo
+            );
+          }
+        }
+      });
     }
 
     if (AppState.queueSongDetailsInjection && detail.song && detail.artist && document.getElementById("main-panel")) {

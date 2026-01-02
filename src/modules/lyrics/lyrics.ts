@@ -20,8 +20,10 @@ import type { CubeyLyricSourceResult } from "./providers/cubey";
 import type { LyricSourceResult, ProviderParameters } from "./providers/shared";
 import { getLyrics, newSourceMap, providerPriority } from "./providers/shared";
 import type { YTLyricSourceResult } from "./providers/yt";
-import type { SegmentMap } from "./requestSniffer";
-import { getMatchingSong, getSongAlbum } from "./requestSniffer";
+import { getSongMetadata, getSongAlbum, type SegmentMap } from "./requestSniffer/requestSniffer";
+import * as RequestSniffer from "./requestSniffer/requestSniffer";
+import * as RequestSniffing from "./requestSniffer/requestSniffer";
+import * as Translation from "./translation";
 import { clearCache } from "./translation";
 
 export type LyricSourceResultWithMeta = LyricSourceResult & {
@@ -88,7 +90,7 @@ export async function createLyrics(detail: PlayerDetails, signal: AbortSignal): 
 
   // We should get recalled if we were executed without a valid song/artist and aren't able to get lyrics
 
-  let matchingSong = await getMatchingSong(videoId, 1);
+  let matchingSong = await getSongMetadata(videoId, 1);
   let swappedVideoId = false;
   let isAVSwitch =
     (matchingSong &&
@@ -106,7 +108,7 @@ export async function createLyrics(detail: PlayerDetails, signal: AbortSignal): 
     log("Not Switching between audio/video", isAVSwitch, segmentMap);
     renderLoader();
     clearCache();
-    matchingSong = await getMatchingSong(videoId);
+    matchingSong = await getSongMetadata(videoId);
     segmentMap = matchingSong?.segmentMap || null;
     AppState.areLyricsLoaded = false;
     AppState.areLyricsTicking = false;
@@ -286,17 +288,20 @@ export async function createLyrics(detail: PlayerDetails, signal: AbortSignal): 
  * Warms caches so lyric fetching is faster
  *
  * @param detail - Song and player details
- * @param signal
+ * @param isMusicVideo
  */
-export async function preFetchLyrics(detail: PlayerDetails, signal: AbortSignal): Promise<void> {
+export async function preFetchLyrics(
+  detail: Pick<PlayerDetails, "song" | "artist" | "videoId" | "duration">,
+  isMusicVideo: boolean
+): Promise<void> {
+  log(LOG_PREFIX, "Prefetching next song", detail, isMusicVideo);
   let song = detail.song;
   let artist = detail.artist;
   let videoId = detail.videoId;
   let duration = Number(detail.duration);
-  const audioTrackData = detail.audioTrackData;
-  const isMusicVideo = detail.contentRect.width !== 0 && detail.contentRect.height !== 0;
+  let signal = new AbortController().signal; // create a signal to pass to other funcs, not used
 
-  let matchingSong = await getMatchingSong(videoId);
+  let matchingSong = await getSongMetadata(videoId);
   let swappedVideoId = false;
 
   if (isMusicVideo && matchingSong && matchingSong.counterpartVideoId && matchingSong.segmentMap) {
@@ -321,7 +326,7 @@ export async function preFetchLyrics(detail: PlayerDetails, signal: AbortSignal)
     artist,
     duration,
     videoId,
-    audioTrackData,
+    audioTrackData: null,
     album,
     sourceMap,
     alwaysFetchMetadata: swappedVideoId,

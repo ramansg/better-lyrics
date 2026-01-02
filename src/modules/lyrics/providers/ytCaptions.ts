@@ -4,7 +4,7 @@ import type { LyricsArray, ProviderParameters } from "./shared";
 
 export async function ytCaptions(providerParameters: ProviderParameters): Promise<void> {
   let audioTrackData = providerParameters.audioTrackData;
-  if (audioTrackData.captionTracks.length === 0) {
+  if (!audioTrackData || audioTrackData.captionTracks.length === 0) {
     return;
   }
 

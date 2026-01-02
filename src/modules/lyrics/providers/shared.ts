@@ -85,7 +85,7 @@ export interface ProviderParameters {
   artist: string;
   duration: number;
   videoId: string;
-  audioTrackData: AudioTrackData;
+  audioTrackData: AudioTrackData | null;
   album: string | null;
   sourceMap: SourceMapType;
   alwaysFetchMetadata: boolean;
