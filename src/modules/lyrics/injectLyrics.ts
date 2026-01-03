@@ -33,9 +33,19 @@ import {
   translateText,
   translateTextIntoRomaji,
 } from "@modules/lyrics/translation";
-import { animEngineState, lyricsElementAdded } from "@modules/ui/animationEngine";
+import {
+  ADD_EXTRA_PADDING_TOP,
+  animEngineState,
+  lyricsElementAdded,
+  SCROLL_POS_OFFSET_RATIO,
+} from "@modules/ui/animationEngine";
 import { addFooter, addNoLyricsButton, cleanup, createLyricsWrapper, flushLoader, renderLoader } from "@modules/ui/dom";
 import { getRelativeBounds, log } from "@utils";
+import { resizeCanvas } from "@modules/ui/animationEngineDebug";
+import { registerThemeSetting } from "@modules/settings/themeOptions";
+
+let disableRichsync = registerThemeSetting("blyrics-disable-richsync", false, true);
+let lineSyncedAnimationDelay = registerThemeSetting("blyrics-line-synced-animation-delay", 50, true);
 
 function findNearestAgent(lyrics: Lyric[], fromIndex: number): string | undefined {
   for (let i = fromIndex - 1; i >= 0; i--) {
@@ -54,7 +64,11 @@ function findNearestAgent(lyrics: Lyric[], fromIndex: number): string | undefine
 const resizeObserver = new ResizeObserver(entries => {
   for (const entry of entries) {
     if (entry.target.id === LYRICS_WRAPPER_ID) {
-      if (AppState.lyricData && entry.target.clientWidth !== AppState.lyricData.lyricWidth) {
+      if (
+        AppState.lyricData &&
+        (entry.target.clientWidth !== AppState.lyricData.lyricWidth ||
+          entry.target.clientHeight !== AppState.lyricData.lyricHeight)
+      ) {
         calculateLyricPositions();
       }
     }
@@ -98,6 +112,7 @@ export interface LyricsData {
   lines: LineData[];
   syncType: SyncType;
   lyricWidth: number;
+  lyricHeight: number;
   isMusicVideoSynced: boolean;
 }
 
@@ -320,14 +335,14 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
 
     let item = lyricItem as Required<Pick<Lyric, "parts">> & Lyric;
 
-    if (item.parts.length === 0 || AppState.animationSettings.disableRichSynchronization) {
+    if (item.parts.length === 0 || disableRichsync.getBooleanValue()) {
       lyricItem.parts = [];
       const words = item.words.split(" ");
 
       words.forEach((word, index) => {
         word = word.trim().length < 1 ? word : word + " ";
         item.parts.push({
-          startTimeMs: item.startTimeMs + index * AppState.animationSettings.lineSyncedWordDelayMs,
+          startTimeMs: item.startTimeMs + index * lineSyncedAnimationDelay.getNumberValue(),
           words: word,
           durationMs: 0,
         });
@@ -432,11 +447,7 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
 
     if (canInjectRomanizationsEarly && AppState.isRomanizationEnabled) {
       if (romanizedCacheResult !== item.words) {
-        if (
-          item.timedRomanization &&
-          item.timedRomanization.length > 0 &&
-          !AppState.animationSettings.disableRichSynchronization
-        ) {
+        if (item.timedRomanization && item.timedRomanization.length > 0 && !disableRichsync.getBooleanValue()) {
           createLyricsLine(item.timedRomanization, line, createRomanizedElem());
         } else {
           createRomanizedElem().textContent = "\n" + romanizedCacheResult;
@@ -562,6 +573,7 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
     lines: lines,
     syncType: syncType,
     lyricWidth: lyricsContainer.clientWidth,
+    lyricHeight: lyricsContainer.clientHeight,
     isMusicVideoSynced: data.musicVideoSynced === true,
   };
 
@@ -585,8 +597,18 @@ export function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible 
 export function calculateLyricPositions() {
   if (AppState.lyricData && AppState.areLyricsTicking) {
     const lyricsElement = document.getElementsByClassName(LYRICS_CLASS)[0] as HTMLElement;
-    const data = AppState.lyricData;
 
+    if (ADD_EXTRA_PADDING_TOP.getBooleanValue()) {
+      const tabRendererHeight = document.getElementById("tab-renderer")?.clientHeight;
+      if (tabRendererHeight) {
+        lyricsElement.style.paddingTop = `${tabRendererHeight * SCROLL_POS_OFFSET_RATIO.getNumberValue()}px`;
+      } else {
+        lyricsElement.style.paddingTop = "";
+        log("Could not find tab renderer height, not adding extra padding top.");
+      }
+    }
+
+    const data = AppState.lyricData;
     data.lyricWidth = lyricsElement.clientWidth;
 
     data.lines.forEach(line => {
@@ -594,6 +616,8 @@ export function calculateLyricPositions() {
       line.position = bounds.y;
       line.height = bounds.height;
     });
+    animEngineState.wasUserScrolling = true; // trigger rescrolls
+    resizeCanvas();
   }
 }
 

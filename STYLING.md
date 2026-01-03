@@ -14,6 +14,7 @@
 		- [Effects](#effects)
 		- [Lyric Transition Properties](#lyric-transition-properties)
 		- [Gradient Stops](#gradient-stops)
+		- [Additional Configuration Options](#additional-configuration-options)
 		- [Dynamic Properties](#dynamic-properties)
 	- [4. Styling the Main Lyrics Container](#4-styling-the-main-lyrics-container)
 		- [Container Data Attributes](#container-data-attributes)
@@ -191,6 +192,44 @@ These custom properties allow for easy customization of colors, sizes, and other
 
 This variable defines a sophisticated gradient used for creating smooth visual transitions in fullscreen mode.
 
+### Additional Configuration Options
+
+There are a select few internal knobs that can be configured by creating special comments in your themes.
+Inside any comment, anywhere in your theme, you can set the value of special keys using the syntax:
+
+```
+<key>=<value>;
+```
+
+An example may look something like this:
+
+```css
+/*
+blyrics-disable-richsync = false;
+blyrics-line-synced-animation-delay = 50; (in ms)
+blyrics-debug-renderer=false;
+blyrics-target-scroll-pos-ratio = 0.37;
+*/
+```
+
+If a value isn't specified, default is used.
+
+The following options are avalible:
+
+| Key                                   | Default Value | Description                                                                                                                                |
+|---------------------------------------|---------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| `blyrics-disable-richsync`            | `false`       | Set to `true` to disable richsynced lyrics from displaying.                                                                                |
+| `blyrics-line-synced-animation-delay` | `50`          | For non-richsynced lyrics, this value controls the delay each word gets when highlighting (in ms).                                         |
+| `blyrics-lyric-ending-threshold-s`    | `0.5`         | Controls the time (in seconds) before a lyric line is finished that we consider it completed for scrolling purposes.                       |
+| `blyrics-early-scroll-consider-s`     | `0.62`        | Controls how far into the future (in seconds) we should look for lines to group together for scrolling purposes.                           |
+| `blyrics-queue-scroll-ms`             | `150`         | If we're unable to scroll due to having scrolled recently, what is the maximum amount of time that a scroll can be "queued" for.           |
+| `blyrics-debug-renderer`              | `false`       | Set to `true` to enable the debug renderer.                                                                                                |
+| `blyrics-target-scroll-pos-ratio`     | `0.37`        | Position on the screen lyrics should be at. 0.5 means the selected lyric will be in the middle of the screen, 0 means top, 1 means bottom. |
+| `blyrics-add-extra-top-padding`       | `false`       | Should extra spacing be added to the top of the lyrics container to allow the lyrics to always scroll.                                     |
+
+Tip:
+Make it so `var(--blyrics-lyric-scroll-duration)` + `0.02s` = `blyrics-early-scroll-consider-s` +
+`blyrics-queue-scroll-ms`
 ### Dynamic Properties
 
 `--blyrics-duration` is a special custom property that is set dynamically by the extension's main script. It represents the duration of the current lyric line and is used to ensure that animations are synchronized with the music playback.

@@ -182,7 +182,6 @@ export const LYRICS_CHECK_INTERVAL_ERROR: string = "[BetterLyrics] Error in lyri
 export const NO_LYRICS_TEXT: string = "No lyrics found for this song";
 export const MUSIC_NOTES: string = "♪𝅘𝅥𝅮𝅘𝅥𝅯𝅘𝅥𝅰𝅘𝅥𝅱𝅘𝅥𝅲";
 
-export const DEFAULT_LINE_SYNCED_WORD_DELAY_MS = 50;
 export const BLYRICS_INSTRUMENTAL_GAP_MS = 5000;
 
 export const STORAGE_CACHE_TTL = 30 * 24 * 60 * 60 * 1000;

@@ -21,10 +21,7 @@ import type { LyricSourceResult, ProviderParameters } from "./providers/shared";
 import { getLyrics, newSourceMap, providerPriority } from "./providers/shared";
 import type { YTLyricSourceResult } from "./providers/yt";
 import { getSongMetadata, getSongAlbum, type SegmentMap } from "./requestSniffer/requestSniffer";
-import * as RequestSniffer from "./requestSniffer/requestSniffer";
-import * as RequestSniffing from "./requestSniffer/requestSniffer";
-import * as Translation from "./translation";
-import { clearCache } from "./translation";
+import { clearCache as clearTranslationCache } from "./translation";
 
 export type LyricSourceResultWithMeta = LyricSourceResult & {
   song: string;
@@ -102,16 +99,18 @@ export async function createLyrics(detail: PlayerDetails, signal: AbortSignal): 
 
   if (isAVSwitch && segmentMap) {
     applySegmentMapToLyrics(AppState.lyricData, segmentMap);
+    AppState.suppressZeroTime = Date.now() + 5000;
     AppState.areLyricsTicking = true; // Keep lyrics ticking while new lyrics are fetched.
     log("Switching between audio/video: Skipping Loader", segmentMap);
   } else {
     log("Not Switching between audio/video", isAVSwitch, segmentMap);
     renderLoader();
-    clearCache();
+    clearTranslationCache();
     matchingSong = await getSongMetadata(videoId);
     segmentMap = matchingSong?.segmentMap || null;
     AppState.areLyricsLoaded = false;
     AppState.areLyricsTicking = false;
+    AppState.suppressZeroTime = 0;
   }
 
   if (isMusicVideo && matchingSong && matchingSong.counterpartVideoId && matchingSong.segmentMap) {

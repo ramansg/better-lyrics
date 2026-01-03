@@ -17,6 +17,7 @@ import {
   initializeLyrics,
   lyricReloader,
   setupAltHoverHandler,
+  setUpAvButtonListener,
   setupHomepageFullscreenHandler,
   setupWakeLockForFullscreen,
 } from "@modules/ui/observer";
@@ -47,6 +48,7 @@ export async function modify(): Promise<void> {
   disableInertWhenFullscreen();
   setupAltHoverHandler();
   initProviders();
+  setUpAvButtonListener();
   log(
     INITIALIZE_LOG,
     "background: rgba(10,11,12,1) ; color: rgba(214, 250, 214,1) ; padding: 0.5rem 0.75rem; border-radius: 0.5rem; font-size: 1rem; "

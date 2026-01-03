@@ -1,9 +1,9 @@
-import { DEFAULT_LINE_SYNCED_WORD_DELAY_MS, GENERAL_ERROR_LOG, LOG_PREFIX } from "@constants";
-import { AppState, reloadLyrics } from "@core/appState";
+import { GENERAL_ERROR_LOG, LOG_PREFIX } from "@constants";
 import { decompressString, isCompressed } from "@core/compression";
 import { compileRicsToStyles, getLocalStorage, getSyncStorage, loadChunkedStyles } from "@core/storage";
 import { log } from "@utils";
 import { cachedDurations, cachedProperties } from "./animationEngine";
+import { setThemeSettings } from "@modules/settings/themeOptions";
 
 function parseBlyricsConfig(cssContent: string): Map<string, string> {
   const configMap = new Map<string, string>();
@@ -29,26 +29,8 @@ function parseBlyricsConfig(cssContent: string): Map<string, string> {
 
 export function applyCustomStyles(css: string): void {
   let config = parseBlyricsConfig(css);
+  setThemeSettings(config);
 
-  let needsLyricReload = false;
-
-  let disableRichSync = config.get("blyrics-disable-richsync") === "true";
-  if (disableRichSync !== AppState.animationSettings.disableRichSynchronization) {
-    needsLyricReload = true;
-    AppState.animationSettings.disableRichSynchronization = disableRichSync;
-  }
-
-  let lineSyncedAnimationDelayMs = Number(
-    config.get("blyrics-line-synced-animation-delay") || DEFAULT_LINE_SYNCED_WORD_DELAY_MS
-  );
-  if (lineSyncedAnimationDelayMs !== AppState.animationSettings.lineSyncedWordDelayMs) {
-    needsLyricReload = true;
-    AppState.animationSettings.lineSyncedWordDelayMs = lineSyncedAnimationDelayMs;
-  }
-
-  if (needsLyricReload) {
-    reloadLyrics();
-  }
   let styleTag = document.getElementById("blyrics-custom-style");
   if (styleTag) {
     styleTag.textContent = css;

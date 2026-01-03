@@ -55,9 +55,20 @@ export function createInstrumentalElement(durationMs: number, lineIndex: number)
   clipPath.setAttribute("id", clipId);
   clipPath.classList.add("blyrics--wave-clip");
 
+  //  Create the Static Block (The deep fill)
+  // This sits at y=4 (the lowest point of the wave) and extends to bottom
+  const waveRect = document.createElementNS(svgNS, "path");
+  waveRect.classList.add("blyrics--wave-rect");
+  waveRect.setAttribute("d", "M -4 3.9 L 30 3.9 L 30 30 L -4 30 Z");
+  clipPath.appendChild(waveRect);
+
+  // Create the Wavy Top
+  // This only contains the surface water. It closes at y=4.
   const wavePath = document.createElementNS(svgNS, "path");
   wavePath.classList.add("blyrics--wave-path");
-  wavePath.setAttribute("d", "M -4 3 Q 1 2 5 3 Q 10 4 14 3 Q 18 2 22 3 Q 26 4 30 3 L 30 30 L -4 30 Z");
+
+  // Initial draw (matches the 0% keyframe below)
+  wavePath.setAttribute("d", "M -4 3 Q 1 2 5 3 Q 10 4 14 3 Q 18 2 22 3 Q 26 4 30 3 L 30 4 L -4 4 Z");
   clipPath.appendChild(wavePath);
 
   defs.appendChild(clipPath);

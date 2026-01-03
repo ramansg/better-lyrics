@@ -2,6 +2,7 @@ import {
   AUTO_SWITCH_ENABLED_LOG,
   FULLSCREEN_BUTTON_SELECTOR,
   GENERAL_ERROR_LOG,
+  LYRICS_CLASS,
   LOG_PREFIX,
   LYRICS_TAB_CLICKED_LOG,
   LYRICS_WRAPPER_ID,
@@ -10,6 +11,7 @@ import {
   TAB_CONTENT_CLASS,
   TAB_HEADER_CLASS,
   TAB_RENDERER_SELECTOR,
+  USER_SCROLLING_CLASS,
 } from "@constants";
 import { AppState, handleModifications, reloadLyrics, type PlayerDetails } from "@core/appState";
 import { onAutoSwitchEnabled, onFullScreenDisabled } from "@modules/settings/settings";
@@ -231,7 +233,6 @@ export function initializeLyrics(): void {
       AppState.queueLyricInjection = true;
       AppState.queueAlbumArtInjection = true;
       AppState.queueSongDetailsInjection = true;
-      AppState.suppressZeroTime = Date.now() + 5000;
       AppState.hasPreloadedNextSong = false;
     }
 
@@ -322,6 +323,12 @@ export function scrollEventHandler(): void {
       log(PAUSING_LYRICS_SCROLL_LOG);
     }
     animEngineState.scrollResumeTime = Date.now() + 25000;
+    if (!animEngineState.wasUserScrolling) {
+      getResumeScrollElement().removeAttribute("autoscroll-hidden");
+      const lyricsElement = document.getElementsByClassName(LYRICS_CLASS)[0] as HTMLElement;
+      lyricsElement.classList.add(USER_SCROLLING_CLASS);
+      animEngineState.wasUserScrolling = true;
+    }
   }
 }
 
@@ -462,4 +469,41 @@ export function setupAltHoverHandler(): void {
   window.addEventListener("blur", () => {
     updateAltState(false);
   });
+}
+
+export function setUpAvButtonListener(): void {
+  let avToggle = document.querySelector("#av-id > ytmusic-av-toggle");
+  if (!avToggle) {
+    setTimeout(setUpAvButtonListener, 1000);
+    return;
+  }
+
+  let handleAVSwitch = (isVideo: boolean) => {
+    let playerPage = document.querySelector("#player-page");
+
+    if (playerPage) {
+      if (isVideo) {
+        playerPage.setAttribute("blyrics-video-mode", "");
+      } else {
+        playerPage.removeAttribute("blyrics-video-mode");
+      }
+    }
+  };
+  const observerCallback = (mutationsList: MutationRecord[]) => {
+    for (const mutation of mutationsList) {
+      if (mutation.type === "attributes" && mutation.attributeName === "is-video-playback-mode-selected") {
+        const isVideo = avToggle.getAttribute("is-video-playback-mode-selected") === "true";
+        handleAVSwitch(isVideo);
+      }
+    }
+  };
+
+  const observer = new MutationObserver(observerCallback);
+
+  observer.observe(avToggle, {
+    attributes: true,
+    attributeFilter: ["is-video-playback-mode-selected"], // Only listen to this specific attribute
+  });
+  handleAVSwitch(avToggle.getAttribute("is-video-playback-mode-selected") === "true");
+  log(LOG_PREFIX, "Set up a/v toggle observer");
 }
