@@ -360,13 +360,15 @@ ytmusic-player-page[player-fullscreened]:not([blyrics-dfs]) #blyrics-wrapper:has
 }
 
 /* Reset fullscreen layout when disabled */
-ytmusic-app-layout[player-fullscreened][blyrics-dfs] > [slot="player-page"] {
-  height: auto !important;
-  width: auto !important;
+ytmusic-player-page[player-fullscreened][blyrics-dfs] {
+  top: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
-ytmusic-app-layout[player-fullscreened][blyrics-dfs] > [slot="player-page"] .tab-header-container {
-  display: flex !important;
+ytmusic-app-layout[player-fullscreened][blyrics-dfs] > [slot="player-page"] {
+  height: 100% !important;
+  width: 100% !important;
 }
 
 ytmusic-app-layout[player-fullscreened][blyrics-dfs] > [slot="player-page"] #side-panel {
@@ -375,11 +377,29 @@ ytmusic-app-layout[player-fullscreened][blyrics-dfs] > [slot="player-page"] #sid
 
 ytmusic-player-page[player-fullscreened][blyrics-dfs] #main-panel.ytmusic-player-page {
   display: block !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 ytmusic-player-page[player-fullscreened][blyrics-dfs] #player.ytmusic-player-page {
+  height: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
   mask-image: unset !important;
   box-shadow: none !important;
+  top: calc(var(--ytmusic-nav-bar-height, 64px) * -0.5) !important;
+  position: relative !important;
+}
+
+ytmusic-player-page[player-fullscreened][blyrics-dfs] ytmusic-player {
+  height: 100% !important;
+  margin: 0 !important;
+}
+
+ytmusic-player-page[player-fullscreened][blyrics-dfs] .content.ytmusic-player-page {
+  padding: 0 !important;
 }
 
 ytmusic-player-page[player-fullscreened][blyrics-dfs] #blyrics-song-info {
@@ -393,17 +413,9 @@ ytmusic-player-page[player-fullscreened][blyrics-dfs] .av.ytmusic-player-page {
   padding: 0 !important;
 }
 
-ytmusic-player-page[player-fullscreened][blyrics-dfs] #side-panel {
-  width: var(--blyrics-panel-size) !important;
-}
-
-ytmusic-player-page[player-fullscreened][blyrics-dfs] #player.ytmusic-player-page {
-  margin-bottom: auto !important;
-  margin-top: auto !important;
-  flex: 1 !important;
-}
-
-ytmusic-app-layout[player-fullscreened][blyrics-dfs] > [slot="player-bar"] {
+ytmusic-app-layout[player-fullscreened][blyrics-dfs] > [slot="player-bar"],
+ytmusic-app-layout[player-fullscreened][blyrics-dfs] ytmusic-player-bar,
+ytmusic-app-layout[player-fullscreened][blyrics-dfs] #player-bar-background {
   width: 100% !important;
 }
 
@@ -411,9 +423,8 @@ ytmusic-app-layout[player-fullscreened][blyrics-dfs] > [slot="player-bar"]:befor
   display: none !important;
 }
 
-ytmusic-player-bar[player-fullscreened][blyrics-dfs] #play-pause-button > .yt-icon-button > yt-icon {
-  width: unset !important;
-  height: unset !important;
+ytmusic-app-layout[player-fullscreened][blyrics-dfs] #nav-bar-background {
+  display: none !important;
 }
 
 ytmusic-player-page[is-mweb-modernization-enabled][player-fullscreened][blyrics-dfs] #player-controls.ytmusic-player-page {
@@ -422,63 +433,6 @@ ytmusic-player-page[is-mweb-modernization-enabled][player-fullscreened][blyrics-
 
 ytmusic-player-page[is-mweb-modernization-enabled][player-fullscreened][blyrics-dfs] #main-panel.ytmusic-player-page {
   padding: unset !important;
-}
-
-ytmusic-player-page[player-fullscreened][blyrics-dfs] .content.ytmusic-player-page {
-  padding: 0 !important;
-}
-
-ytmusic-player-page[player-fullscreened][blyrics-dfs] {
-  padding: 0 !important;
-}
-
-ytmusic-app-layout[player-fullscreened][blyrics-dfs] ytmusic-player-bar {
-  width: 100% !important;
-}
-
-ytmusic-app-layout[player-fullscreened][blyrics-dfs] #player-bar-background {
-  width: 100% !important;
-}
-
-ytmusic-app-layout[player-fullscreened][blyrics-dfs] > [slot="player-page"] {
-  height: 100% !important;
-  width: 100% !important;
-  bottom: 0 !important;
-}
-
-ytmusic-player-page[player-fullscreened][blyrics-dfs] #main-panel.ytmusic-player-page {
-  height: 100% !important;
-  margin-bottom: 0 !important;
-  padding-bottom: 0 !important;
-}
-
-ytmusic-player-page[player-fullscreened][blyrics-dfs] #player.ytmusic-player-page {
-  height: 100% !important;
-  max-height: 100% !important;
-  margin-bottom: 0 !important;
-  padding-bottom: 0 !important;
-  top: calc(var(--ytmusic-nav-bar-height, 64px) * -0.5) !important;
-  position: relative !important;
-}
-
-ytmusic-player-page[player-fullscreened][blyrics-dfs] ytmusic-player {
-  height: 100% !important;
-  margin-bottom: 0 !important;
-}
-
-ytmusic-player-page[player-fullscreened][blyrics-dfs] {
-  top: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-ytmusic-player-page[player-fullscreened][blyrics-dfs] #main-panel.ytmusic-player-page {
-  margin-top: 0 !important;
-  padding-top: 0 !important;
-}
-
-ytmusic-app-layout[player-fullscreened][blyrics-dfs] #nav-bar-background {
-  display: none !important;
 }
 
 /* Trick yt player into serving higher res videos */
