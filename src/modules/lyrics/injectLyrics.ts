@@ -46,6 +46,7 @@ import { registerThemeSetting } from "@modules/settings/themeOptions";
 
 let disableRichsync = registerThemeSetting("blyrics-disable-richsync", false, true);
 let lineSyncedAnimationDelay = registerThemeSetting("blyrics-line-synced-animation-delay", 50, true);
+let longWordThreshold = registerThemeSetting("blyrics-long-word-threshold", 1500, true);
 
 function findNearestAgent(lyrics: Lyric[], fromIndex: number): string | undefined {
   for (let i = fromIndex - 1; i >= 0; i--) {
@@ -186,6 +187,9 @@ function createLyricsLine(parts: LyricPart[], line: LineData, lyricElement: HTML
     span.dataset.duration = String(partData.duration);
     span.dataset.content = part.words;
     span.style.setProperty("--blyrics-duration", part.durationMs + "ms");
+    if (part.durationMs > longWordThreshold.getNumberValue()) {
+      span.dataset.longWord = "true";
+    }
     if (part.isBackground) {
       span.classList.add(BACKGROUND_LYRIC_CLASS);
     }
