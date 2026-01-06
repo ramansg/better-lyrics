@@ -14,7 +14,7 @@
 		- [Effects](#effects)
 		- [Lyric Transition Properties](#lyric-transition-properties)
 		- [Gradient Stops](#gradient-stops)
-		- [Additional Configuration Options](#additional-configuration-options)
+		- [Additional Configuration Options (Knobs)](#additional-configuration-options-knobs)
 		- [Dynamic Properties](#dynamic-properties)
 	- [4. Styling the Main Lyrics Container](#4-styling-the-main-lyrics-container)
 		- [Container Data Attributes](#container-data-attributes)
@@ -48,6 +48,12 @@
 	- [15. ThemeSong Compatibility](#15-themesong-compatibility)
 	- [16. Translated and Romanized Lyrics](#16-translated-and-romanized-lyrics)
 	- [17. Instrumental Breaks](#17-instrumental-breaks)
+		- [Instrumental Break Structure](#instrumental-break-structure)
+		- [Instrumental CSS Variables](#instrumental-css-variables)
+		- [Instrumental Classes](#instrumental-classes)
+		- [Instrumental Animation](#instrumental-animation)
+		- [Styling Instrumental Breaks](#styling-instrumental-breaks)
+		- [Data Attributes](#data-attributes)
 	- [18. Autoscroll Resume Button](#18-autoscroll-resume-button)
 	- [19. Best Practices for Modifying CSS](#19-best-practices-for-modifying-css)
 	- [20. Importing/Exporting Styles](#20-importingexporting-styles)
@@ -117,7 +123,7 @@ These custom properties allow for easy customization of colors, sizes, and other
 
 | Variable                           | Default Value                                                                                                                                                        | Description                                                              |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `--blyrics-font-family`            | `Satoshi, var(--noto-sans-universal), Avenir, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Open Sans, Helvetica Neue, sans-serif` | Font family for lyrics¹                                                   |
+| `--blyrics-font-family`            | `Satoshi, var(--noto-sans-universal), Avenir, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Open Sans, Helvetica Neue, sans-serif` | Font family for lyrics¹                                                  |
 | `--blyrics-font-size`              | `3rem`                                                                                                                                                               | Font size for lyrics                                                     |
 | `--blyrics-font-weight`            | `700`                                                                                                                                                                | Font weight for lyrics                                                   |
 | `--blyrics-line-height`            | `1.333`                                                                                                                                                              | Line height for lyrics                                                   |
@@ -128,7 +134,7 @@ These custom properties allow for easy customization of colors, sizes, and other
 | `--blyrics-footer-font-family`     | `Roboto, Noto Naskh Arabic UI, Arial, sans-serif`                                                                                                                    | Font family of footer                                                    |
 | `--blyrics-footer-font-size`       | `14px`                                                                                                                                                               | Font size of footer                                                      |
 | `--blyrics-footer-font-weight`     | `400`                                                                                                                                                                | Font weight of footer                                                    |
-| `--noto-sans-universal`           | Omitted                                                                                                                                                              | A family of NotoSans fonts covering a large majority of langauges used.² |
+| `--noto-sans-universal`            | Omitted                                                                                                                                                              | A family of NotoSans fonts covering a large majority of langauges used.² |
 
 ¹To add a custom web-font, use `@import`. It must be placed at the very top of your theme.
 
@@ -192,9 +198,9 @@ These custom properties allow for easy customization of colors, sizes, and other
 
 This variable defines a sophisticated gradient used for creating smooth visual transitions in fullscreen mode.
 
-### Additional Configuration Options
+### Additional Configuration Options (Knobs)
 
-There are a select few internal knobs that can be configured by creating special comments in your themes.
+Knobs are tweakable parameters that can be configured by creating special comments in your themes.
 Inside any comment, anywhere in your theme, you can set the value of special keys using the syntax:
 
 ```
@@ -217,7 +223,7 @@ If a value isn't specified, default is used.
 The following options are avalible:
 
 | Key                                   | Default Value | Description                                                                                                                                |
-|---------------------------------------|---------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| ------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `blyrics-disable-richsync`            | `false`       | Set to `true` to disable richsynced lyrics from displaying.                                                                                |
 | `blyrics-line-synced-animation-delay` | `50`          | For non-richsynced lyrics, this value controls the delay each word gets when highlighting (in ms).                                         |
 | `blyrics-lyric-ending-threshold-s`    | `0.5`         | Controls the time (in seconds) before a lyric line is finished that we consider it completed for scrolling purposes.                       |
@@ -1003,8 +1009,8 @@ Better Lyrics detects instrumental breaks (intros, outros, and mid-song gaps) an
 
 ### Instrumental Classes
 
-| Class                         | Purpose                                               |
-| ----------------------------- | ----------------------------------------------------- |
+| Class                         | Purpose                                                            |
+| ----------------------------- | ------------------------------------------------------------------ |
 | `.blyrics--instrumental`      | Base container for instrumental breaks (also has `.blyrics--line`) |
 | `.blyrics--instrumental-icon` | The SVG music note icon                                            |
 | `.blyrics--instrumental-bg`   | Background path of the music note (uses inactive color)            |
