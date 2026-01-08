@@ -232,6 +232,7 @@ The following options are avalible:
 | `blyrics-debug-renderer`              | `false`       | Set to `true` to enable the debug renderer.                                                                                                |
 | `blyrics-target-scroll-pos-ratio`     | `0.37`        | Position on the screen lyrics should be at. 0.5 means the selected lyric will be in the middle of the screen, 0 means top, 1 means bottom. |
 | `blyrics-add-extra-top-padding`       | `false`       | Should extra spacing be added to the top of the lyrics container to allow the lyrics to always scroll.                                     |
+| `blyrics-long-word-threshold`         | `1500`        | Duration threshold (in ms) above which words get `data-long-word="true"`. Useful for glow effects on held notes.                           |
 
 Tip:
 Make it so `var(--blyrics-lyric-scroll-duration)` + `0.02s` = `blyrics-early-scroll-consider-s` +
@@ -390,6 +391,33 @@ Every word uses the `.blyrics--word` class:
 - **Color**: Set to inactive color initially
 - **Display**: `inline-block` preserves spacing and layout
 - **Transform**: `translateY(0px)` prevents layout issues
+
+#### Word Data Attributes
+
+Each word span has the following data attributes:
+
+| Attribute        | Description                                                                 |
+| ---------------- | --------------------------------------------------------------------------- |
+| `data-time`      | Start time of the word in seconds                                           |
+| `data-duration`  | Duration of the word in seconds                                             |
+| `data-content`   | The word text (used by `::after` pseudo-element for karaoke effect)         |
+| `data-long-word` | Present (with value `"true"`) when word duration exceeds the threshold      |
+
+#### Targeting Long Words
+
+Words with duration exceeding `blyrics-long-word-threshold` (default: 1500ms) get `data-long-word="true"`. This is useful for adding glow effects to held/sustained notes:
+
+```css
+/* Set the threshold (in ms) */
+/* blyrics-long-word-threshold = 1500; */
+
+/* Add glow effect to long words */
+.blyrics--word[data-long-word]::after {
+  --blyrics-glow-color: color(display-p3 1 1 1 / 1);
+}
+```
+
+Changing the threshold triggers a lyric reload automatically.
 
 ### Applying the Wobble Animation
 
