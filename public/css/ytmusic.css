@@ -210,7 +210,7 @@ ytmusic-player-page:not([is-mweb-modernization-enabled]):not([blyrics-video-mode
   margin-right: auto;
 }
 
-ytmusic-player-page:not([is-mweb-modernization-enabled]):not([is-mweb-modernization-enabled]):not([blyrics-video-mode])
+ytmusic-player-page:not([is-mweb-modernization-enabled]):not([blyrics-video-mode])
 #player.ytmusic-player-page {
   max-width: 400px !important;
 }
