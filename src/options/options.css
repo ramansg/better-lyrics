@@ -929,6 +929,11 @@ hr {
 .cm-gutters{
 	padding-right: 0 !important;
 	border-right: 1px solid rgb(80 93 100 / 20%) !important;
+	background: #2b2c2e !important;
+}
+
+.cm-activeLineGutter {
+	background: #252527 !important;
 }
 
 .cm-gutter-lint{
