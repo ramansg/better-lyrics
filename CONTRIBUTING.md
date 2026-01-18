@@ -29,10 +29,10 @@ For loading the extension in your browser, see [Manual Installation](README.md#m
 ### Development Commands
 
 ```bash
-npm run dev      # Watch mode with hot reload
-npm run build    # Production build
-npm run lint     # Run ESLint
-npm run format   # Format with Prettier
+npm run dev       # Watch mode with hot reload
+npm run build     # Production build
+npm run lint      # Run linter & formatter
+npm run typecheck # TypeScript type check
 ```
 
 ## Code Guidelines
@@ -63,8 +63,7 @@ npm run format   # Format with Prettier
 1. Open an issue first (unless trivial fix)
 2. Fork and create a feature branch
 3. Follow code guidelines above
-4. Fill out the [PR template](.github/PULL_REQUEST_TEMPLATE.md)
-5. Ensure builds pass (`npm run build`)
+4. Ensure typecheck, lint & builds pass ( `npm run typecheck` `npm run lint` `npm run build`)
 
 ### Review Expectations
 
