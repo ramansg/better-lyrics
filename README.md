@@ -17,6 +17,7 @@ Better Lyrics upgrades your YouTube Music™ experience by providing beautiful t
  <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 <img src="https://img.shields.io/badge/all_contributors-14-orange.svg" alt=""/>
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
+ <a aria-label="Crowdin" href="https://crowdin.com/project/better-lyrics"><img alt="Crowdin" src="https://badges.crowdin.net/better-lyrics/localized.svg"></a>
 </p>
 
 <p align="left">

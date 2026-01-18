@@ -73,32 +73,20 @@ npm run typecheck # TypeScript type check
 
 ## Translation Guide
 
-Better Lyrics uses Chrome's native i18n system. All strings are in `_locales/`.
+Better Lyrics uses [Crowdin](https://crowdin.com/project/better-lyrics) for translation management.
 
-### Adding a New Language
+### How to Contribute Translations
 
-1. Create folder: `_locales/<language-code>/messages.json`
-   - Use [BCP 47 language tags](https://en.wikipedia.org/wiki/IETF_language_tag) (e.g., `fr`, `de`, `ja`, `zh_CN`)
+1. Visit the [Better Lyrics Crowdin project](https://crowdin.com/project/better-lyrics)
+2. Select your language (or request a new one)
+3. Translate strings directly in the Crowdin interface
+4. Translations are automatically synced to the repository
 
-2. Copy from English: `cp _locales/en/messages.json _locales/<code>/messages.json`
+### Translation Tips
 
-3. Translate the `"message"` values (keep keys and `"description"` in English)
-
-```json
-{
-  "extensionName": {
-    "message": "Better Lyrics (Paroles pour YouTube Music)",
-    "description": "The name of the extension"
-  }
-}
-```
-
-4. Test locally by loading the extension and changing browser language
-
-### Updating Existing Translations
-
-- Check for missing keys by comparing with `_locales/en/messages.json`
 - Keep translations concise - UI space is limited
+- Preserve placeholders like `$1`, `$2` in strings
+- Check context in the `description` field for each string
 
 ### Key Naming Convention
 
