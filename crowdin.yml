@@ -1,5 +1,4 @@
 preserve_hierarchy: true
-
 files:
   - source: "/_locales/en/messages.json"
     translation: "/_locales/%locale%/messages.json"
