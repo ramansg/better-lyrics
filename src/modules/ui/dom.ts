@@ -690,11 +690,10 @@ export async function injectHeadTags(): Promise<void> {
     let css = `/* ${cssFiles[i]} */\n` + responses[i];
 
     const style = document.createElement("style");
-    style.id = `blyrics-style-${cssFiles[i]}`
+    style.id = `blyrics-style-${cssFiles[i]}`;
     style.textContent = css;
     document.head.appendChild(style);
   }
-
 }
 
 /**
