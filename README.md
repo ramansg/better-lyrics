@@ -17,7 +17,7 @@ Better Lyrics upgrades your YouTube Music™ experience by providing beautiful t
 <img src="https://img.shields.io/badge/all_contributors-14-orange.svg" alt=""/>
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
  <a aria-label="Crowdin" href="https://crowdin.com/project/better-lyrics"><img alt="Crowdin" src="https://badges.crowdin.net/better-lyrics/localized.svg"></a>
- <a aria-label="Graphite" href="https://graphite.com/?utm_source=github&utm_medium=readme&utm_campaign=better-lyrics"><img height="20" src="https://img.shields.io/badge/Graphite-black?logo=Graphite&logoColor=white" alt="Graphite" /></a>
+ <a aria-label="Graphite" href="https://graphite.com/?utm_source=github&utm_medium=readme&utm_campaign=better-lyrics"><img height="20" src="https://img.shields.io/badge/Code_Review-Graphite-black?logo=Graphite&logoColor=white" alt="Graphite" /></a>
 </p>
 
 <p align="left">
