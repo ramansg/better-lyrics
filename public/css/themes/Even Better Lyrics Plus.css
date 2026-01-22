@@ -7,7 +7,7 @@
   --blyrics-background-color: rgba(0,0,0,0.25);
   --blyrics-font-family: "Switzer", "SF Pro", var(--noto-sans-universal), system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   --blyrics-font-weight: 600;
-  --blyrics-wobble-duration: 1.5s;
+  --blyrics-wobble-duration: 1s;
   --blyrics-panel-size: 50%;
   --blyrics-video-panel-size: 50%;
   --blyrics-fullscreen-panel-size: 55%;
@@ -110,13 +110,6 @@ ytmusic-player-page:before {
   will-change: transform;
 }
 
-@keyframes blyrics-wobble {
-  0% { transform: scaleX(1); }
-  12.5% { transform: translateX(0.02em) scaleX(1.015); }
-  75% { transform: translateX(0) scaleX(1); }
-  100% { transform: scaleX(1); }
-}
-
 ytmusic-player-bar {
   display: grid;
   grid-template-columns: 1.5fr 2fr 1fr;
@@ -158,11 +151,6 @@ ytmusic-player-bar {
   mask-size: 100%;
 }
 
-@keyframes marquee-scroll {
-  0%{ transform: translateX(0); }
-  100% { transform: translateX(calc(-50% - 12px)); }
-}
-
 .volume-slider.ytmusic-player-bar {
   opacity: 1;
 }
@@ -173,4 +161,14 @@ ytmusic-player-bar {
 
 .blyrics--word[data-long-word]::after{
   --blyrics-glow-color: color(display-p3 1 1 1 / 1);
+}
+
+@keyframes blyrics-wobble {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-0.0375em); }
+}
+
+@keyframes marquee-scroll {
+  0%{ transform: translateX(0); }
+  100% { transform: translateX(calc(-50% - 12px)); }
 }
