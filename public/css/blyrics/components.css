@@ -30,6 +30,19 @@
 }
 
 #blyrics-loader:after {
+	color: color-mix(in srgb, var(--blyrics-ui-text-color) 50%, transparent);
+	content: var(--blyrics-text-searching, "Better Lyrics is searching for lyrics...");
+	font-family: var(--blyrics-font-family);
+	font-size: 2rem;
+	font-weight: 700;
+	isolation: isolate;
+	line-height: 1.5;
+	white-space: pre;
+	z-index: 1;
+	transition: color 0.5s ease-in-out;
+}
+
+#blyrics-loader:not([no-sync-available]):after {
 	background: linear-gradient(
         110deg,
         color-mix(in srgb, var(--blyrics-ui-text-color) 50%, transparent) 30%,
@@ -40,17 +53,6 @@
 	-webkit-background-clip: text;
 	background-clip: text;
 	color: transparent;
-	content: var(--blyrics-text-searching, "Better Lyrics is searching for lyrics...");
-	font-family: var(--blyrics-font-family);
-	font-size: 2rem;
-	font-weight: 700;
-	isolation: isolate;
-	line-height: 1.5;
-	white-space: pre;
-	z-index: 1;
-}
-
-#blyrics-loader:not([no-sync-available]):after {
 	animation: blyrics-shimmer 3s linear infinite;
 }
 
