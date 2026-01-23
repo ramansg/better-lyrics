@@ -1,7 +1,5 @@
 @import url('https://api.fontshare.com/v2/css?f[]=switzer@1&display=swap');
 
-/* blyrics-line-synced-animation-delay=0; */
-
 :root {
   --yt-album-size: 600px;
   --blyrics-font-size: 3rem;
