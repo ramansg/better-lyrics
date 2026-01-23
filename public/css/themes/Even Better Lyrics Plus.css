@@ -48,18 +48,23 @@ ytmusic-player[is-mweb-player-page-modernization-enabled]:not([video-mode]) {
   padding: 10px;
 }
 
-.blyrics-container:has(.bylyrics--animating):not(.blyrics-user-scrolling) > div:not(.bylyrics--animating):not(.bylyrics--animating ~ div) {
+.blyrics-container:has(.blyrics--active):not(.blyrics-user-scrolling) > div:not(.blyrics--active):not(.blyrics--active ~ div) {
   opacity: 0.33;
   filter: blur(2.5px);
 }
 
-.blyrics-container > div.bylyrics--animating {
+.blyrics-container > div.blyrics--active {
   opacity: 1;
   filter: blur(0px);
 }
 
-.blyrics-container > div.bylyrics--animating ~ div {
+.blyrics-container > div.blyrics--active ~ div {
   opacity: 0.66;
+  filter: blur(0px);
+}
+
+.blyrics-container > .blyrics--animating{
+  opacity: 1 !important;
   filter: blur(0px);
 }
 
