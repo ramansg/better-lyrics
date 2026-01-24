@@ -564,7 +564,7 @@ export function addThumbnail(smallThumbnail: ThumbnailElement): void {
   albumArtLoadController = loadController;
 
   proxy.onload = () => {
-    if (!loadController.signal) return;
+    if (loadController.signal.aborted) return;
     imgElm.src = proxy.src;
     addBackground(proxy.src);
     if (getContainerSize() === containerSize) {
