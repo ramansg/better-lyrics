@@ -1,5 +1,5 @@
 import { log } from "@utils";
-import type { LongBylineText, NextResponse } from "@modules/lyrics/requestSniffer/NextResponse";
+import type { LongBylineText, NextResponse, ThumbnailElement } from "@modules/lyrics/requestSniffer/NextResponse";
 import { parseTime } from "@modules/lyrics/providers/lrcUtils";
 
 interface Segment {
@@ -31,6 +31,8 @@ interface VideoMetadata {
   album: string;
   isVideo: boolean;
   durationMs: number;
+  thumbnail: ThumbnailElement;
+  smallThumbnail: ThumbnailElement;
   counterpartVideoId: string | null;
   segmentMap: SegmentMap | null;
 }
@@ -206,7 +208,9 @@ export function setupRequestSniffer(): void {
 
             let [primaryArtist, primaryAlbum] = extractByLineInfo(primaryRenderer?.longBylineText);
 
-            let primaryThumbnail = primaryRenderer?.thumbnail.thumbnails[0];
+            let primaryThumbnails = primaryRenderer.thumbnail.thumbnails;
+            let primaryThumbnail = primaryThumbnails[primaryThumbnails.length - 1];
+            let primarySmallThumbnail = primaryThumbnails[0];
             let primaryIsVideo = primaryThumbnail?.height !== primaryThumbnail?.width;
 
             let primary = {
@@ -216,12 +220,16 @@ export function setupRequestSniffer(): void {
               album: primaryAlbum,
               isVideo: primaryIsVideo,
               durationMs: parseTime(primaryRenderer.lengthText.runs[0].text),
+              thumbnail: primaryThumbnail,
+              smallThumbnail: primarySmallThumbnail,
             };
 
             if (counterPartRenderer) {
               let counterpartId = counterPartRenderer?.playlistPanelVideoRenderer.videoId;
               let counterpartTitle = counterPartRenderer.playlistPanelVideoRenderer.title.runs[0].text;
-              let counterpartThumbnail = counterPartRenderer.playlistPanelVideoRenderer.thumbnail.thumbnails[0];
+              let counterpartThumbnails = counterPartRenderer.playlistPanelVideoRenderer.thumbnail.thumbnails;
+              let counterpartThumbnail = counterpartThumbnails[counterpartThumbnails.length - 1];
+              let counterpartSmallThumbnail = counterpartThumbnails[0];
               let counterpartIsVideo = counterpartThumbnail.height !== counterpartThumbnail.width;
               let [counterpartArtist, counterpartAlbum] = extractByLineInfo(
                 counterPartRenderer?.playlistPanelVideoRenderer.longBylineText
@@ -237,6 +245,8 @@ export function setupRequestSniffer(): void {
                   isVideo: counterpartIsVideo,
                   durationMs: parseTime(counterPartRenderer.playlistPanelVideoRenderer.lengthText.runs[0].text),
                   segmentMap: content.playlistPanelVideoWrapperRenderer!.counterpart[0].segmentMap,
+                  thumbnail: counterpartThumbnail,
+                  smallThumbnail: counterpartSmallThumbnail,
                 },
               };
             } else {
@@ -288,6 +298,8 @@ export function setupRequestSniffer(): void {
               segmentMap: numSegmentMap,
               durationMs: videoPair.primary.durationMs,
               id: videoPair.primary.id,
+              thumbnail: videoPair.primary.thumbnail,
+              smallThumbnail: videoPair.primary.smallThumbnail,
             });
 
             videoMetaDataMap.set(counterpart.id, {
@@ -300,6 +312,8 @@ export function setupRequestSniffer(): void {
               segmentMap: reversedSegmentMap,
               durationMs: counterpart.durationMs,
               id: counterpart.id,
+              thumbnail: counterpart.thumbnail,
+              smallThumbnail: counterpart.smallThumbnail,
             });
 
             videoIdToAlbumMap.set(counterpart.id, counterpart.album);
@@ -314,6 +328,8 @@ export function setupRequestSniffer(): void {
               segmentMap: null,
               durationMs: videoPair.primary.durationMs,
               id: videoPair.primary.id,
+              thumbnail: videoPair.primary.thumbnail,
+              smallThumbnail: videoPair.primary.smallThumbnail,
             });
           }
           videoIdToAlbumMap.set(videoPair.primary.id, videoPair.primary.album);

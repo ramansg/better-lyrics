@@ -1,9 +1,5 @@
 import {
   AD_PLAYING_ATTR,
-  ALBUM_ART_ADDED_FROM_MUTATION_LOG,
-  ALBUM_ART_ADDED_LOG,
-  ALBUM_ART_REMOVED_LOG,
-  ALBUM_ART_SIZE_CHANGED,
   DISCORD_INVITE_URL,
   DISCORD_LOGO_SRC,
   FONT_LINK,
@@ -23,10 +19,10 @@ import {
   PLAYER_BAR_SELECTOR,
   PROVIDER_CONFIGS,
   ROMANIZED_LYRICS_CLASS,
-  SONG_IMAGE_SELECTOR,
   TAB_RENDERER_SELECTOR,
   TRANSLATED_LYRICS_CLASS,
   type SyncType,
+  HIDDEN_CLASS,
 } from "@constants";
 import { t } from "@core/i18n";
 import { AppState } from "@core/appState";
@@ -39,6 +35,7 @@ import {
 } from "@modules/ui/animationEngine";
 import { log } from "@utils";
 import { scrollEventHandler } from "./observer";
+import type { ThumbnailElement } from "@modules/lyrics/requestSniffer/NextResponse";
 
 const syncTypeIcons: Record<SyncType, string> = {
   syllable: `<svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><rect x="636" y="239" width="389.981" height="233.271" rx="48" fill-opacity="0.5"/><path d="M0 335C0 289.745 0 267.118 14.0589 253.059C28.1177 239 50.7452 239 96 239H213C243.17 239 258.255 239 267.627 248.373C277 257.745 277 272.83 277 303V408C277 438.17 277 453.255 267.627 462.627C258.255 472 243.17 472 213 472H96C50.7452 472 28.1177 472 14.0589 457.941C0 443.882 0 421.255 0 376V335Z"/><path d="M337 304C337 273.83 337 258.745 346.373 249.373C355.745 240 370.83 240 401 240H460C505.255 240 527.882 240 541.941 254.059C556 268.118 556 290.745 556 336V377C556 422.255 556 444.882 541.941 458.941C527.882 473 505.255 473 460 473H401C370.83 473 355.745 473 346.373 463.627C337 454.255 337 439.17 337 409V304Z" fill-opacity="0.5"/><rect y="552.271" width="1024" height="233" rx="48" fill-opacity="0.5"/></svg>`,
@@ -101,8 +98,6 @@ function createActionButton(options: ActionButtonOptions): HTMLElement {
   return container;
 }
 
-let backgroundChangeObserver: MutationObserver | null = null;
-let backgroundResizeObserver: ResizeObserver | null = null;
 let lyricsObserver: MutationObserver | null = null;
 let adStateObserver: MutationObserver | null = null;
 /**
@@ -508,135 +503,89 @@ function clearLyrics(): void {
   }
 }
 
-let lastAlbumArtSrc: string | null = null;
-let lastAlbumSetSource: string | null = null;
-let loadController: AbortController | null = null;
-let resizeDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+let albumArtLoadController: AbortController | null = null;
 
-/**
- * Adds album art as a background image to the layout
- * and resizes the album art resolution to match user's
- * screen height.
- *
- * Sets up mutation observer to watch for art changes.
- *
- * @param videoId - YouTube video ID for fallback image
- */
-export function addAlbumArtToLayout(videoId: string): void {
-  if (!videoId) return;
+export function reloadAlbumArt() {
+  if (lastLoadedThumbnail) {
+    addThumbnail(lastLoadedThumbnail);
+  }
+}
 
-  const injectAlbumArtFn = (resize: boolean) => {
-    const albumArt = document.querySelector(SONG_IMAGE_SELECTOR) as HTMLImageElement | undefined;
-    if (!albumArt) {
-      return;
-    }
-    const origSrc = albumArt.src;
+let lastLoadedThumbnail: ThumbnailElement | null = null;
+let thumbnailResizeObserver: ResizeObserver | null;
+export function addThumbnail(smallThumbnail: ThumbnailElement): void {
+  thumbnailResizeObserver?.disconnect();
+  let ytImgElem = document.querySelector("#thumbnail>#img");
+  if (ytImgElem) {
+    ytImgElem.classList.add(HIDDEN_CLASS);
+  }
 
-    if (lastAlbumSetSource !== null && origSrc !== lastAlbumSetSource) {
-      albumArt.src = lastAlbumSetSource;
-    }
+  let imgElm = document.getElementById("blyrics-img") as HTMLImageElement | undefined;
+  if (!imgElm) {
+    imgElm = document.createElement("img");
+    imgElm.id = "blyrics-img";
+    imgElm.draggable = false;
+    imgElm.classList = "style-scope yt-img-shadow";
+    document.getElementById("thumbnail")?.appendChild(imgElm);
+  }
 
-    if (origSrc === lastAlbumSetSource && !resize) {
-      return;
-    }
-
-    let containerSize = document.getElementById("thumbnail")?.getBoundingClientRect().width || 400;
-
-    containerSize = Math.round(containerSize);
-
-    let newSrc = origSrc;
-    if (/w\d+-h\d+/.test(origSrc)) {
-      newSrc = origSrc.replace(/w\d+-h\d+/, `w${containerSize}-h${containerSize}`);
+  let addBackground = (src: string) => {
+    if (AppState.shouldInjectAlbumArt) {
+      document.getElementById("layout")?.style.setProperty("--blyrics-background-img", `url('${src}')`);
     } else {
-      return;
-    }
-
-    if (newSrc !== lastAlbumArtSrc) {
-      loadController?.abort();
-      loadController = new AbortController();
-      const { signal } = loadController;
-
-      lastAlbumArtSrc = newSrc;
-      const img = new Image();
-      img.src = newSrc;
-
-      img.onload = () => {
-        if (signal.aborted) return;
-        lastAlbumSetSource = newSrc;
-        albumArt.src = newSrc;
-        injectAlbumArt(newSrc);
-      };
-
-      img.onerror = () => {
-        if (signal.aborted) return;
-        lastAlbumArtSrc = null;
-      };
+      document.getElementById("layout")?.style.removeProperty("--blyrics-background-img");
     }
   };
 
-  backgroundChangeObserver?.disconnect();
-  backgroundResizeObserver?.disconnect();
-  const albumArt = document.querySelector(SONG_IMAGE_SELECTOR) as HTMLImageElement | undefined;
-  if (!albumArt) {
-    return;
+  if (lastLoadedThumbnail !== smallThumbnail) {
+    imgElm.src = smallThumbnail.url; // should already be loaded;
+    addBackground(smallThumbnail.url);
+  }
+  lastLoadedThumbnail = smallThumbnail;
+
+  function getContainerSize() {
+    return Math.round(Math.max(document.getElementById("thumbnail")?.getBoundingClientRect().width || 0, 544));
   }
 
-  backgroundChangeObserver = new MutationObserver(() => {
-    injectAlbumArtFn(false);
-    log(ALBUM_ART_ADDED_FROM_MUTATION_LOG);
-  });
-  backgroundChangeObserver.observe(albumArt, { attributes: true, attributeFilter: ["src"] });
+  let containerSize = getContainerSize();
 
-  backgroundResizeObserver = new ResizeObserver(() => {
-    if (resizeDebounceTimeout) clearTimeout(resizeDebounceTimeout);
-    resizeDebounceTimeout = setTimeout(() => {
-      resizeDebounceTimeout = null;
-      injectAlbumArtFn(true);
-      log(ALBUM_ART_SIZE_CHANGED);
-    }, 100);
-  });
-  backgroundResizeObserver.observe(albumArt);
+  let url = smallThumbnail.url;
+  if (url && /w\d+-h\d+/.test(url)) {
+    url = url.replace(/w\d+-h\d+/, `w${containerSize}-h${containerSize}`);
+  } else {
+    url = url.replace(/\/(sd|hq|mq)?default\.jpg/, "/maxresdefault.jpg");
+  }
 
-  injectAlbumArtFn(false);
-  log(ALBUM_ART_ADDED_LOG);
-}
+  let proxy = new Image();
+  proxy.src = url;
 
-/**
- * Injects album art URL as a CSS custom property.
- *
- * @param src - Image source URL
- */
-function injectAlbumArt(src: string): void {
-  const img = new Image();
-  img.src = src;
+  albumArtLoadController?.abort();
+  let loadController = new AbortController();
+  albumArtLoadController = loadController;
 
-  img.onload = () => {
-    document.getElementById("layout")?.style.setProperty("--blyrics-background-img", `url('${src}')`);
+  proxy.onload = () => {
+    if (!loadController.signal) return;
+    imgElm.src = proxy.src;
+    addBackground(proxy.src);
+    if (getContainerSize() === containerSize) {
+      let thumbnailElm = document.getElementById("thumbnail")!;
+      thumbnailResizeObserver = new ResizeObserver(() => {
+        if (getContainerSize() !== containerSize) {
+          thumbnailResizeObserver?.disconnect();
+          reloadAlbumArt();
+        }
+      });
+      thumbnailResizeObserver.observe(thumbnailElm);
+    } else {
+      reloadAlbumArt();
+    }
   };
 }
 
-/**
- * Removes album art from layout and disconnects observers.
- */
-export function removeAlbumArtFromLayout(): void {
-  backgroundChangeObserver?.disconnect();
-  backgroundResizeObserver?.disconnect();
-  backgroundChangeObserver = null;
-  backgroundResizeObserver = null;
-
-  if (resizeDebounceTimeout) {
-    clearTimeout(resizeDebounceTimeout);
-    resizeDebounceTimeout = null;
-  }
-  loadController?.abort();
-  loadController = null;
-  lastAlbumArtSrc = null;
-  lastAlbumSetSource = null;
-
-  const layout = document.getElementById("layout");
-  if (layout) {
-    layout.style.removeProperty("--blyrics-background-img");
-    log(ALBUM_ART_REMOVED_LOG);
+export function showYtThumbnail() {
+  let ytImgElem = document.getElementById("img");
+  if (ytImgElem) {
+    ytImgElem.classList.remove(HIDDEN_CLASS);
   }
 }
 

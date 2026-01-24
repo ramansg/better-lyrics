@@ -29,6 +29,7 @@ export const LYRICS_LOADER_ID = "blyrics-loader" as const;
 export const LYRICS_WRAPPER_ID = "blyrics-wrapper" as const;
 export const LYRICS_SPACING_ELEMENT_ID = "blyrics-spacing-element" as const;
 export const LYRICS_DISABLED_ATTR = "blyrics-dfs" as const;
+export const HIDDEN_CLASS = "blyrics-hidden" as const;
 
 // Assets and Resources
 export const DISCORD_LOGO_SRC =
@@ -123,8 +124,6 @@ export const LYRICS_TAB_NOT_DISABLED_LOG =
   "[BetterLyrics] (Safe to ignore) Lyrics tab is not disabled, unable to enable it" as const;
 export const SONG_SWITCHED_LOG = "[BetterLyrics] Song has been switched" as const;
 export const ALBUM_ART_ADDED_LOG = "[BetterLyrics] Album art added to the layout" as const;
-export const ALBUM_ART_ADDED_FROM_MUTATION_LOG =
-  "[BetterLyrics] Album art added to the layout from mutation event" as const;
 export const ALBUM_ART_SIZE_CHANGED = "[BetterLyrics] Album art size changed to" as const;
 export const ALBUM_ART_REMOVED_LOG = "[BetterLyrics] Album art removed from the layout" as const;
 export const LOADER_TRANSITION_ENDED = "[BetterLyrics] Loader Transition Ended" as const;
