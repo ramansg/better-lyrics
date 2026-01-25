@@ -28,8 +28,7 @@ interface AppStateType {
   lastVideoDetails: any | null;
   lyricInjectionPromise: Promise<any> | null;
   queueLyricInjection: boolean;
-  queueAlbumArtInjection: boolean;
-  shouldInjectAlbumArt: string | boolean;
+  shouldInjectAlbumArt: "Unknown" | boolean;
   queueSongDetailsInjection: boolean;
   loaderAnimationEndTimeout: number | undefined;
   lastLoadedVideoId: string | null;
@@ -50,7 +49,6 @@ export const AppState: AppStateType = {
   lastVideoDetails: null,
   lyricInjectionPromise: null,
   queueLyricInjection: false,
-  queueAlbumArtInjection: false,
   shouldInjectAlbumArt: "Unknown",
   queueSongDetailsInjection: false,
   loaderAnimationEndTimeout: undefined,

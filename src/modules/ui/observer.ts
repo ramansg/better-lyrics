@@ -25,7 +25,7 @@ import {
 import { getSongMetadata } from "@modules/lyrics/requestSniffer/requestSniffer";
 import { preFetchLyrics } from "@modules/lyrics/lyrics";
 import { log } from "@utils";
-import { addAlbumArtToLayout, cleanup, injectSongAttributes, isLoaderActive, renderLoader } from "./dom";
+import { addThumbnail, cleanup, injectSongAttributes, isLoaderActive, renderLoader, showYtThumbnail } from "./dom";
 
 let wakeLock: WakeLockSentinel | null = null;
 
@@ -267,9 +267,18 @@ export function initializeLyrics(): void {
       log(SONG_SWITCHED_LOG, detail.videoId);
 
       AppState.queueLyricInjection = true;
-      AppState.queueAlbumArtInjection = true;
       AppState.queueSongDetailsInjection = true;
       AppState.hasPreloadedNextSong = false;
+      getSongMetadata(detail.videoId).then(async songMetadata => {
+        if (songMetadata?.isVideo && songMetadata.counterpartVideoId) {
+          songMetadata = await getSongMetadata(songMetadata.counterpartVideoId);
+        }
+        if (songMetadata) {
+          addThumbnail(songMetadata.smallThumbnail);
+        } else {
+          showYtThumbnail();
+        }
+      });
     }
 
     if (AppState.areLyricsTicking && AppState.areLyricsLoaded && !AppState.hasPreloadedNextSong) {
@@ -303,11 +312,6 @@ export function initializeLyrics(): void {
     if (AppState.queueSongDetailsInjection && detail.song && detail.artist && document.getElementById("main-panel")) {
       AppState.queueSongDetailsInjection = false;
       injectSongAttributes(detail.song, detail.artist);
-    }
-
-    if (AppState.queueAlbumArtInjection && AppState.shouldInjectAlbumArt === true) {
-      AppState.queueAlbumArtInjection = false;
-      addAlbumArtToLayout(currentVideoId);
     }
 
     if (AppState.lyricInjectionFailed) {
