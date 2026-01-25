@@ -108,4 +108,11 @@
 		rgba(0, 0, 0, 0.648) 58.8%, rgba(0, 0, 0, 0.741) 64.7%,
 		rgba(0, 0, 0, 0.825) 71%, rgba(0, 0, 0, 0.896) 77.5%,
 		rgba(0, 0, 0, 0.951) 84.5%, rgba(0, 0, 0, 0.987) 91.9%, #000 100%;
+
+	--blyrics-shimmer-gradient: linear-gradient(
+    	110deg,
+    	color-mix(in srgb, var(--blyrics-ui-text-color) 50%, transparent) 30%,
+    	var(--blyrics-ui-text-color) 50%,
+    	color-mix(in srgb, var(--blyrics-ui-text-color) 50%, transparent) 70%
+  	);
 }
