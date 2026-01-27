@@ -219,9 +219,20 @@ export function listenForPopupMessages(): void {
  * Loads translation and romanization settings from storage and updates AppState.
  */
 export function loadTranslationSettings(): void {
-  getStorage({ isTranslateEnabled: false, isRomanizationEnabled: false, translationLanguage: "en" }, items => {
-    AppState.isTranslateEnabled = items.isTranslateEnabled;
-    AppState.isRomanizationEnabled = items.isRomanizationEnabled;
-    AppState.translationLanguage = items.translationLanguage || "en";
-  });
+  getStorage(
+    {
+      isTranslateEnabled: false,
+      isRomanizationEnabled: false,
+      translationLanguage: "en",
+      romanizationDisabledLanguages: [],
+      translationDisabledLanguages: [],
+    },
+    items => {
+      AppState.isTranslateEnabled = items.isTranslateEnabled;
+      AppState.isRomanizationEnabled = items.isRomanizationEnabled;
+      AppState.translationLanguage = items.translationLanguage || "en";
+      AppState.romanizationDisabledLanguages = items.romanizationDisabledLanguages || [];
+      AppState.translationDisabledLanguages = items.translationDisabledLanguages || [];
+    }
+  );
 }
