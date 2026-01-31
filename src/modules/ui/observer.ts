@@ -25,7 +25,15 @@ import {
 import { getSongMetadata } from "@modules/lyrics/requestSniffer/requestSniffer";
 import { preFetchLyrics } from "@modules/lyrics/lyrics";
 import { log } from "@utils";
-import { addThumbnail, cleanup, injectSongAttributes, isLoaderActive, renderLoader, showYtThumbnail } from "./dom";
+import {
+  addThumbnail,
+  cleanup,
+  injectSongAttributes,
+  isLoaderActive,
+  renderLoader,
+  resetThumbnailState,
+  showYtThumbnail,
+} from "./dom";
 
 let wakeLock: WakeLockSentinel | null = null;
 
@@ -40,6 +48,7 @@ let hasInitializedLyricReloader = false;
 let hasInitializedHomepageFullscreen = false;
 let hasInitializedAltHover = false;
 let hasInitializedLyrics = false;
+let metadataAbortController: AbortController | null = null;
 
 async function requestWakeLock(): Promise<void> {
   if (!("wakeLock" in navigator)) {
@@ -260,6 +269,8 @@ export function initializeLyrics(): void {
       AppState.areLyricsTicking = false;
       AppState.lastVideoId = currentVideoId;
       AppState.lastVideoDetails = currentVideoDetails;
+      resetThumbnailState();
+      showYtThumbnail();
       if (!detail.song || !detail.artist) {
         log("Lyrics switched: Still waiting for metadata ", detail.videoId);
         return;
@@ -269,14 +280,22 @@ export function initializeLyrics(): void {
       AppState.queueLyricInjection = true;
       AppState.queueSongDetailsInjection = true;
       AppState.hasPreloadedNextSong = false;
-      getSongMetadata(detail.videoId).then(async songMetadata => {
+
+      metadataAbortController?.abort();
+      const abortController = new AbortController();
+      metadataAbortController = abortController;
+
+      const videoIdAtStart = detail.videoId;
+      getSongMetadata(detail.videoId, 250, abortController.signal).then(async songMetadata => {
+        if (AppState.lastVideoId !== videoIdAtStart) return;
+
         if (songMetadata?.isVideo && songMetadata.counterpartVideoId) {
-          songMetadata = await getSongMetadata(songMetadata.counterpartVideoId);
+          songMetadata = await getSongMetadata(songMetadata.counterpartVideoId, 250, abortController.signal);
+          if (AppState.lastVideoId !== videoIdAtStart) return;
         }
+
         if (songMetadata) {
           addThumbnail(songMetadata.smallThumbnail);
-        } else {
-          showYtThumbnail();
         }
       });
     }
@@ -348,8 +367,8 @@ export function initializeLyrics(): void {
  * Manages autoscroll pause/resume functionality.
  */
 export function scrollEventHandler(): void {
-  const tabSelector = document.getElementsByClassName(TAB_HEADER_CLASS)[1];
-  if (tabSelector.getAttribute("aria-selected") !== "true" || !AppState.areLyricsTicking) {
+  const tabSelector = AppState.lyricData?.tabSelector;
+  if (!tabSelector || tabSelector.getAttribute("aria-selected") !== "true" || !AppState.areLyricsTicking) {
     return;
   }
 

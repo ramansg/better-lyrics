@@ -23,6 +23,7 @@ import {
   TRANSLATED_LYRICS_CLASS,
   type SyncType,
   HIDDEN_CLASS,
+  LYRICS_SPACING_ELEMENT_ID,
 } from "@constants";
 import { t } from "@core/i18n";
 import { AppState } from "@core/appState";
@@ -31,11 +32,13 @@ import {
   getResumeScrollElement,
   reflow,
   resetAnimEngineState,
+  SCROLL_POS_OFFSET_RATIO,
   toMs,
 } from "@modules/ui/animationEngine";
 import { log } from "@utils";
 import { scrollEventHandler } from "./observer";
 import type { ThumbnailElement } from "@modules/lyrics/requestSniffer/NextResponse";
+import { disconnectResizeObserver } from "@modules/lyrics/injectLyrics";
 
 const syncTypeIcons: Record<SyncType, string> = {
   syllable: `<svg width="14" height="14" viewBox="0 0 1024 1024" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><rect x="636" y="239" width="389.981" height="233.271" rx="48" fill-opacity="0.5"/><path d="M0 335C0 289.745 0 267.118 14.0589 253.059C28.1177 239 50.7452 239 96 239H213C243.17 239 258.255 239 267.627 248.373C277 257.745 277 272.83 277 303V408C277 438.17 277 453.255 267.627 462.627C258.255 472 243.17 472 213 472H96C50.7452 472 28.1177 472 14.0589 457.941C0 443.882 0 421.255 0 376V335Z"/><path d="M337 304C337 273.83 337 258.745 346.373 249.373C355.745 240 370.83 240 401 240H460C505.255 240 527.882 240 541.941 254.059C556 268.118 556 290.745 556 336V377C556 422.255 556 444.882 541.941 458.941C527.882 473 505.255 473 460 473H401C370.83 473 355.745 473 346.373 463.627C337 454.255 337 439.17 337 409V304Z" fill-opacity="0.5"/><rect y="552.271" width="1024" height="233" rx="48" fill-opacity="0.5"/></svg>`,
@@ -513,41 +516,46 @@ export function reloadAlbumArt() {
 
 let lastLoadedThumbnail: ThumbnailElement | null = null;
 let thumbnailResizeObserver: ResizeObserver | null;
+
+export function resetThumbnailState(): void {
+  lastLoadedThumbnail = null;
+}
+
+function setBackgroundImage(src: string): void {
+  const layout = document.getElementById("layout");
+  if (AppState.shouldInjectAlbumArt) {
+    layout?.style.setProperty("--blyrics-background-img", `url('${src}')`);
+  } else {
+    layout?.style.removeProperty("--blyrics-background-img");
+  }
+}
+
+function getContainerSize(): number {
+  return Math.round(Math.max(document.getElementById("thumbnail")?.getBoundingClientRect().width || 0, 544));
+}
+
 export function addThumbnail(smallThumbnail: ThumbnailElement): void {
   thumbnailResizeObserver?.disconnect();
-  let ytImgElem = document.querySelector("#thumbnail>#img");
-  if (ytImgElem) {
-    ytImgElem.classList.add(HIDDEN_CLASS);
-  }
 
   let imgElm = document.getElementById("blyrics-img") as HTMLImageElement | undefined;
   if (!imgElm) {
     imgElm = document.createElement("img");
     imgElm.id = "blyrics-img";
     imgElm.draggable = false;
-    imgElm.classList = "style-scope yt-img-shadow";
+    imgElm.classList.add("style-scope", "yt-img-shadow");
+    imgElm.style.position = "absolute";
+    imgElm.style.inset = "0";
     document.getElementById("thumbnail")?.appendChild(imgElm);
   }
 
-  let addBackground = (src: string) => {
-    if (AppState.shouldInjectAlbumArt) {
-      document.getElementById("layout")?.style.setProperty("--blyrics-background-img", `url('${src}')`);
-    } else {
-      document.getElementById("layout")?.style.removeProperty("--blyrics-background-img");
-    }
-  };
-
   if (lastLoadedThumbnail !== smallThumbnail) {
-    imgElm.src = smallThumbnail.url; // should already be loaded;
-    addBackground(smallThumbnail.url);
+    imgElm.src = smallThumbnail.url;
+    imgElm.classList.remove(HIDDEN_CLASS);
+    setBackgroundImage(smallThumbnail.url);
   }
   lastLoadedThumbnail = smallThumbnail;
 
-  function getContainerSize() {
-    return Math.round(Math.max(document.getElementById("thumbnail")?.getBoundingClientRect().width || 0, 544));
-  }
-
-  let containerSize = getContainerSize();
+  const containerSize = getContainerSize();
 
   let url = smallThumbnail.url;
   if (url && /w\d+-h\d+/.test(url)) {
@@ -556,36 +564,45 @@ export function addThumbnail(smallThumbnail: ThumbnailElement): void {
     url = url.replace(/\/(sd|hq|mq)?default\.jpg/, "/maxresdefault.jpg");
   }
 
-  let proxy = new Image();
+  const proxy = new Image();
   proxy.src = url;
 
   albumArtLoadController?.abort();
-  let loadController = new AbortController();
+  const loadController = new AbortController();
   albumArtLoadController = loadController;
 
   proxy.onload = () => {
     if (loadController.signal.aborted) return;
+
     imgElm.src = proxy.src;
-    addBackground(proxy.src);
-    if (getContainerSize() === containerSize) {
-      let thumbnailElm = document.getElementById("thumbnail")!;
-      thumbnailResizeObserver = new ResizeObserver(() => {
-        if (getContainerSize() !== containerSize) {
-          thumbnailResizeObserver?.disconnect();
-          reloadAlbumArt();
-        }
-      });
-      thumbnailResizeObserver.observe(thumbnailElm);
-    } else {
+    setBackgroundImage(proxy.src);
+
+    if (getContainerSize() !== containerSize) {
       reloadAlbumArt();
+      return;
     }
+
+    const thumbnailElm = document.getElementById("thumbnail")!;
+    thumbnailResizeObserver = new ResizeObserver(() => {
+      if (getContainerSize() !== containerSize) {
+        thumbnailResizeObserver?.disconnect();
+        reloadAlbumArt();
+      }
+    });
+    thumbnailResizeObserver.observe(thumbnailElm);
   };
 }
 
-export function showYtThumbnail() {
-  let ytImgElem = document.getElementById("img");
-  if (ytImgElem) {
-    ytImgElem.classList.remove(HIDDEN_CLASS);
+export function showYtThumbnail(): void {
+  const blyricsImg = document.getElementById("blyrics-img") as HTMLImageElement | null;
+  if (blyricsImg) {
+    blyricsImg.src = "";
+    blyricsImg.classList.add(HIDDEN_CLASS);
+  }
+
+  const ytImg = document.querySelector("#thumbnail>#img") as HTMLImageElement | null;
+  if (ytImg?.src && AppState.shouldInjectAlbumArt) {
+    setBackgroundImage(ytImg.src);
   }
 }
 
@@ -668,6 +685,8 @@ export function cleanup(): void {
   animEngineState.scrollPos = -1;
   resetAnimEngineState();
 
+  disconnectResizeObserver();
+
   if (lyricsObserver) {
     lyricsObserver.disconnect();
     lyricsObserver = null;
@@ -739,4 +758,18 @@ export function injectSongAttributes(title: string, artist: string): void {
 function getGeniusLink(song: string, artist: string): string {
   const searchQuery = encodeURIComponent(`${artist.trim()} - ${song.trim()}`);
   return `https://genius.com/search?q=${searchQuery}`;
+}
+
+export function setExtraHeight() {
+  const lyricsElement = document.getElementsByClassName(LYRICS_CLASS)[0] as HTMLElement;
+  const lyricsHeight = lyricsElement.getBoundingClientRect().height;
+  const tabRenderer = document.querySelector(TAB_RENDERER_SELECTOR) as HTMLElement;
+  const tabRendererHeight = tabRenderer.getBoundingClientRect().height;
+
+  let extraHeight = Math.max(
+    tabRendererHeight * (1 - SCROLL_POS_OFFSET_RATIO.getNumberValue()),
+    tabRendererHeight - lyricsHeight
+  );
+
+  (document.getElementById(LYRICS_SPACING_ELEMENT_ID) as HTMLElement).style.height = `${extraHeight.toFixed(0)}px`;
 }

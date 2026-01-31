@@ -722,5 +722,79 @@
   "lyrics_notFound": {
     "message": "Tidak ketemu lirik untuk lagu ini",
     "description": "Message when no lyrics are available"
+  },
+  "options_language_exclusions": {
+    "message": "Pengecualian bahasa",
+    "description": "Label for language exclusions setting"
+  },
+  "options_manage": {
+    "message": "Atur",
+    "description": "Manage button label"
+  },
+  "options_language_exclusionsTitle": {
+    "message": "Pengecualian Bahasa",
+    "description": "Modal title for language exclusions"
+  },
+  "options_romanization_tab": {
+    "message": "Romanisasi",
+    "description": "Romanization tab label"
+  },
+  "options_translation_tab": {
+    "message": "Terjemahan",
+    "description": "Translation tab label"
+  },
+  "options_searchLanguages": {
+    "message": "Cari bahasa...",
+    "description": "Search input placeholder"
+  },
+  "options_romanization_hint": {
+    "message": "Klik untuk dialihkan. Bahasa yang dikecualikan tidak akan diromanisasi.",
+    "description": "Hint text for romanization exclusions"
+  },
+  "options_translation_hint": {
+    "message": "Klik untuk dialihkan. Bahasa sumber yang dikecualikan tidak akan diterjemahkan.",
+    "description": "Hint text for translation exclusions"
+  },
+  "options_resetToDefault": {
+    "message": "Atur ulang $TYPE$ ke Bawaan",
+    "description": "Reset to default button label",
+    "placeholders": {
+      "type": {
+        "content": "$1",
+        "example": "Romanization"
+      }
+    }
+  },
+  "options_romanization_resetTitle": {
+    "message": "Atur Ulang Pengecualian $TYPE$",
+    "description": "Modal title for resetting exclusions",
+    "placeholders": {
+      "type": {
+        "content": "$1",
+        "example": "Romanization"
+      }
+    }
+  },
+  "options_romanization_resetMessage": {
+    "message": "Ini akan menghapus semua bahasa yang dikecualikan. Lanjutkan?",
+    "description": "Confirmation message for resetting exclusions"
+  },
+  "options_reset": {
+    "message": "Atur ulang",
+    "description": "Reset button label"
+  },
+  "options_cancel": {
+    "message": "Batal",
+    "description": "Cancel button label"
+  },
+  "options_romanization_resetSuccess": {
+    "message": "Pengecualian $TYPE$ diatur ulang ke bawaan",
+    "description": "Success message after resetting exclusions",
+    "placeholders": {
+      "type": {
+        "content": "$1",
+        "example": "Romanization"
+      }
+    }
   }
 }
