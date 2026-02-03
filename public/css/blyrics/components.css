@@ -33,7 +33,7 @@
   	}
 }
 
-#blyrics-loader:not([no-sync-available])::before {
+#blyrics-loader:not([no-sync-available]):before {
   	animation: blyrics-spin 1s linear infinite;
   	background: url(https://better-lyrics.boidu.dev/icon-512.png);
   	background-position: 50%;
@@ -48,7 +48,7 @@
   	flex-shrink: 0;
 }
 
-#blyrics-loader::after {
+#blyrics-loader:after {
   	color: color-mix(in srgb, var(--blyrics-ui-text-color) 50%, transparent);
   	content: var(--blyrics-text-searching, "Better Lyrics is searching for lyrics...");
   	font-family: var(--blyrics-font-family);
@@ -61,7 +61,7 @@
   	transition: color 0.5s ease-in-out;
 }
 
-#blyrics-loader:not([no-sync-available])::after {
+#blyrics-loader:not([no-sync-available]):after {
   	background: var(--blyrics-shimmer-gradient) 0 0 / 200% 100%;
   	-webkit-background-clip: text;
   	background-clip: text;
@@ -75,7 +75,7 @@
   	height: 5rem;
 }
 
-#blyrics-loader[small-loader]::after {
+#blyrics-loader[small-loader]:after {
   	content: var(--blyrics-text-still-searching, "Still searching for synced lyrics...");
 }
 
@@ -87,7 +87,7 @@
     	padding-top 0.2s linear 0s;
 }
 
-#blyrics-loader[no-sync-available]::after {
+#blyrics-loader[no-sync-available]:after {
   	content: var(--blyrics-text-no-synced, "Better Lyrics could not find synced lyrics");
   	background: none;
   	color: color-mix(in srgb, var(--blyrics-ui-text-color) 50%, transparent);
@@ -110,7 +110,7 @@
 		padding-top 0.2s;
 }
 
-#blyrics-ad-overlay::before {
+#blyrics-ad-overlay:before {
 	animation: blyrics-spin 1s linear infinite;
   	animation-play-state: inherit;
 	background: url(https://better-lyrics.boidu.dev/icon-512.png);
@@ -123,7 +123,7 @@
 	width: 3rem;
 }
 
-#blyrics-ad-overlay::after {
+#blyrics-ad-overlay:after {
 	background: var(--blyrics-shimmer-gradient) 0 0 / 200% 100%;
 	-webkit-background-clip: text;
 	background-clip: text;
