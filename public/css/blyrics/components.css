@@ -1,6 +1,7 @@
 /* Loader & Wrapper State Machine styles */
 #tab-renderer {
     position: relative;
+    container-type: size;
 }
 
 #blyrics-loader {
