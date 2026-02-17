@@ -121,7 +121,7 @@ function getCSSDurationInMs(lyricsElement: HTMLElement, property: string): numbe
 export function animationEngine(currentTime: number, eventCreationTime: number, isPlaying = true, smoothScroll = true) {
   const now = Date.now();
   // const frameStart = performance.now();
-  if (isLoaderActive() || !AppState.areLyricsTicking || (currentTime === 0 && !isPlaying)) {
+  if (!AppState.areLyricsTicking || (currentTime === 0 && !isPlaying)) {
     return;
   }
 

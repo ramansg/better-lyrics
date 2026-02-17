@@ -301,7 +301,19 @@ function createFooter(song: string, artist: string, album: string, duration: num
   }
 }
 
-let loaderMayBeActive = false;
+let loaderStateTimeout: number | undefined;
+
+type LoaderState = "full-loader" | "small-loader" | "showing-message" | "exiting" | "hidden";
+
+function setLoaderState(state: LoaderState, text?: string): void {
+  const loader = document.getElementById(LYRICS_LOADER_ID);
+  if (!loader) return;
+
+  loader.setAttribute("state", state);
+  if (text !== undefined) {
+    loader.style.setProperty("--blyrics-loader-text", `"${text}"`);
+  }
+}
 
 /**
  * Renders and displays the loading spinner for lyrics fetching.
@@ -313,35 +325,31 @@ export function renderLoader(small = false): void {
   if (!small) {
     cleanup();
   }
-  loaderMayBeActive = true;
+  
   try {
-    clearTimeout(AppState.loaderAnimationEndTimeout);
     const tabRenderer = document.querySelector(TAB_RENDERER_SELECTOR) as HTMLElement;
     let loaderWrapper = document.getElementById(LYRICS_LOADER_ID);
     if (!loaderWrapper) {
       loaderWrapper = document.createElement("div");
       loaderWrapper.id = LYRICS_LOADER_ID;
-    }
-    let wasActive = loaderWrapper.hasAttribute("active");
-    loaderWrapper.setAttribute("active", "");
-    loaderWrapper.removeAttribute("no-sync-available");
-
-    if (small) {
-      loaderWrapper.setAttribute("small-loader", "");
-    } else {
-      loaderWrapper.removeAttribute("small-loader");
-    }
-
-    if (!wasActive) {
       tabRenderer.prepend(loaderWrapper);
-      loaderWrapper.hidden = false;
-      loaderWrapper.style.display = "inline-block !important";
+    }
 
-      loaderWrapper.scrollIntoView({
-        behavior: "instant",
-        block: "start",
-        inline: "start",
-      });
+    clearTimeout(loaderStateTimeout);
+    clearTimeout(AppState.loaderAnimationEndTimeout);
+
+    // Reset state before applying new one to trigger animations correctly
+    if (loaderWrapper.getAttribute("state") === "hidden" || loaderWrapper.hidden) {
+        loaderWrapper.setAttribute("state", "hidden");
+        reflow(loaderWrapper);
+    }
+
+    loaderWrapper.hidden = false;
+    
+    if (small) {
+      setLoaderState("small-loader", t("lyrics_stillSearching"));
+    } else {
+      setLoaderState("full-loader", t("lyrics_searching"));
     }
   } catch (err) {
     log(err);
@@ -354,36 +362,31 @@ export function renderLoader(small = false): void {
 export function flushLoader(showNoSyncAvailable = false): void {
   try {
     const loaderWrapper = document.getElementById(LYRICS_LOADER_ID);
+    if (!loaderWrapper) return;
 
-    if (loaderWrapper && showNoSyncAvailable) {
-      loaderWrapper.setAttribute("small-loader", "");
-      reflow(loaderWrapper);
-      loaderWrapper.setAttribute("no-sync-available", "");
-    }
-    if (loaderWrapper?.hasAttribute("active")) {
-      clearTimeout(AppState.loaderAnimationEndTimeout);
-      loaderWrapper.dataset.animatingOut = "true";
-      loaderWrapper.removeAttribute("active");
+    clearTimeout(loaderStateTimeout);
+    clearTimeout(AppState.loaderAnimationEndTimeout);
 
-      loaderWrapper.addEventListener("transitionend", function handleTransitionEnd(_event: TransitionEvent) {
-        clearTimeout(AppState.loaderAnimationEndTimeout);
-        loaderWrapper.dataset.animatingOut = "false";
-        loaderMayBeActive = false;
-        loaderWrapper.removeEventListener("transitionend", handleTransitionEnd);
-        log(LOADER_TRANSITION_ENDED);
-      });
-
-      let timeout = 1000;
-      let transitionDelay = window.getComputedStyle(loaderWrapper).getPropertyValue("transition-delay");
-      if (transitionDelay) {
-        timeout += toMs(transitionDelay);
-      }
-
+    const performExit = () => {
+      setLoaderState("exiting");
+      
       AppState.loaderAnimationEndTimeout = window.setTimeout(() => {
-        loaderWrapper.dataset.animatingOut = String(false);
-        loaderMayBeActive = false;
-        log(LOADER_ANIMATION_END_FAILED);
-      }, timeout);
+        setLoaderState("hidden");
+        loaderWrapper.hidden = true;
+        log(LOADER_TRANSITION_ENDED);
+      }, 600); // Match CSS transition duration
+    };
+
+    if (showNoSyncAvailable) {
+      setLoaderState("showing-message", t("lyrics_noSyncedLyrics"));
+      
+      loaderStateTimeout = window.setTimeout(() => {
+        performExit();
+      }, 3000);
+    } else {
+      // Lyrics were found, flush immediately to allow lyrics to animate in 
+      // simultaneously with the loader animating out
+      performExit();
     }
   } catch (err) {
     log(err);
@@ -397,12 +400,10 @@ export function flushLoader(showNoSyncAvailable = false): void {
  */
 export function isLoaderActive(): boolean {
   try {
-    if (!loaderMayBeActive) {
-      return false;
-    }
     const loaderWrapper = document.getElementById(LYRICS_LOADER_ID);
     if (loaderWrapper) {
-      return loaderWrapper.hasAttribute("active") || loaderWrapper.dataset.animatingOut === "true";
+      const state = loaderWrapper.getAttribute("state");
+      return state !== "hidden" && state !== null;
     }
   } catch (err) {
     log(err);
