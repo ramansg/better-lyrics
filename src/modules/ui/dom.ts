@@ -325,7 +325,7 @@ export function renderLoader(small = false): void {
   if (!small) {
     cleanup();
   }
-  
+
   try {
     const tabRenderer = document.querySelector(TAB_RENDERER_SELECTOR) as HTMLElement;
     let loaderWrapper = document.getElementById(LYRICS_LOADER_ID);
@@ -340,12 +340,12 @@ export function renderLoader(small = false): void {
 
     // Reset state before applying new one to trigger animations correctly
     if (loaderWrapper.getAttribute("state") === "hidden" || loaderWrapper.hidden) {
-        loaderWrapper.setAttribute("state", "hidden");
-        reflow(loaderWrapper);
+      loaderWrapper.setAttribute("state", "hidden");
+      reflow(loaderWrapper);
     }
 
     loaderWrapper.hidden = false;
-    
+
     if (small) {
       setLoaderState("small-loader", t("lyrics_stillSearching"));
     } else {
@@ -369,7 +369,7 @@ export function flushLoader(showNoSyncAvailable = false): void {
 
     const performExit = () => {
       setLoaderState("exiting");
-      
+
       AppState.loaderAnimationEndTimeout = window.setTimeout(() => {
         setLoaderState("hidden");
         loaderWrapper.hidden = true;
@@ -379,12 +379,12 @@ export function flushLoader(showNoSyncAvailable = false): void {
 
     if (showNoSyncAvailable) {
       setLoaderState("showing-message", t("lyrics_noSyncedLyrics"));
-      
+
       loaderStateTimeout = window.setTimeout(() => {
         performExit();
       }, 3000);
     } else {
-      // Lyrics were found, flush immediately to allow lyrics to animate in 
+      // Lyrics were found, flush immediately to allow lyrics to animate in
       // simultaneously with the loader animating out
       performExit();
     }
