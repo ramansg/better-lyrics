@@ -370,11 +370,14 @@ export function flushLoader(showNoSyncAvailable = false): void {
     const performExit = (fromMessage = false) => {
       setLoaderState(fromMessage ? "exiting-message" : "exiting");
 
+      const duration = toMs(
+        window.getComputedStyle(loaderWrapper).getPropertyValue("--blyrics-loader-transition-duration")
+      );
       AppState.loaderAnimationEndTimeout = window.setTimeout(() => {
         setLoaderState("hidden");
         loaderWrapper.hidden = true;
         log(LOADER_TRANSITION_ENDED);
-      }, 1200); // Make longer than css duration
+      }, duration * 2); // Make longer than css duration
     };
 
     if (showNoSyncAvailable) {

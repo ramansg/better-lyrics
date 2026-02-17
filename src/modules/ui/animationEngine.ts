@@ -13,7 +13,7 @@ import {
 } from "@constants";
 import { AppState } from "@core/appState";
 import { calculateLyricPositions, type LineData } from "@modules/lyrics/injectLyrics";
-import { hideAdOverlay, isAdPlaying, isLoaderActive, showAdOverlay } from "@modules/ui/dom";
+import { hideAdOverlay, isAdPlaying, showAdOverlay } from "@modules/ui/dom";
 import { log } from "@utils";
 import { ctx, resetDebugRender } from "./animationEngineDebug";
 import { registerThemeSetting } from "@modules/settings/themeOptions";
