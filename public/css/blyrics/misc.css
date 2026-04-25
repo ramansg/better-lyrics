@@ -17,3 +17,85 @@
 	padding-top: var(--blyrics-padding) !important;
 	word-break: break-word;
 }
+
+
+/* View Transitions for Romanization/Translation */
+
+/* All the exit animations css will not work since the lyrics reload entirely */
+
+::view-transition-group(*.blyrics-translation),
+::view-transition-group(*.blyrics-roman) {
+	animation-duration: 0.4s;
+	animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+::view-transition-new(*.blyrics-translation) {
+	animation: blyrics-floatIn 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0.1s both;
+}
+
+::view-transition-old(*.blyrics-translation) {
+	animation: blyrics-floatOut 0.15s ease both;
+}
+
+::view-transition-new(*.blyrics-roman) {
+	animation: blyrics-floatInSoft 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0.1s both;
+}
+
+::view-transition-old(*.blyrics-roman) {
+	animation: blyrics-floatOutSoft 0.15s ease both;
+}
+
+::view-transition-old(*.blyrics-translation),
+::view-transition-new(*.blyrics-translation),
+::view-transition-old(*.blyrics-roman),
+::view-transition-new(*.blyrics-roman) {
+	mix-blend-mode: normal;
+}
+
+@keyframes blyrics-floatIn {
+	from {
+		opacity: 0;
+		transform: translateY(-16px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes blyrics-floatOut {
+	from {
+		opacity: 1;
+		transform: translateY(0);
+	}
+
+	to {
+		opacity: 0;
+		transform: translateY(-16px);
+	}
+}
+
+@keyframes blyrics-floatInSoft {
+	from {
+		opacity: 0;
+		transform: translateY(-10px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes blyrics-floatOutSoft {
+	from {
+		opacity: 1;
+		transform: translateY(0);
+	}
+
+	to {
+		opacity: 0;
+		transform: translateY(-10px);
+	}
+}
