@@ -50,26 +50,92 @@ let longWordThreshold = registerThemeSetting("blyrics-long-word-threshold", 1500
 
 let vtPromise = Promise.resolve();
 
-function animateDOMUpdate(updateFn: () => void, postUpdateFn?: () => void) {
-  if (!document.startViewTransition) {
+function animateDOMUpdate(updateFn: () => void, postUpdateFn?: () => void, shouldSkipFn?: () => boolean) {
+  if (!document.startViewTransition || !CSS.supports("view-transition-class", "test")) {
+    if (shouldSkipFn?.()) return;
     updateFn();
-    if (postUpdateFn) postUpdateFn();
+    postUpdateFn?.();
     return;
   }
-  vtPromise = vtPromise.finally(() => {
-    return new Promise<void>(resolve => {
-      try {
-        const transition = document.startViewTransition(() => updateFn());
-        transition.finished.finally(() => {
-          if (postUpdateFn) postUpdateFn();
+
+  vtPromise = vtPromise.finally(
+    () =>
+      new Promise<void>(resolve => {
+        // Bail before touching the DOM if this injection is already stale.
+        if (shouldSkipFn?.()) {
           resolve();
+          return;
+        }
+
+        const container = document.querySelector(`.${LYRICS_CLASS}`) as HTMLElement | null;
+        const videoId = container?.dataset.videoId ?? "unknown";
+
+        // Snapshot which roman/translation elements already exist so we can
+        // identify only the *newly added* ones inside the transition callback
+        // and skip re-animating elements that already entered earlier.
+        const preRoman = new Set(
+          Array.from(container?.querySelectorAll(`.${ROMANIZED_LYRICS_CLASS}`) ?? []).map(
+            el => (el.parentElement as HTMLElement | null)?.dataset.lineNumber ?? ""
+          )
+        );
+        const preTrans = new Set(
+          Array.from(container?.querySelectorAll(`.${TRANSLATED_LYRICS_CLASS}`) ?? []).map(
+            el => (el.parentElement as HTMLElement | null)?.dataset.lineNumber ?? ""
+          )
+        );
+
+        // Assign view-transition-names to line elements so the group pseudo-elements
+        // can track their positional change.  Names are removed in finished.finally().
+        const lineElements = Array.from(document.querySelectorAll<HTMLElement>(".blyrics--line"));
+        lineElements.forEach(el => {
+          el.style.setProperty("view-transition-name", `line-${videoId}-${el.dataset.lineNumber ?? "unknown"}`);
         });
-      } catch {
-        if (postUpdateFn) postUpdateFn();
-        resolve();
-      }
-    });
-  });
+
+        try {
+          const transition = document.startViewTransition(() => {
+            updateFn();
+
+            // Name only newly added roman/translation elements so they receive
+            // the ::view-transition-new entry animation.  Existing elements keep
+            // no name and are invisible to this transition.
+            if (container) {
+              container.querySelectorAll<HTMLElement>(`.${ROMANIZED_LYRICS_CLASS}`).forEach(el => {
+                const lineId = (el.parentElement as HTMLElement | null)?.dataset.lineNumber ?? "unknown";
+                if (!preRoman.has(lineId)) {
+                  el.style.setProperty("view-transition-name", `roman-${videoId}-${lineId}`);
+                }
+              });
+              container.querySelectorAll<HTMLElement>(`.${TRANSLATED_LYRICS_CLASS}`).forEach(el => {
+                const lineId = (el.parentElement as HTMLElement | null)?.dataset.lineNumber ?? "unknown";
+                if (!preTrans.has(lineId)) {
+                  el.style.setProperty("view-transition-name", `translation-${videoId}-${lineId}`);
+                }
+              });
+            }
+          });
+
+          transition.finished.finally(() => {
+            // Remove all temporary names.
+            lineElements.forEach(el => el.style.removeProperty("view-transition-name"));
+            container
+              ?.querySelectorAll<HTMLElement>(`.${ROMANIZED_LYRICS_CLASS}, .${TRANSLATED_LYRICS_CLASS}`)
+              .forEach(el => el.style.removeProperty("view-transition-name"));
+
+            // Recalculate positions only after animation completes so the
+            // scroll engine does not jump mid-slide.
+            postUpdateFn?.();
+            resolve();
+          });
+        } catch {
+          lineElements.forEach(el => el.style.removeProperty("view-transition-name"));
+          if (!shouldSkipFn?.()) {
+            updateFn();
+            postUpdateFn?.();
+          }
+          resolve();
+        }
+      })
+  );
 }
 
 function isRomanizationDisabledForLang(lang: string): boolean {
@@ -300,12 +366,60 @@ function createBreakElem(lyricElement: HTMLElement, order: number) {
  * @param [data.source] - Source attribution for lyrics
  * @param [data.sourceHref] - URL for source link
  */
-function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible = false, signal?: AbortSignal): void {
 
-  vtPromise = Promise.resolve();
+async function performExitTransition(): Promise<void> {
+  if (!document.startViewTransition || !CSS.supports("view-transition-class", "test")) return;
+
+  const container = document.querySelector(`.${LYRICS_CLASS}`) as HTMLElement | null;
+  if (!container) return;
+
+  const videoId = container.dataset.videoId ?? "unknown";
+
+  const romanElems = Array.from(container.querySelectorAll<HTMLElement>(`.${ROMANIZED_LYRICS_CLASS}`));
+  const transElems = Array.from(container.querySelectorAll<HTMLElement>(`.${TRANSLATED_LYRICS_CLASS}`));
+
+  if (romanElems.length === 0 && transElems.length === 0) return;
+
+  // Assign names now — these elements have no permanent names, so this is
+  // the only moment they are named.
+  romanElems.forEach(el => {
+    const lineId = (el.parentElement as HTMLElement | null)?.dataset.lineNumber ?? "unknown";
+    el.style.setProperty("view-transition-name", `roman-${videoId}-${lineId}`);
+  });
+  transElems.forEach(el => {
+    const lineId = (el.parentElement as HTMLElement | null)?.dataset.lineNumber ?? "unknown";
+    el.style.setProperty("view-transition-name", `translation-${videoId}-${lineId}`);
+  });
+
+  const allExiting = [...romanElems, ...transElems];
+
+  const transition = document.startViewTransition(() => {
+    // Remove only the roman/translation elements.  The rest of the lyrics
+    // container is left intact; cleanup() will remove it after this awaits.
+    allExiting.forEach(el => el.remove());
+  });
+
+  // Wait for the exit animation to finish before cleanup() tears down the
+  // rest of the container. catch absorbs AbortError if the transition is
+  // interrupted by a rapid second song change.
+  await transition.finished.catch(() => { });
+}
+
+async function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible = false, signal?: AbortSignal): Promise<void> {
+  // Drain any in-progress entry animation from the previous song before
+  // doing anything, then perform the exit animation for roman/translation
+  // elements while the container is still in the DOM.
+  await vtPromise.catch(() => { });
 
   const injectionId = AppState.currentInjectionId;
   const isStale = () => AppState.currentInjectionId !== injectionId;
+
+  await performExitTransition();
+
+  // Reset the chain for the new song now that exit is complete.
+  vtPromise = Promise.resolve();
+
+  if (isStale()) return;
 
   const lyrics = data.lyrics!;
   cleanup();
@@ -315,6 +429,7 @@ function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible = false
   lyricsWrapper.replaceChildren();
   const lyricsContainer = document.createElement("div");
   lyricsContainer.className = LYRICS_CLASS;
+  lyricsContainer.dataset.videoId = data.videoId ?? "unknown";
   lyricsWrapper.appendChild(lyricsContainer);
 
   lyricsWrapper.removeAttribute("is-empty");
@@ -346,6 +461,7 @@ function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible = false
       instrumentalElement.dataset.duration = String(lyricItem.durationMs / 1000);
       instrumentalElement.dataset.lineNumber = String(lineIndex);
       instrumentalElement.dataset.instrumental = "true";
+
 
       const agent = findNearestAgent(lyrics, lineIndex);
       if (agent) {
@@ -437,6 +553,7 @@ function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible = false
     lyricElement.dataset.time = String(line.time);
     lyricElement.dataset.duration = String(line.duration);
     lyricElement.dataset.lineNumber = String(lineIndex);
+
     lyricElement.style.setProperty("--blyrics-duration", item.durationMs + "ms");
     if (item.agent) {
       lyricElement.dataset.agent = item.agent;
@@ -632,16 +749,19 @@ async function processBatchTranslationsAndRomanizations(
   });
 
   if (cachedRomanizations.length > 0 || cachedTranslations.length > 0) {
+    let didInjectCached = false;
     animateDOMUpdate(() => {
       if (isStale()) return;
       cachedRomanizations.forEach(({ lyricElement, lineData, result, timedRomanization }) => {
-        injectRomanization(lyricElement, lineData, result, data.videoId, timedRomanization);
+        injectRomanization(lyricElement, lineData, result, timedRomanization);
+        didInjectCached = true;
       });
 
       cachedTranslations.forEach(({ lyricElement, result }) => {
-        injectTranslation(lyricElement, result, data.videoId);
+        injectTranslation(lyricElement, result);
+        didInjectCached = true;
       });
-    }, lyricsElementAdded);
+    }, () => { if (didInjectCached) lyricsElementAdded(); }, isStale);
   }
 
   if (isStale()) return;
@@ -667,15 +787,17 @@ async function processBatchTranslationsAndRomanizations(
         if (isRomanizationDisabledForLang(sourceLanguage || "")) return;
 
         // --- New Code ---
+        let didInjectRoman = false;
         animateDOMUpdate(() => {
           if (isStale()) return;
           response.results.forEach((result, i) => {
             if (result) {
               const originalIndex = romanizationBatch[i].index;
-              injectRomanization(linesData[originalIndex].lyricElement, linesData[originalIndex], result, data.videoId);
+              injectRomanization(linesData[originalIndex].lyricElement, linesData[originalIndex], result);
+              didInjectRoman = true;
             }
           });
-        }, lyricsElementAdded);
+        }, () => { if (didInjectRoman) lyricsElementAdded(); }, isStale);
       })()
     );
   }
@@ -698,15 +820,17 @@ async function processBatchTranslationsAndRomanizations(
         if (isTranslationDisabledForLang(sourceLanguage || "")) return;
 
         // --- WRAP IN ANIMATION ---
+        let didInjectTranslation = false;
         animateDOMUpdate(() => {
           if (isStale()) return;
           response.results.forEach((result, i) => {
             if (result) {
               const originalIndex = translationBatch[i].index;
-              injectTranslation(linesData[originalIndex].lyricElement, result.translatedText, data.videoId);
+              injectTranslation(linesData[originalIndex].lyricElement, result.translatedText);
+              didInjectTranslation = true;
             }
           });
-        }, lyricsElementAdded);
+        }, () => { if (didInjectTranslation) lyricsElementAdded(); }, isStale);
       })()
     );
   }
@@ -718,7 +842,6 @@ function injectRomanization(
   lyricElement: HTMLElement,
   lineData: LineData,
   text: string,
-  videoId: string, // New Code
   timedRomanization: LyricPart[] | null = null
 ) {
   if (lyricElement.querySelector(`.${ROMANIZED_LYRICS_CLASS}`)) return;
@@ -728,13 +851,6 @@ function injectRomanization(
   romanizedLine.classList.add(ROMANIZED_LYRICS_CLASS);
   romanizedLine.style.order = "5";
 
-  // --- New Code ---
-  const lineId = lyricElement.dataset.lineNumber ?? "unknown";
-  const safeVideoId = videoId ?? "unknown";
-  romanizedLine.style.viewTransitionName = `roman-${safeVideoId}-${lineId}`;
-  romanizedLine.style.setProperty("view-transition-class", "blyrics-roman");
-  // --------------
-
   if (timedRomanization && timedRomanization.length > 0 && !disableRichsync.getBooleanValue()) {
     createLyricsLine(timedRomanization, lineData, romanizedLine);
   } else {
@@ -743,22 +859,13 @@ function injectRomanization(
   lyricElement.appendChild(romanizedLine);
 }
 
-function injectTranslation(lyricElement: HTMLElement, text: string, videoId: string // New Code
-) {
+function injectTranslation(lyricElement: HTMLElement, text: string) {
   if (lyricElement.querySelector(`.${TRANSLATED_LYRICS_CLASS}`)) return;
 
   createBreakElem(lyricElement, 6);
   const translatedLine = document.createElement("div");
   translatedLine.classList.add(TRANSLATED_LYRICS_CLASS);
   translatedLine.style.order = "7";
-
-  // --- New Code ---
-  const lineId = lyricElement.dataset.lineNumber ?? "unknown";
-  const safeVideoId = videoId ?? "unknown";
-  translatedLine.style.viewTransitionName = `translation-${safeVideoId}-${lineId}`;
-  translatedLine.style.setProperty("view-transition-class", "blyrics-translation");
-  // --------------
-
   translatedLine.textContent = text;
   lyricElement.appendChild(translatedLine);
 }
