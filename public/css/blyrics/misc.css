@@ -19,43 +19,76 @@
 }
 
 
-/* View Transitions for Romanization/Translation */
-
-/* All the exit animations css will not work since the lyrics reload entirely */
-
-::view-transition-group(*.blyrics-translation),
-::view-transition-group(*.blyrics-roman) {
-	animation-duration: 0.4s;
-	animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+:root {
+	--animation-style: cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-::view-transition-new(*.blyrics-translation) {
-	animation: blyrics-floatIn 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0.1s both;
+/* view-transition-class assignments — these are safe to set permanently
+   because the property itself has no effect unless a transition is active. */
+.blyrics--line {
+	view-transition-class: blyrics-line;
 }
 
-::view-transition-old(*.blyrics-translation) {
-	animation: blyrics-floatOut 0.15s ease both;
+.blyrics--romanized {
+	view-transition-class: blyrics-roman;
 }
 
-::view-transition-new(*.blyrics-roman) {
-	animation: blyrics-floatInSoft 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0.1s both;
+.blyrics--translated {
+	view-transition-class: blyrics-translation;
 }
 
-::view-transition-old(*.blyrics-roman) {
-	animation: blyrics-floatOutSoft 0.15s ease both;
-}
+/* All ::view-transition-* rules require Chrome 125+.  Wrap them so that
+   Chrome 111–124 falls back to no-transition rather than default cross-fade. */
+@supports (view-transition-class: test) {
 
-::view-transition-old(*.blyrics-translation),
-::view-transition-new(*.blyrics-translation),
-::view-transition-old(*.blyrics-roman),
-::view-transition-new(*.blyrics-roman) {
-	mix-blend-mode: normal;
+	/* Lyric lines — smooth repositioning slide. */
+	::view-transition-group(*.blyrics-line) {
+		animation-duration: 0.35s;
+		animation-timing-function: var(--animation-style);
+	}
+
+	/* Hide the before-snapshot; show only the after-snapshot so the line
+       content does not ghost in its old position during the slide. */
+	::view-transition-old(*.blyrics-line) {
+		display: none;
+	}
+
+	::view-transition-new(*.blyrics-line) {
+		animation: none;
+	}
+
+	/* Roman/translation groups — snap to size immediately; the ::view-transition-new
+       animation handles appearance.  Setting duration to 0s prevents the
+       width/height size-morph that would otherwise play during the floatIn delay. */
+	::view-transition-group(*.blyrics-translation),
+	::view-transition-group(*.blyrics-roman) {
+		animation-duration: 0s;
+	}
+
+	/* Entry — translation and romanization float in after lines finish sliding. */
+	::view-transition-new(*.blyrics-translation) {
+		animation: blyrics-floatIn 0.3s var(--animation-style) 0.42s both;
+	}
+
+	::view-transition-new(*.blyrics-roman) {
+		animation: blyrics-floatIn 0.3s var(--animation-style) 0.42s both;
+	}
+
+	/* Exit — translation and romanization float out on song change. */
+	::view-transition-old(*.blyrics-translation) {
+		animation: blyrics-floatOut 0.25s var(--animation-style) both;
+	}
+
+	::view-transition-old(*.blyrics-roman) {
+		animation: blyrics-floatOut 0.25s var(--animation-style) both;
+	}
+
 }
 
 @keyframes blyrics-floatIn {
 	from {
 		opacity: 0;
-		transform: translateY(-16px);
+		transform: translateY(-10px);
 	}
 
 	to {
@@ -73,29 +106,5 @@
 	to {
 		opacity: 0;
 		transform: translateY(-16px);
-	}
-}
-
-@keyframes blyrics-floatInSoft {
-	from {
-		opacity: 0;
-		transform: translateY(-10px);
-	}
-
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
-}
-
-@keyframes blyrics-floatOutSoft {
-	from {
-		opacity: 1;
-		transform: translateY(0);
-	}
-
-	to {
-		opacity: 0;
-		transform: translateY(-10px);
 	}
 }
