@@ -1,5 +1,6 @@
 import {
   BACKGROUND_LYRIC_CLASS,
+  GENERAL_ERROR_LOG,
   LOG_PREFIX,
   LYRICS_CLASS,
   LYRICS_FOUND_LOG,
@@ -75,21 +76,33 @@ function animateDOMUpdate(updateFn: () => void, postUpdateFn?: () => void, shoul
         // and skip re-animating elements that already entered earlier.
         const preRoman = new Set(
           Array.from(container?.querySelectorAll(`.${ROMANIZED_LYRICS_CLASS}`) ?? []).map(
-            el => (el.parentElement as HTMLElement | null)?.dataset.lineNumber ?? ""
+            el => (el.parentElement as HTMLElement | null)?.dataset.lineNumber ?? "unknown"
           )
         );
         const preTrans = new Set(
           Array.from(container?.querySelectorAll(`.${TRANSLATED_LYRICS_CLASS}`) ?? []).map(
-            el => (el.parentElement as HTMLElement | null)?.dataset.lineNumber ?? ""
+            el => (el.parentElement as HTMLElement | null)?.dataset.lineNumber ?? "unknown"
           )
         );
 
+        // Re-check staleness immediately before we start touching names and
+        // calling startViewTransition, since the checks above were separated
+        // from this point by synchronous DOM reads.
+        if (shouldSkipFn?.()) {
+          resolve();
+          return;
+        }
+
         // Assign view-transition-names to line elements so the group pseudo-elements
         // can track their positional change.  Names are removed in finished.finally().
-        const lineElements = Array.from(document.querySelectorAll<HTMLElement>(".blyrics--line"));
+        const lineElements = Array.from(container?.querySelectorAll<HTMLElement>(".blyrics--line") ?? []);
         lineElements.forEach(el => {
           el.style.setProperty("view-transition-name", `line-${videoId}-${el.dataset.lineNumber ?? "unknown"}`);
         });
+
+        // Collect the elements that receive names inside the callback so the
+        // cleanup step removes exactly those names and nothing else.
+        const newlyNamedSubtitles: HTMLElement[] = [];
 
         try {
           const transition = document.startViewTransition(() => {
@@ -103,36 +116,40 @@ function animateDOMUpdate(updateFn: () => void, postUpdateFn?: () => void, shoul
                 const lineId = (el.parentElement as HTMLElement | null)?.dataset.lineNumber ?? "unknown";
                 if (!preRoman.has(lineId)) {
                   el.style.setProperty("view-transition-name", `roman-${videoId}-${lineId}`);
+                  newlyNamedSubtitles.push(el);
                 }
               });
               container.querySelectorAll<HTMLElement>(`.${TRANSLATED_LYRICS_CLASS}`).forEach(el => {
                 const lineId = (el.parentElement as HTMLElement | null)?.dataset.lineNumber ?? "unknown";
                 if (!preTrans.has(lineId)) {
                   el.style.setProperty("view-transition-name", `translation-${videoId}-${lineId}`);
+                  newlyNamedSubtitles.push(el);
                 }
               });
             }
           });
 
-          transition.finished.finally(() => {
-            // Remove all temporary names.
-            lineElements.forEach(el => el.style.removeProperty("view-transition-name"));
-            container
-              ?.querySelectorAll<HTMLElement>(`.${ROMANIZED_LYRICS_CLASS}, .${TRANSLATED_LYRICS_CLASS}`)
-              .forEach(el => el.style.removeProperty("view-transition-name"));
+          // Recalculate scroll positions now — the DOM has been updated synchronously
+          // inside the startViewTransition callback, so layout is already in its final
+          // state. We don't need to wait for the animation to finish.
+          postUpdateFn?.();
 
-            // Recalculate positions only after animation completes so the
-            // scroll engine does not jump mid-slide.
-            postUpdateFn?.();
+          transition.finished.finally(() => {
+            // Remove only the temporary names that were actually assigned here.
+            lineElements.forEach(el => el.style.removeProperty("view-transition-name"));
+            newlyNamedSubtitles.forEach(el => el.style.removeProperty("view-transition-name"));
             resolve();
           });
         } catch {
           lineElements.forEach(el => el.style.removeProperty("view-transition-name"));
-          if (!shouldSkipFn?.()) {
-            updateFn();
+          try {
+            if (!shouldSkipFn?.()) {
+              updateFn();
+            }
             postUpdateFn?.();
+          } finally {
+            resolve();
           }
-          resolve();
         }
       })
   );
@@ -271,7 +288,7 @@ export function processLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible
     log(LYRICS_TAB_NOT_DISABLED_LOG);
   }
 
-  injectLyrics(data, keepLoaderVisible, signal);
+  injectLyrics(data, keepLoaderVisible, signal).catch(err => log(GENERAL_ERROR_LOG, err));
 }
 
 function createLyricsLine(parts: LyricPart[], line: LineData, lyricElement: HTMLDivElement) {
@@ -367,7 +384,7 @@ function createBreakElem(lyricElement: HTMLElement, order: number) {
  * @param [data.sourceHref] - URL for source link
  */
 
-async function performExitTransition(): Promise<void> {
+export async function performExitTransition(): Promise<void> {
   if (!document.startViewTransition || !CSS.supports("view-transition-class", "test")) return;
 
   const container = document.querySelector(`.${LYRICS_CLASS}`) as HTMLElement | null;
@@ -393,30 +410,43 @@ async function performExitTransition(): Promise<void> {
 
   const allExiting = [...romanElems, ...transElems];
 
-  const transition = document.startViewTransition(() => {
-    // Remove only the roman/translation elements.  The rest of the lyrics
-    // container is left intact; cleanup() will remove it after this awaits.
-    allExiting.forEach(el => el.remove());
-  });
+  try {
+    const transition = document.startViewTransition(() => {
+      // Remove only the roman/translation elements.  The rest of the lyrics
+      // container is left intact; cleanup() will remove it after this awaits.
+      allExiting.forEach(el => el.remove());
+    });
 
-  // Wait for the exit animation to finish before cleanup() tears down the
-  // rest of the container. catch absorbs AbortError if the transition is
-  // interrupted by a rapid second song change.
-  await transition.finished.catch(() => { });
+    // Wait for the exit animation to finish before cleanup() tears down the
+    // rest of the container. catch absorbs AbortError if the transition is
+    // interrupted by a rapid second song change.
+    await transition.finished.catch(() => { });
+  } catch {
+    // startViewTransition can throw synchronously in unusual browser states.
+    // Absorb and allow cleanup to proceed normally.
+  }
 }
 
 async function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible = false, signal?: AbortSignal): Promise<void> {
-  // Drain any in-progress entry animation from the previous song before
-  // doing anything, then perform the exit animation for roman/translation
-  // elements while the container is still in the DOM.
-  await vtPromise.catch(() => { });
-
   const injectionId = AppState.currentInjectionId;
   const isStale = () => AppState.currentInjectionId !== injectionId;
 
-  await performExitTransition();
+  // Register this call's exit transition *on* the vtPromise chain so that
+  // concurrent injectLyrics calls are fully serialized.  The .finally()
+  // means we wait for all in-flight entry animations to finish first, then
+  // run our exit animation before allowing the next queued item to proceed.
+  await new Promise<void>(resolve => {
+    vtPromise = vtPromise.finally(async () => {
+      // Only animate the exit if this injection is still the intended one.
+      // A newer song change may have already superseded us.
+      if (!isStale()) {
+        await performExitTransition();
+      }
+      resolve();
+    });
+  });
 
-  // Reset the chain for the new song now that exit is complete.
+  // Reset the chain so new-song entry animations start from a clean slate.
   vtPromise = Promise.resolve();
 
   if (isStale()) return;
@@ -607,7 +637,7 @@ async function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible =
   });
 
   // Handle Translations and Romanizations in Batch
-  processBatchTranslationsAndRomanizations(data, lines, isStale, signal);
+  processBatchTranslationsAndRomanizations(data, lines, isStale, signal).catch(err => log(GENERAL_ERROR_LOG, err));
 
   animEngineState.skipScrolls = 2;
   animEngineState.skipScrollsDecayTimes = [];
@@ -753,13 +783,11 @@ async function processBatchTranslationsAndRomanizations(
     animateDOMUpdate(() => {
       if (isStale()) return;
       cachedRomanizations.forEach(({ lyricElement, lineData, result, timedRomanization }) => {
-        injectRomanization(lyricElement, lineData, result, timedRomanization);
-        didInjectCached = true;
+        if (injectRomanization(lyricElement, lineData, result, timedRomanization)) didInjectCached = true;
       });
 
       cachedTranslations.forEach(({ lyricElement, result }) => {
-        injectTranslation(lyricElement, result);
-        didInjectCached = true;
+        if (injectTranslation(lyricElement, result)) didInjectCached = true;
       });
     }, () => { if (didInjectCached) lyricsElementAdded(); }, isStale);
   }
@@ -793,8 +821,7 @@ async function processBatchTranslationsAndRomanizations(
           response.results.forEach((result, i) => {
             if (result) {
               const originalIndex = romanizationBatch[i].index;
-              injectRomanization(linesData[originalIndex].lyricElement, linesData[originalIndex], result);
-              didInjectRoman = true;
+              if (injectRomanization(linesData[originalIndex].lyricElement, linesData[originalIndex], result)) didInjectRoman = true;
             }
           });
         }, () => { if (didInjectRoman) lyricsElementAdded(); }, isStale);
@@ -826,8 +853,7 @@ async function processBatchTranslationsAndRomanizations(
           response.results.forEach((result, i) => {
             if (result) {
               const originalIndex = translationBatch[i].index;
-              injectTranslation(linesData[originalIndex].lyricElement, result.translatedText);
-              didInjectTranslation = true;
+              if (injectTranslation(linesData[originalIndex].lyricElement, result.translatedText)) didInjectTranslation = true;
             }
           });
         }, () => { if (didInjectTranslation) lyricsElementAdded(); }, isStale);
@@ -843,8 +869,8 @@ function injectRomanization(
   lineData: LineData,
   text: string,
   timedRomanization: LyricPart[] | null = null
-) {
-  if (lyricElement.querySelector(`.${ROMANIZED_LYRICS_CLASS}`)) return;
+): boolean {
+  if (lyricElement.querySelector(`.${ROMANIZED_LYRICS_CLASS}`)) return false;
 
   createBreakElem(lyricElement, 4);
   const romanizedLine = document.createElement("div");
@@ -857,10 +883,11 @@ function injectRomanization(
     romanizedLine.textContent = text;
   }
   lyricElement.appendChild(romanizedLine);
+  return true;
 }
 
-function injectTranslation(lyricElement: HTMLElement, text: string) {
-  if (lyricElement.querySelector(`.${TRANSLATED_LYRICS_CLASS}`)) return;
+function injectTranslation(lyricElement: HTMLElement, text: string): boolean {
+  if (lyricElement.querySelector(`.${TRANSLATED_LYRICS_CLASS}`)) return false;
 
   createBreakElem(lyricElement, 6);
   const translatedLine = document.createElement("div");
@@ -868,6 +895,7 @@ function injectTranslation(lyricElement: HTMLElement, text: string) {
   translatedLine.style.order = "7";
   translatedLine.textContent = text;
   lyricElement.appendChild(translatedLine);
+  return true;
 }
 
 export function calculateLyricPositions() {
