@@ -83,28 +83,17 @@
 		animation: blyrics-floatOut 0.25s var(--animation-style) both;
 	}
 
-}
-
-@keyframes blyrics-floatIn {
-	from {
-		opacity: 0;
-		transform: translateY(-10px);
+	@keyframes blyrics-floatIn {
+		from {
+			opacity: 0;
+			transform: translateY(-10%);
+		}
 	}
 
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
-}
-
-@keyframes blyrics-floatOut {
-	from {
-		opacity: 1;
-		transform: translateY(0);
-	}
-
-	to {
-		opacity: 0;
-		transform: translateY(-16px);
+	@keyframes blyrics-floatOut {
+		to {
+			opacity: 0;
+			transform: translateY(-10%);
+		}
 	}
 }
