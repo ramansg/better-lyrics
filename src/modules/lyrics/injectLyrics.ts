@@ -134,7 +134,7 @@ function animateDOMUpdate(updateFn: () => void, postUpdateFn?: () => void, shoul
           // state. We don't need to wait for the animation to finish.
           postUpdateFn?.();
 
-          transition.finished.finally(() => {
+          transition.finished.catch(() => { }).finally(() => {
             // Remove only the temporary names that were actually assigned here.
             lineElements.forEach(el => el.style.removeProperty("view-transition-name"));
             newlyNamedSubtitles.forEach(el => el.style.removeProperty("view-transition-name"));
@@ -408,6 +408,13 @@ export async function performExitTransition(): Promise<void> {
     el.style.setProperty("view-transition-name", `translation-${videoId}-${lineId}`);
   });
 
+  // Name line elements so their layout change (collapsing to fill the gap)
+  // is animated by the transition group, not an instant snap.
+  const lineElements = Array.from(container.querySelectorAll<HTMLElement>(".blyrics--line"));
+  lineElements.forEach(el => {
+    el.style.setProperty("view-transition-name", `line-${videoId}-${el.dataset.lineNumber ?? "unknown"}`);
+  });
+
   const allExiting = [...romanElems, ...transElems];
 
   try {
@@ -421,9 +428,13 @@ export async function performExitTransition(): Promise<void> {
     // rest of the container. catch absorbs AbortError if the transition is
     // interrupted by a rapid second song change.
     await transition.finished.catch(() => { });
+
+    // Remove temporary names from line elements after the transition completes.
+    lineElements.forEach(el => el.style.removeProperty("view-transition-name"));
   } catch {
     // startViewTransition can throw synchronously in unusual browser states.
-    // Absorb and allow cleanup to proceed normally.
+    // Clean up line names and allow cleanup to proceed normally.
+    lineElements.forEach(el => el.style.removeProperty("view-transition-name"));
   }
 }
 
@@ -445,9 +456,6 @@ async function injectLyrics(data: LyricSourceResultWithMeta, keepLoaderVisible =
       resolve();
     });
   });
-
-  // Reset the chain so new-song entry animations start from a clean slate.
-  vtPromise = Promise.resolve();
 
   if (isStale()) return;
 
