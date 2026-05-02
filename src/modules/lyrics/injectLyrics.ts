@@ -858,84 +858,99 @@ async function processBatchTranslationsAndRomanizations(
 
   if (isStale()) return;
 
-  // 2. Perform Batch Requests
-  const promises: Promise<void>[] = [];
-
-  if (romanizationBatch.length > 0) {
-    promises.push(
-      (async () => {
-        const response = await romanizeBatch({
+  // 2. Perform Batch Requests — fire both in parallel, then inject in ONE transition
+  const [romanResponse, transResponse] = await Promise.all([
+    romanizationBatch.length > 0
+      ? romanizeBatch({
           lines: romanizationBatch.map(b => b.text),
           sourceLanguage: sourceLanguage || "auto",
           signal,
-        });
-        if (isStale()) return;
-
-        if (!sourceLanguage && response.detectedLanguage) {
-          sourceLanguage = response.detectedLanguage;
-          log(LOG_PREFIX, "Determined language via romanization batch: " + sourceLanguage);
-        }
-
-        if (isRomanizationDisabledForLang(sourceLanguage || "")) return;
-
-        let didInjectRoman = false;
-        const romanExclude = romanizationBatch
-          .filter((b, i) =>
-            !!response.results[i] &&
-            !linesData[b.index].lyricElement.querySelector(`.${ROMANIZED_LYRICS_CLASS}`)
-          )
-          .map(b => linesData[b.index].lyricElement);
-        animateDOMUpdate(() => {
-          if (isStale()) return;
-          response.results.forEach((result, i) => {
-            if (result) {
-              const originalIndex = romanizationBatch[i].index;
-              if (injectRomanization(linesData[originalIndex].lyricElement, linesData[originalIndex], result)) didInjectRoman = true;
-            }
-          });
-        }, () => { if (didInjectRoman) lyricsElementAdded(); }, isStale, romanExclude);
-      })()
-    );
-  }
-
-  if (translationBatch.length > 0) {
-    promises.push(
-      (async () => {
-        const response = await translateBatch({
+        })
+      : Promise.resolve(null),
+    translationBatch.length > 0
+      ? translateBatch({
           lines: translationBatch.map(b => b.text),
           targetLanguage: targetTranslationLang,
           signal,
-        });
-        if (isStale()) return;
+        })
+      : Promise.resolve(null),
+  ]);
 
-        if (!sourceLanguage && response.detectedLanguage) {
-          sourceLanguage = response.detectedLanguage;
-          log(LOG_PREFIX, "Determined language via translation batch: " + sourceLanguage);
-        }
+  if (isStale()) return;
 
-        if (isTranslationDisabledForLang(sourceLanguage || "")) return;
-
-        let didInjectTranslation = false;
-        const translationExclude = translationBatch
-          .filter((b, i) =>
-            !!response.results[i] &&
-            !linesData[b.index].lyricElement.querySelector(`.${TRANSLATED_LYRICS_CLASS}`)
-          )
-          .map(b => linesData[b.index].lyricElement);
-        animateDOMUpdate(() => {
-          if (isStale()) return;
-          response.results.forEach((result, i) => {
-            if (result) {
-              const originalIndex = translationBatch[i].index;
-              if (injectTranslation(linesData[originalIndex].lyricElement, result.translatedText)) didInjectTranslation = true;
-            }
-          });
-        }, () => { if (didInjectTranslation) lyricsElementAdded(); }, isStale, translationExclude);
-      })()
-    );
+  // Update sourceLanguage from whichever response detected it
+  if (!sourceLanguage) {
+    if (romanResponse?.detectedLanguage) {
+      sourceLanguage = romanResponse.detectedLanguage;
+      log(LOG_PREFIX, "Determined language via romanization batch: " + sourceLanguage);
+    } else if (transResponse?.detectedLanguage) {
+      sourceLanguage = transResponse.detectedLanguage;
+      log(LOG_PREFIX, "Determined language via translation batch: " + sourceLanguage);
+    }
   }
 
-  await Promise.all(promises);
+  const skipRoman = romanResponse == null || isRomanizationDisabledForLang(sourceLanguage || "");
+  const skipTrans = transResponse == null || isTranslationDisabledForLang(sourceLanguage || "");
+
+  if (skipRoman && skipTrans) return;
+
+  let didInjectNetwork = false;
+
+  const networkExclude = [
+    ...(skipRoman
+      ? []
+      : romanizationBatch
+          .filter(
+            (b, i) =>
+              !!romanResponse!.results[i] &&
+              !linesData[b.index].lyricElement.querySelector(`.${ROMANIZED_LYRICS_CLASS}`)
+          )
+          .map(b => linesData[b.index].lyricElement)),
+    ...(skipTrans
+      ? []
+      : translationBatch
+          .filter(
+            (b, i) =>
+              !!transResponse!.results[i] &&
+              !linesData[b.index].lyricElement.querySelector(`.${TRANSLATED_LYRICS_CLASS}`)
+          )
+          .map(b => linesData[b.index].lyricElement)),
+  ];
+
+  animateDOMUpdate(
+    () => {
+      if (isStale()) return;
+      if (!skipRoman) {
+        romanResponse!.results.forEach((result, i) => {
+          if (result) {
+            const originalIndex = romanizationBatch[i].index;
+            if (
+              injectRomanization(
+                linesData[originalIndex].lyricElement,
+                linesData[originalIndex],
+                result
+              )
+            )
+              didInjectNetwork = true;
+          }
+        });
+      }
+      if (!skipTrans) {
+        transResponse!.results.forEach((result, i) => {
+          if (result) {
+            const originalIndex = translationBatch[i].index;
+            if (injectTranslation(linesData[originalIndex].lyricElement, result.translatedText))
+              didInjectNetwork = true;
+          }
+        });
+      }
+    },
+    () => {
+      if (didInjectNetwork) lyricsElementAdded();
+    },
+    isStale,
+    networkExclude
+  );
 }
 
 function injectRomanization(
