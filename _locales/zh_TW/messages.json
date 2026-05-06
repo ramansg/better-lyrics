@@ -200,7 +200,7 @@
     "description": "Change theme button label"
   },
   "options_themes_customTheme": {
-    "message": "自訂主題",
+    "message": "Custom Theme",
     "description": "Display name for unnamed custom themes"
   },
   "options_themes_customStyles": {
@@ -766,7 +766,7 @@
     "description": "Powered by label"
   },
   "editor_playground": {
-    "message": "遊樂場",
+    "message": "Playground",
     "description": "Playground link text"
   },
   "editor_docs": {
