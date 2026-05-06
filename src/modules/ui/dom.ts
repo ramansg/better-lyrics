@@ -7,9 +7,6 @@ import {
   FOOTER_NOT_VISIBLE_LOG,
   GENIUS_LOGO_SRC,
   HIDDEN_CLASS,
-  HOMEPAGE_DOMAIN,
-  HOMEPAGE_ICON_URL,
-  HOMEPAGE_URL,
   LOADER_TRANSITION_ENDED,
   LYRICS_AD_OVERLAY_ID,
   LYRICS_CLASS,
@@ -221,7 +218,7 @@ export function addFooter(
   createFooter(song, artist, album, duration, videoId);
 
   const footerLink = document.getElementById("betterLyricsFooterLink") as HTMLAnchorElement;
-  sourceHref = sourceHref || HOMEPAGE_URL;
+  sourceHref = sourceHref || "https://better-lyrics.boidu.dev/";
 
   const info = providerKey ? providerDisplayInfo[providerKey] : null;
 
@@ -242,7 +239,7 @@ export function addFooter(
     }
     footerLink.appendChild(iconWrapper);
   } else {
-    footerLink.textContent = source || HOMEPAGE_DOMAIN;
+    footerLink.textContent = source || "boidu.dev";
   }
 
   if (source === "Unison" && unisonData) {
@@ -539,7 +536,7 @@ function createFooter(song: string, artist: string, album: string, duration: num
     footerContainer.className = `${FOOTER_CLASS}__container`;
 
     const footerImage = document.createElement("img");
-    footerImage.src = HOMEPAGE_ICON_URL;
+    footerImage.src = "https://better-lyrics.boidu.dev/icon-512.png";
     footerImage.alt = "Better Lyrics Logo";
     footerImage.width = 20;
     footerImage.height = 20;
@@ -977,7 +974,7 @@ function buildUnisonSubmitUrl(song: string, artist: string, album: string, durat
  * Injects required head tags including font links and image preloads.
  */
 export async function injectHeadTags(): Promise<void> {
-  const imgURL = HOMEPAGE_ICON_URL;
+  const imgURL = "https://better-lyrics.boidu.dev/icon-512.png";
 
   const imagePreload = document.createElement("link");
   imagePreload.rel = "preload";
