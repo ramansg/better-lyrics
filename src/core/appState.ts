@@ -1,10 +1,10 @@
-import { DOCK_CONTROL_ORDER_DEFAULT, DOCK_DEFAULT_POSITION, GENERAL_ERROR_LOG } from "@constants";
-import type { LyricsData } from "@modules/lyrics/injectLyrics";
-import { createLyrics } from "@modules/lyrics/lyrics";
+import { DOCK_CONTROL_ORDER_DEFAULT, DOCK_DEFAULT_POSITION } from "@constants";
+import type { LyricDecorations, LyricsData } from "@modules/lyrics/injectLyrics";
+import { createLyrics, type ParsedLyrics } from "@modules/lyrics/lyrics";
 import type { LyricSourceKey } from "@modules/lyrics/providers/shared";
 import type { UnisonData } from "@modules/lyrics/providers/unison";
 import { flushLoader } from "@modules/ui/dom";
-import { log } from "@utils";
+import { logError } from "@core/logger";
 
 export interface PlayerDetails {
   currentTime: number;
@@ -14,7 +14,9 @@ export interface PlayerDetails {
   duration: string;
   audioTrackData: any;
   browserTime: number;
+  isPlaying: boolean;
   playing: boolean;
+  playbackRate?: number;
   contentRect: {
     width: number;
     height: number;
@@ -25,6 +27,8 @@ interface AppStateType {
   suppressZeroTime: number;
   areLyricsTicking: boolean;
   lyricData: LyricsData | null;
+  parsedLyrics: ParsedLyrics | null;
+  lyricDecorations: LyricDecorations;
   areLyricsLoaded: boolean;
   lyricInjectionFailed: boolean;
   lastVideoId: string | null;
@@ -58,14 +62,18 @@ interface AppStateType {
   isDockTranslateEnabled: boolean;
   isDockRomanizeEnabled: boolean;
   isDockOffsetEnabled: boolean;
+  isDockPictureInPictureEnabled: boolean;
   dockControlsOrder: string[];
   currentUnisonData: UnisonData | null;
+  isPictureInPictureOpen: boolean;
 }
 
 export const AppState: AppStateType = {
   suppressZeroTime: 0,
   areLyricsTicking: false,
   lyricData: null,
+  parsedLyrics: null,
+  lyricDecorations: {},
   areLyricsLoaded: false,
   lyricInjectionFailed: false,
   lastVideoId: null,
@@ -99,8 +107,10 @@ export const AppState: AppStateType = {
   isDockTranslateEnabled: true,
   isDockRomanizeEnabled: true,
   isDockOffsetEnabled: true,
+  isDockPictureInPictureEnabled: true,
   dockControlsOrder: [...DOCK_CONTROL_ORDER_DEFAULT],
   currentUnisonData: null,
+  isPictureInPictureOpen: false,
 };
 
 export function reloadLyrics(): void {
@@ -125,7 +135,7 @@ export function handleModifications(detail: PlayerDetails): void {
   AppState.currentInjectionId++;
   AppState.lyricAbortController = new AbortController();
   AppState.lyricInjectionPromise = createLyrics(detail, AppState.lyricAbortController.signal).catch(err => {
-    log(GENERAL_ERROR_LOG, err);
+    logError(err);
     AppState.areLyricsLoaded = false;
     AppState.lyricInjectionFailed = true;
   });

@@ -1,10 +1,19 @@
 import { CUBEY_LYRICS_API_URL, CUBEY_LYRICS_API_URL_TURNSTILE, HOMEPAGE_URL, LOG_PREFIX } from "@constants";
 import { getLocalStorage } from "@core/storage";
-import { log } from "@core/utils";
-import { lrcFixers, parseLRC, parsePlainLyrics } from "./lrcUtils";
-import { parseQRC } from "./qrcUtils";
+import { lrcFixers, parseLRC, parseQRC, PlainParser } from "@braccato/parsers";
 import { type LyricSourceKey, type LyricSourceResult, type ProviderParameters, saveLyricsToCache } from "./shared";
-import { fillTtml } from "@modules/lyrics/providers/ttmlUtils";
+import { fillTtml } from "@modules/lyrics/providers/ttmlSource";
+import { errorCore, logCore, warnCore } from "@core/logger";
+
+const JWT_RENEWAL_THRESHOLD_SECONDS = 60 * 60;
+
+interface JwtMetadata {
+  secondsUntilExpiry: number;
+  isExpired: boolean;
+  shouldRenew: boolean;
+}
+
+let authenticationTokenPromise: Promise<string | null> | null = null;
 
 /**
  * Handles the Turnstile challenge by creating an iframe and returning a Promise.
@@ -30,24 +39,24 @@ function handleTurnstile(): Promise<string> {
 
       switch (event.data.type) {
         case "turnstile-token":
-          log(LOG_PREFIX, "Received Success Token:", event.data.token);
+          logCore("Received Success Token:", event.data.token);
           cleanup();
           resolve(event.data.token);
           break;
 
         case "turnstile-error":
-          console.error(LOG_PREFIX, "Received Challenge Error:", event.data.error);
+          errorCore("Received Challenge Error:", event.data.error);
           cleanup();
           reject(new Error(`${LOG_PREFIX} Turnstile challenge error: ${event.data.error}`));
           break;
 
         case "turnstile-expired":
-          console.warn(LOG_PREFIX, "Token expired. Resetting challenge.");
+          warnCore("Token expired. Resetting challenge.");
           iframe.contentWindow!.postMessage({ type: "reset-turnstile" }, "*");
           break;
 
         case "turnstile-timeout":
-          console.warn(LOG_PREFIX, "Challenge timed out.");
+          warnCore("Challenge timed out.");
           cleanup();
           reject(new Error(`${LOG_PREFIX} Turnstile challenge timed out.`));
           break;
@@ -67,68 +76,127 @@ function handleTurnstile(): Promise<string> {
   });
 }
 
+function getJwtMetadata(token: string): JwtMetadata | null {
+  try {
+    const payloadBase64Url = token.split(".")[1];
+    if (!payloadBase64Url) return null;
+    const payloadBase64 = payloadBase64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const paddedPayloadBase64 = payloadBase64.padEnd(
+      payloadBase64.length + ((4 - (payloadBase64.length % 4)) % 4),
+      "="
+    );
+    const decodedPayload = atob(paddedPayloadBase64);
+    const payload = JSON.parse(decodedPayload) as { exp?: unknown };
+    const expiresAtSeconds = Number(payload.exp);
+    if (!Number.isFinite(expiresAtSeconds)) return null;
+
+    const secondsUntilExpiry = expiresAtSeconds - Date.now() / 1000;
+    return {
+      secondsUntilExpiry,
+      isExpired: secondsUntilExpiry <= 0,
+      shouldRenew: secondsUntilExpiry <= JWT_RENEWAL_THRESHOLD_SECONDS,
+    };
+  } catch (e) {
+    errorCore("Error decoding JWT on client-side:", e);
+    return null;
+  }
+}
+
+function requestNewAuthenticationToken(reason: string): Promise<string | null> {
+  if (authenticationTokenPromise) {
+    logCore("Authentication token request already in progress; reusing it.");
+    return authenticationTokenPromise;
+  }
+
+  const promise = (async () => {
+    try {
+      logCore(`Requesting new JWT (${reason})...`);
+      const turnstileToken = await handleTurnstile();
+
+      const response = await fetch(CUBEY_LYRICS_API_URL + "verify-turnstile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: turnstileToken }),
+        credentials: "include",
+      });
+
+      if (!response.ok) throw new Error(`API verification failed: ${response.statusText}`);
+
+      const data = (await response.json()) as { jwt?: unknown };
+      const newJwt = data.jwt;
+
+      if (typeof newJwt !== "string" || !newJwt) throw new Error("No JWT returned from API after verification.");
+
+      await chrome.storage.local.set({ jwtToken: newJwt });
+      logCore("New JWT received and stored.");
+      return newJwt;
+    } catch (error) {
+      errorCore("Authentication process failed:", error);
+      return null;
+    }
+  })();
+
+  authenticationTokenPromise = promise;
+  void promise.finally(() => {
+    if (authenticationTokenPromise === promise) {
+      authenticationTokenPromise = null;
+    }
+  });
+
+  return promise;
+}
+
 /**
  * Gets a valid JWT, either from storage or by forcing a new Turnstile challenge.
  */
 async function getAuthenticationToken(forceNew = false): Promise<string | null> {
-  function isJwtExpired(token: string): boolean {
-    try {
-      const payloadBase64Url = token.split(".")[1];
-      if (!payloadBase64Url) return true;
-      const payloadBase64 = payloadBase64Url.replace(/-/g, "+").replace(/_/g, "/");
-      const decodedPayload = atob(payloadBase64);
-      const payload = JSON.parse(decodedPayload);
-      const expirationTimeInSeconds = payload.exp;
-      if (!expirationTimeInSeconds) return true;
-      const nowInSeconds = Date.now() / 1000;
-      return nowInSeconds > expirationTimeInSeconds;
-    } catch (e) {
-      console.error(LOG_PREFIX, "Error decoding JWT on client-side:", e);
-      return true;
-    }
-  }
-
   if (forceNew) {
-    log(LOG_PREFIX, "Forcing new token, removing any existing one.");
-    await chrome.storage.local.remove("jwtToken");
-  } else {
-    const storedData = await getLocalStorage<{ jwtToken?: string }>(["jwtToken"]);
-    if (storedData.jwtToken) {
-      if (isJwtExpired(storedData.jwtToken)) {
-        log(LOG_PREFIX, "Local JWT has expired. Removing and requesting a new one.");
-        await chrome.storage.local.remove("jwtToken");
-      } else {
-        log(LOG_PREFIX, "Using valid, non-expired JWT for bypass.");
-        return storedData.jwtToken;
+    logCore("Forcing new token refresh.");
+    return requestNewAuthenticationToken("forced refresh");
+  }
+
+  const storedData = await getLocalStorage<{ jwtToken?: string }>(["jwtToken"]);
+  const storedJwt = storedData.jwtToken;
+  if (!storedJwt) {
+    logCore("No local JWT found, initiating Turnstile challenge...");
+    return requestNewAuthenticationToken("missing token");
+  }
+
+  const metadata = getJwtMetadata(storedJwt);
+  if (!metadata) {
+    logCore("Local JWT is invalid, requesting a new one.");
+    return requestNewAuthenticationToken("invalid token");
+  }
+
+  if (metadata.isExpired) {
+    logCore("Local JWT has expired, requesting a new one.");
+    return requestNewAuthenticationToken("expired token");
+  }
+
+  if (metadata.shouldRenew) {
+    logCore(`Local JWT expires in ${Math.round(metadata.secondsUntilExpiry)} seconds; renewing in background.`);
+    void requestNewAuthenticationToken("near-expiry token").then(newJwt => {
+      if (!newJwt) {
+        warnCore("Background JWT renewal failed; keeping the existing token.");
       }
-    }
-  }
-
-  try {
-    log(LOG_PREFIX, "No valid JWT found, initiating Turnstile challenge...");
-    const turnstileToken = await handleTurnstile();
-
-    const response = await fetch(CUBEY_LYRICS_API_URL + "verify-turnstile", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: turnstileToken }),
-      credentials: "include",
     });
-
-    if (!response.ok) throw new Error(`API verification failed: ${response.statusText}`);
-
-    const data = await response.json();
-    const newJwt = data.jwt;
-
-    if (!newJwt) throw new Error("No JWT returned from API after verification.");
-
-    await chrome.storage.local.set({ jwtToken: newJwt });
-    log(LOG_PREFIX, "New JWT received and stored.");
-    return newJwt;
-  } catch (error) {
-    console.error(LOG_PREFIX, "Authentication process failed:", error);
-    return null;
+    return storedJwt;
   }
+
+  logCore("Using valid JWT for bypass.");
+  return storedJwt;
+}
+
+export function prewarmAuthenticationToken(): void {
+  void getAuthenticationToken()
+    .then(token => {
+      if (!token) {
+        warnCore("Authentication prewarm did not obtain a JWT.");
+      }
+    })
+    .catch(error => {
+      warnCore("Authentication prewarm failed:", error);
+    });
 }
 
 // Managed keys for this provider
@@ -217,7 +285,7 @@ async function startStream(providerParameters: ProviderParameters, retryCount = 
 
   let jwt = await getAuthenticationToken(retryCount > 0);
   if (!jwt) {
-    console.error(LOG_PREFIX, "Could not obtain authentication token. Aborting stream.");
+    errorCore("Could not obtain authentication token. Aborting stream.");
     resolveAllWaiters(videoId);
     return;
   }
@@ -233,6 +301,7 @@ async function startStream(providerParameters: ProviderParameters, retryCount = 
   if (isrc) body.append("isrc", isrc);
   body.append("token", jwt);
 
+  let completedNormally = false;
   try {
     const response = await fetch(CUBEY_LYRICS_API_URL + "v2/lyrics", {
       method: "POST",
@@ -241,20 +310,20 @@ async function startStream(providerParameters: ProviderParameters, retryCount = 
     });
 
     if (response.status === 403 && retryCount < 1) {
-      console.warn(LOG_PREFIX, "Request blocked (403), retrying with new token.");
+      warnCore("Request blocked (403), retrying with new token.");
       await startStream(providerParameters, retryCount + 1);
       return;
     }
 
     if (!response.ok) {
-      console.error(LOG_PREFIX, `Stream API request failed: ${response.status}`);
+      errorCore(`Stream API request failed: ${response.status}`);
       resolveAllWaiters(videoId);
       return;
     }
 
     const reader = response.body?.getReader();
     if (!reader) {
-      console.error(LOG_PREFIX, "No response body reader available.");
+      errorCore("No response body reader available.");
       resolveAllWaiters(videoId);
       return;
     }
@@ -282,19 +351,20 @@ async function startStream(providerParameters: ProviderParameters, retryCount = 
         if (buffer.trim()) {
           await parseSSEMessage(buffer, providerParameters);
         }
+        completedNormally = true;
         break;
       }
     }
   } catch (err) {
     if (signal.aborted) {
-      log(LOG_PREFIX, "Stream aborted.");
+      logCore("Stream aborted.");
     } else {
-      console.error(LOG_PREFIX, "Stream error:", err);
+      errorCore("Stream error:", err);
     }
   } finally {
     // Ensure all waiters are resolved (cleared) when stream ends
     MANAGED_KEYS.forEach(key => {
-      if (!providerParameters.sourceMap[key].filled) {
+      if (completedNormally && !providerParameters.sourceMap[key].filled) {
         providerParameters.sourceMap[key].filled = true;
       }
       resolveWaiter(providerParameters, key);
@@ -326,13 +396,14 @@ async function parseSSEMessage(message: string, params: ProviderParameters) {
       const data = JSON.parse(dataBuffer);
       await processStreamData(currentEvent, data, params);
     } catch (e) {
-      console.error(LOG_PREFIX, "Error parsing stream JSON:", e, "Event:", currentEvent, "Data:", dataBuffer);
+      errorCore("Error parsing stream JSON:", e, "Event:", currentEvent, "Data:", dataBuffer);
     }
   }
 }
 
 async function processStreamData(event: string, data: any, params: ProviderParameters) {
-  const { sourceMap, duration } = params;
+  const { sourceMap } = params;
+  const durationMs = params.duration * 1000;
 
   if (event === "metadata") {
     if (data.album && !params.album) params.album = data.album;
@@ -364,7 +435,7 @@ async function processStreamData(event: string, data: any, params: ProviderParam
     // Musixmatch
     if (provider === "musixmatch") {
       if (results.wordByWord) {
-        const lyrics = parseLRC(results.wordByWord, duration);
+        const lyrics = parseLRC(results.wordByWord, durationMs);
         lrcFixers(lyrics);
         sourceMap["musixmatch-richsync"].lyricSourceResult = {
           lyrics,
@@ -382,7 +453,7 @@ async function processStreamData(event: string, data: any, params: ProviderParam
       }
 
       if (results.synced) {
-        const lyrics = parseLRC(results.synced, duration);
+        const lyrics = parseLRC(results.synced, durationMs);
         sourceMap["musixmatch-synced"].lyricSourceResult = {
           lyrics,
           source: "Musixmatch",
@@ -397,7 +468,7 @@ async function processStreamData(event: string, data: any, params: ProviderParam
     // LRCLib
     if (provider === "lrclib") {
       if (results.synced) {
-        const lyrics = parseLRC(results.synced, duration);
+        const lyrics = parseLRC(results.synced, durationMs);
         sourceMap["lrclib-synced"].lyricSourceResult = {
           lyrics,
           source: "LRCLib",
@@ -409,7 +480,7 @@ async function processStreamData(event: string, data: any, params: ProviderParam
       }
 
       if (results.plain) {
-        const lyrics = parsePlainLyrics(results.plain);
+        const lyrics = PlainParser.parse(results.plain);
         sourceMap["lrclib-plain"].lyricSourceResult = {
           lyrics,
           source: "LRCLib",
@@ -426,7 +497,7 @@ async function processStreamData(event: string, data: any, params: ProviderParam
     if (provider === "kugou") {
       if (results.lyrics) {
         let decodedLyrics = JSON.parse(results.lyrics);
-        const lyrics = parseLRC(decodedLyrics.lyrics, duration * 1000);
+        const lyrics = parseLRC(decodedLyrics.lyrics, durationMs);
         sourceMap["legato-synced"].lyricSourceResult = {
           lyrics,
           source: "Better Lyrics Legato",
@@ -442,7 +513,7 @@ async function processStreamData(event: string, data: any, params: ProviderParam
     if (provider === "qq") {
       if (results.lyrics) {
         let decodedLyrics = JSON.parse(results.lyrics);
-        const lyrics = parseQRC(decodedLyrics.lyrics, duration * 1000, {
+        const lyrics = parseQRC(decodedLyrics.lyrics, durationMs, {
           title: params.song,
           artist: params.artist,
         });
@@ -471,7 +542,7 @@ async function processStreamData(event: string, data: any, params: ProviderParam
         } catch (_e) {
           // Not double-encoded, use as is
         }
-        await fillTtml(ttml, params);
+        fillTtml(ttml, params);
         // fillTtml marks filled and updates sourceMap directly
         resolveWaiter(params, "bLyrics-synced");
         resolveWaiter(params, "bLyrics-richsynced");
@@ -481,7 +552,7 @@ async function processStreamData(event: string, data: any, params: ProviderParam
     // Binimum (TTML via BiniLyrics)
     if (provider === "binimum") {
       if (results.lyrics) {
-        await fillTtml(results.lyrics, params, {
+        fillTtml(results.lyrics, params, {
           richsyncKey: "binimum-richsynced",
           syncedKey: "binimum-synced",
           source: "BiniLyrics",
