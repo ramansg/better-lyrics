@@ -1,19 +1,18 @@
 import {
-  DISABLE_EFFECTS_STYLE_ID,
   DOCK_CLASS,
   DOCK_CONTROL_ORDER_DEFAULT,
   DOCK_DEFAULT_POSITION,
+  LOG_PREFIX_CONTENT,
   LYRICS_DISABLED_ATTR,
 } from "@constants";
 import { AppState, reloadLyrics } from "@core/appState";
 import { clearCache, compileRicsToStyles, getStorage } from "@core/storage";
-import { configureLogging, logContent } from "@core/logger";
+import { log, setUpLog } from "@core/utils";
+import { calculateLyricPositions } from "@modules/lyrics/injectLyrics";
 import { clearCache as clearTranslationCache } from "@modules/lyrics/translation";
 import { mountDock, mountVotingSegment, reloadAlbumArt, unmountDock, updateDockPosition } from "@modules/ui/dom";
 import { applyGlobalOffsets } from "@modules/ui/lyricsDock/offset";
-import { mainView } from "@modules/ui/mainLyricsView";
 import { isPlayerFullscreened, onFullscreenChange } from "@modules/ui/observer";
-import { publishPictureInPictureLyrics } from "@modules/ui/pictureInPicture/lyricsPublisher";
 import { applyCustomStyles, getAndApplyCustomStyles } from "@modules/ui/styleInjector";
 
 let hasInitializedMessageListener = false;
@@ -24,12 +23,6 @@ type EnableDisableCallback = () => void;
  * Handles settings initialization and applies user preferences.
  * Sets up fullscreen behavior, animations, and other settings.
  */
-export function applyLoggingSetting(): void {
-  getStorage({ isLogsEnabled: true }, items => {
-    configureLogging(items.isLogsEnabled !== false);
-  });
-}
-
 export function handleSettings(): void {
   onFullScreenDisabled(
     () => {
@@ -54,13 +47,16 @@ export function handleSettings(): void {
 
   onStylizedAnimationsEnabled(
     () => {
-      document.getElementById(DISABLE_EFFECTS_STYLE_ID)?.remove();
+      let styleElm = document.getElementById("blyrics-disable-effects");
+      if (styleElm) {
+        styleElm.remove();
+      }
     },
     async () => {
-      let styleElem = document.getElementById(DISABLE_EFFECTS_STYLE_ID);
+      let styleElem = document.getElementById("blyrics-disable-effects");
       if (!styleElem) {
         styleElem = document.createElement("style");
-        styleElem.id = DISABLE_EFFECTS_STYLE_ID;
+        styleElem.id = "blyrics-disable-effects";
 
         styleElem.textContent = await fetch(chrome.runtime.getURL("css/disablestylizedanimations.css")).then(res =>
           res.text()
@@ -210,25 +206,25 @@ export function listenForPopupMessages(): void {
   hasInitializedMessageListener = true;
 
   chrome.runtime.onMessage.addListener((request, _, sendResponse) => {
-    logContent("Received message:", request.action);
+    log(LOG_PREFIX_CONTENT, "Received message:", request.action);
     if (request.action === "applyStyles") {
-      logContent("Processing applyStyles, RICS length:", request.ricsSource?.length);
+      log(LOG_PREFIX_CONTENT, "Processing applyStyles, RICS length:", request.ricsSource?.length);
       if (request.ricsSource) {
-        logContent("Compiling RICS and applying styles");
+        log(LOG_PREFIX_CONTENT, "Compiling RICS and applying styles");
         const compiledCSS = compileRicsToStyles(request.ricsSource);
         applyCustomStyles(compiledCSS);
-        mainView.relayout();
-        logContent("Styles applied successfully");
+        calculateLyricPositions();
+        log(LOG_PREFIX_CONTENT, "Styles applied successfully");
       } else {
-        logContent("Loading styles from storage");
+        log(LOG_PREFIX_CONTENT, "Loading styles from storage");
         getAndApplyCustomStyles().then(() => {
-          mainView.relayout();
-          logContent("Styles loaded from storage and applied");
+          calculateLyricPositions();
+          log(LOG_PREFIX_CONTENT, "Styles loaded from storage and applied");
         });
       }
     } else if (request.action === "updateSettings") {
       clearTranslationCache();
-      applyLoggingSetting();
+      setUpLog();
       hideCursorOnIdle();
       handleSettings();
       loadTranslationSettings();
@@ -266,9 +262,6 @@ export function listenForPopupMessages(): void {
 export function loadPassiveScrollSetting(): void {
   getStorage({ isPassiveScrollEnabled: true }, items => {
     AppState.isPassiveScrollEnabled = items.isPassiveScrollEnabled;
-    // The side panel reads this off AppState every tick. The floating window only sees the copy
-    // that rode over on the last payload, so a change reaches it on a republish or not at all.
-    publishPictureInPictureLyrics();
   });
 }
 
@@ -297,7 +290,6 @@ export function loadDockSettings(callback?: () => void): void {
       "isDockTranslateEnabled",
       "isDockRomanizeEnabled",
       "isDockOffsetEnabled",
-      "isDockPictureInPictureEnabled",
       "dockControlsOrder",
     ],
     items => {
@@ -310,7 +302,6 @@ export function loadDockSettings(callback?: () => void): void {
       AppState.isDockTranslateEnabled = items.isDockTranslateEnabled ?? true;
       AppState.isDockRomanizeEnabled = items.isDockRomanizeEnabled ?? true;
       AppState.isDockOffsetEnabled = items.isDockOffsetEnabled ?? true;
-      AppState.isDockPictureInPictureEnabled = items.isDockPictureInPictureEnabled ?? true;
       AppState.dockControlsOrder = normalizeDockControlsOrder(items.dockControlsOrder);
       callback?.();
     }

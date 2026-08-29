@@ -1,5 +1,6 @@
 import {
   AD_PLAYING_ATTR,
+  BACKGROUND_LYRIC_CLASS,
   DISCORD_INVITE_URL,
   DISCORD_LOGO_SRC,
   DOCK_CLASS,
@@ -7,12 +8,13 @@ import {
   FOOTER_CLASS,
   FOOTER_NOT_VISIBLE_LOG,
   GENIUS_LOGO_SRC,
+  HAS_TRAILING_SPACE_CLASS,
   HIDDEN_CLASS,
   HOMEPAGE_DOMAIN,
   HOMEPAGE_ICON_URL,
   HOMEPAGE_URL,
-  LINE_CLASS,
   LOADER_TRANSITION_ENDED,
+  LOG_PREFIX_UNISON,
   LYRICS_AD_OVERLAY_ID,
   LYRICS_CLASS,
   LYRICS_LOADER_ID,
@@ -29,20 +31,27 @@ import {
   type SyncType,
   TAB_RENDERER_SELECTOR,
   TRANSLATED_LYRICS_CLASS,
-  WORD_HIGHLIGHT_CLASS,
+  WORD_CLASS,
 } from "@constants";
 import { AppState } from "@core/appState";
 import { t } from "@core/i18n";
+import { disconnectResizeObserver } from "@modules/lyrics/injectLyrics";
 import type { ThumbnailElement } from "@modules/lyrics/requestSniffer/NextResponse";
-import { getArtworkMetadata } from "@modules/lyrics/requestSniffer/requestSniffer";
-import { lyricsElementAdded, mainView } from "@modules/ui/mainLyricsView";
-import { publishPictureInPictureLyrics } from "@modules/ui/pictureInPicture/lyricsPublisher";
-import { getResumeScrollElement } from "@modules/ui/resumeScrollButton";
+import { getSongMetadata } from "@modules/lyrics/requestSniffer/requestSniffer";
+import {
+  animEngineState,
+  getResumeScrollElement,
+  lyricsElementAdded,
+  reflow,
+  resetAnimEngineState,
+  SCROLL_POS_OFFSET_RATIO,
+  toMs,
+} from "@modules/ui/animationEngine";
 import { getRequest, setRequest } from "@modules/unison/lyricsRequestTracker";
 import { getTrustTier } from "@modules/unison/trustTier";
 import type { UnisonLyricsRequest } from "@modules/unison/types";
 import { requestLyrics } from "@modules/unison/unisonApi";
-import { reflow, toMs } from "@braccato/core/util";
+import { log } from "@utils";
 import { generatePetName } from "@/core/keyIdentity";
 import { byId, deleteVote, type UnisonData, vote } from "../lyrics/providers/unison";
 import { buildControlsSegment, closeSourceMenu } from "./lyricsDock/controls";
@@ -50,7 +59,6 @@ import { parseSvgString, syncTypeColors, syncTypeIcons } from "./lyricsDock/icon
 import { loadSavedOffset } from "./lyricsDock/offset";
 import { scrollEventHandler } from "./observer";
 import { showReportModal } from "./reportLyrics";
-import { logCore, warnUnison } from "@core/logger";
 
 const voteIcons = {
   upvote: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"><g fill="none"><path fill="currentColor" fill-opacity=".16" d="M7.895 7.69c-.294.3-.598.534-.895.71v12.334l8.509 1.223a4.1 4.1 0 0 0 2.82-.616a4.26 4.26 0 0 0 1.756-2.335l1.763-5.753a3.48 3.48 0 0 0-.497-3.04a3.36 3.36 0 0 0-1.183-1.023a3.3 3.3 0 0 0-1.509-.367h-3.633a9.7 9.7 0 0 0 .496-1.706a9 9 0 0 0 .164-1.706c0-.904-.352-1.772-.979-2.412C14.081 2.36 13.231 2 12.345 2s-1.736.36-2.362 1a3.45 3.45 0 0 0-.979 2.411c0 .597-.324 1.478-1.109 2.28"/><path stroke="currentColor" stroke-linejoin="round" stroke-miterlimit="10" stroke-width="1.5" d="M7.895 7.69c-.294.3-.598.534-.895.71v12.334l8.509 1.223a4.1 4.1 0 0 0 2.82-.616a4.26 4.26 0 0 0 1.756-2.335l1.763-5.753a3.48 3.48 0 0 0-.497-3.04a3.36 3.36 0 0 0-1.183-1.023a3.3 3.3 0 0 0-1.509-.367h-3.633a9.7 9.7 0 0 0 .496-1.706a9 9 0 0 0 .164-1.706c0-.904-.352-1.772-.979-2.412C14.081 2.36 13.231 2 12.345 2s-1.736.36-2.362 1a3.45 3.45 0 0 0-.979 2.411c0 .597-.324 1.478-1.109 2.28ZM6.2 7H2.8a.8.8 0 0 0-.8.8v13.4a.8.8 0 0 0 .8.8h3.4a.8.8 0 0 0 .8-.8V7.8a.8.8 0 0 0-.8-.8Z"/></g></svg>`,
@@ -115,7 +123,7 @@ function thumbnailUrlFor(videoId: string): string {
 }
 
 async function resolveArtworkUrl(videoId: string): Promise<string> {
-  const sniffed = await getArtworkMetadata(videoId);
+  const sniffed = await getSongMetadata(videoId);
   if (sniffed?.thumbnail?.url) return getHighResImageUrl(sniffed.thumbnail);
 
   const ytImg = document.querySelector<HTMLImageElement>("#thumbnail>#img");
@@ -217,7 +225,7 @@ function createRequestSyncedButton(meta: RequestButtonMeta): HTMLElement {
     const result = await requestLyrics(submission);
 
     if (!result.success || !result.data) {
-      warnUnison("requestLyrics failed", {
+      console.warn(LOG_PREFIX_UNISON, "requestLyrics failed", {
         videoId: meta.videoId,
         status: result.status,
         error: result.error,
@@ -241,6 +249,28 @@ function createRequestSyncedButton(meta: RequestButtonMeta): HTMLElement {
   return container;
 }
 
+// Word spans hold no whitespace; gaps are rendered from HAS_TRAILING_SPACE_CLASS, which is set only
+// where the source had a space. Reconstructing from it keeps words spaced ("I'll meet you") while
+// leaving syllables of one word fused ("divide", not "di vi de").
+function wordsToText(words: NodeListOf<Element>): string {
+  let out = "";
+  let prevBackground: boolean | null = null;
+  for (const w of words) {
+    const isBackground = w.classList.contains(BACKGROUND_LYRIC_CLASS);
+    if (prevBackground !== null && isBackground !== prevBackground) out += " ";
+    out += (w.textContent ?? "") + (w.classList.contains(HAS_TRAILING_SPACE_CLASS) ? " " : "");
+    prevBackground = isBackground;
+  }
+  return out.replace(/\s+/g, " ").trim();
+}
+
+function extractLineText(root: DocumentFragment | Element): string {
+  const main = wordsToText(root.querySelectorAll(`.${WORD_CLASS}`));
+  const romanized = root.querySelector(`.${ROMANIZED_LYRICS_CLASS}`)?.textContent?.trim();
+  const translated = root.querySelector(`.${TRANSLATED_LYRICS_CLASS}`)?.textContent?.trim();
+  return [main, romanized, translated].filter(Boolean).join("\n");
+}
+
 let lyricsObserver: MutationObserver | null = null;
 let adStateObserver: MutationObserver | null = null;
 /**
@@ -257,14 +287,14 @@ export function createLyricsWrapper(): HTMLElement {
   const existingWrapper = document.getElementById(LYRICS_WRAPPER_ID);
 
   if (existingWrapper) {
-    existingWrapper.dataset.extensionRoot = "true";
     existingWrapper.replaceChildren();
+    existingWrapper.style.top = "";
+    existingWrapper.style.transition = "";
     return existingWrapper;
   }
 
   const wrapper = document.createElement("div");
   wrapper.id = LYRICS_WRAPPER_ID;
-  wrapper.dataset.extensionRoot = "true";
   tabRenderer.appendChild(wrapper);
 
   wrapper.addEventListener("copy", (e: ClipboardEvent) => {
@@ -274,12 +304,10 @@ export function createLyricsWrapper(): HTMLElement {
     const range = selection.getRangeAt(0);
     const fragment = range.cloneContents();
 
-    fragment.querySelectorAll(`.${WORD_HIGHLIGHT_CLASS}`).forEach(el => el.remove());
-
-    const lineElements = fragment.querySelectorAll(`.${LINE_CLASS}`);
+    const lineElements = fragment.querySelectorAll(".blyrics--line");
 
     if (lineElements.length === 0) {
-      const text = fragment.textContent?.replace(/\s+/g, " ").trim();
+      const text = extractLineText(fragment) || fragment.textContent?.replace(/\s+/g, " ").trim();
       if (text && e.clipboardData) {
         e.preventDefault();
         e.clipboardData.setData("text/plain", text);
@@ -290,14 +318,8 @@ export function createLyricsWrapper(): HTMLElement {
     const lines: string[] = [];
 
     for (const line of lineElements) {
-      const mainLine = Array.from(line.children).find(child => child.classList.contains("blyrics-line-main"));
-      const mainText = mainLine?.textContent?.replace(/\s+/g, " ").trim();
-
-      const romanized = line.querySelector(`.${ROMANIZED_LYRICS_CLASS}`)?.textContent?.trim();
-      const translated = line.querySelector(`.${TRANSLATED_LYRICS_CLASS}`)?.textContent?.trim();
-
-      const lineParts = [mainText, romanized, translated].filter(Boolean);
-      if (lineParts.length > 0) lines.push(lineParts.join("\n"));
+      const text = extractLineText(line);
+      if (text) lines.push(text);
     }
 
     if (lines.length > 0) {
@@ -306,7 +328,7 @@ export function createLyricsWrapper(): HTMLElement {
     }
   });
 
-  logCore(LYRICS_WRAPPER_CREATED_LOG);
+  log(LYRICS_WRAPPER_CREATED_LOG);
   return wrapper;
 }
 
@@ -783,7 +805,6 @@ export function mountDock(position: string): void {
 
     dock = document.createElement("div");
     dock.className = DOCK_CLASS;
-    dock.dataset.extensionRoot = "true";
 
     inner = document.createElement("div");
     inner.className = `${DOCK_CLASS}__inner`;
@@ -1060,7 +1081,7 @@ function createFooter(
 
     footer.removeAttribute("is-empty");
   } catch (_err) {
-    logCore(FOOTER_NOT_VISIBLE_LOG);
+    log(FOOTER_NOT_VISIBLE_LOG);
   }
 }
 
@@ -1115,7 +1136,7 @@ export function renderLoader(small = false): void {
       setLoaderState("full-loader", t("lyrics_searching"));
     }
   } catch (err) {
-    logCore(err);
+    log(err);
   }
 }
 
@@ -1139,7 +1160,7 @@ export function flushLoader(showNoSyncAvailable = false): void {
       AppState.loaderAnimationEndTimeout = window.setTimeout(() => {
         setLoaderState("hidden");
         loaderWrapper.hidden = true;
-        logCore(LOADER_TRANSITION_ENDED);
+        log(LOADER_TRANSITION_ENDED);
       }, duration * 2); // Make longer than css duration
     };
 
@@ -1155,7 +1176,7 @@ export function flushLoader(showNoSyncAvailable = false): void {
       performExit(loaderWrapper.getAttribute("state") === "showing-message");
     }
   } catch (err) {
-    logCore(err);
+    log(err);
   }
 }
 
@@ -1172,7 +1193,7 @@ export function isLoaderActive(): boolean {
       return state !== "hidden" && state !== null;
     }
   } catch (err) {
-    logCore(err);
+    log(err);
   }
   return false;
 }
@@ -1271,7 +1292,7 @@ function clearLyrics(): void {
       lyricsWrapper.replaceChildren();
     }
   } catch (err) {
-    logCore(err);
+    log(err);
   }
 }
 
@@ -1456,31 +1477,30 @@ function buildUnisonSubmitUrl(song: string, artist: string, album: string, durat
 export async function injectHeadTags(): Promise<void> {
   const imgURL = HOMEPAGE_ICON_URL;
 
-  if (!document.head.querySelector(`link[rel="preload"][href="${imgURL}"]`)) {
-    const imagePreload = document.createElement("link");
-    imagePreload.rel = "preload";
-    imagePreload.as = "image";
-    imagePreload.href = imgURL;
-    document.head.appendChild(imagePreload);
-  }
+  const imagePreload = document.createElement("link");
+  imagePreload.rel = "preload";
+  imagePreload.as = "image";
+  imagePreload.href = imgURL;
 
-  for (const href of [FONT_LINK, NOTO_SANS_UNIVERSAL_LINK]) {
-    if (document.head.querySelector(`link[rel="stylesheet"][href="${href}"]`)) continue;
-    const fontLink = document.createElement("link");
-    fontLink.href = href;
-    fontLink.rel = "stylesheet";
-    document.head.appendChild(fontLink);
-  }
+  document.head.appendChild(imagePreload);
+
+  const fontLink = document.createElement("link");
+  fontLink.href = FONT_LINK;
+  fontLink.rel = "stylesheet";
+  document.head.appendChild(fontLink);
+
+  const notoFontLink = document.createElement("link");
+  notoFontLink.href = NOTO_SANS_UNIVERSAL_LINK;
+  notoFontLink.rel = "stylesheet";
+  document.head.appendChild(notoFontLink);
 
   const cssFiles = ["css/ytmusic/index.css", "css/blyrics/index.css", "css/themesong.css"];
 
   for (const file of cssFiles) {
-    const id = `blyrics-style-${file.replace(/(\/index)?\.css$/, "")}`;
-    if (document.getElementById(id)) continue;
     const link = document.createElement("link");
     link.rel = "stylesheet";
     link.href = chrome.runtime.getURL(file);
-    link.id = id;
+    link.id = `blyrics-style-${file.replace(/(\/index)?\.css$/, "")}`;
     document.head.appendChild(link);
   }
 }
@@ -1489,20 +1509,21 @@ export async function injectHeadTags(): Promise<void> {
  * Cleans up this elements and resets state when switching songs.
  */
 export function cleanup(): void {
-  // The side panel's view only, even though on Chromium the floating window's is in the same
-  // registry: clearing it from here would go around its own renderer and leave the container it
-  // built standing in the floating document. It drops the song off the publish this function ends
-  // with instead.
-  mainView.clear();
+  animEngineState.scrollPos = -1;
+  resetAnimEngineState();
+
+  disconnectResizeObserver();
 
   if (lyricsObserver) {
     lyricsObserver.disconnect();
     lyricsObserver = null;
   }
 
-  AppState.lyricData = null;
-  AppState.parsedLyrics = null;
-  AppState.lyricDecorations = {};
+  // Clear lyricData BEFORE clearing DOM to release element references
+  if (AppState.lyricData) {
+    AppState.lyricData.lines = [];
+    AppState.lyricData = null;
+  }
 
   const ytMusicLyrics = (document.querySelector(NO_LYRICS_TEXT_SELECTOR) as HTMLElement)?.parentElement;
   if (ytMusicLyrics) {
@@ -1530,7 +1551,6 @@ export function cleanup(): void {
   }
 
   clearLyrics();
-  publishPictureInPictureLyrics();
 }
 
 /**
@@ -1584,4 +1604,33 @@ function observeFooterForRecalc(footer: HTMLElement): void {
     lyricsElementAdded();
   });
   footerResizeObserver.observe(footer);
+}
+
+export function setExtraHeight() {
+  const lyricsElement = document.getElementsByClassName(LYRICS_CLASS)[0] as HTMLElement;
+  const lyricsHeight = lyricsElement.getBoundingClientRect().height;
+  const tabRenderer = document.querySelector(TAB_RENDERER_SELECTOR) as HTMLElement;
+  const tabRendererHeight = tabRenderer.getBoundingClientRect().height;
+  const scrollPosOffsetRatio = SCROLL_POS_OFFSET_RATIO.getNumberValue();
+
+  const firstLyric = document.querySelector("#blyrics-wrapper > div > div:nth-child(1)");
+
+  const paddingTop = Math.max(
+    0,
+    tabRendererHeight * scrollPosOffsetRatio - (firstLyric?.getBoundingClientRect().height || 0) / 2
+  );
+
+  document.documentElement.style.setProperty("--blyrics-padding-top", paddingTop + "px");
+
+  const footer = document.querySelector("#blyrics-wrapper > div > div.blyrics-footer");
+  const lastLyric = document.querySelector(".blyrics--line:not(:has(~ .blyrics--line))");
+
+  let extraHeight = Math.max(
+    tabRendererHeight * (1 - scrollPosOffsetRatio) -
+      (footer?.getBoundingClientRect().height || 0) -
+      (lastLyric?.getBoundingClientRect().height || 0) / 2,
+    tabRendererHeight - lyricsHeight
+  );
+
+  document.documentElement.style.setProperty("--blyrics-padding-bottom", Math.ceil(extraHeight) + "px");
 }

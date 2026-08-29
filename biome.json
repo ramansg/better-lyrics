@@ -35,13 +35,6 @@
       "correctness": { "noUnusedVariables": "error" }
     }
   },
-  "assist": {
-    "actions": {
-      "source": {
-        "organizeImports": "off"
-      }
-    }
-  },
   "javascript": {
     "formatter": {
       "jsxQuoteStyle": "double",

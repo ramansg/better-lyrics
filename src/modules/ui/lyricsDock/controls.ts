@@ -4,8 +4,6 @@ import { attachHoldRepeat } from "@core/holdRepeat";
 import { t } from "@core/i18n";
 import { setStorage } from "@core/storage";
 import { providerPriority } from "@modules/lyrics/providers/shared";
-import { mainView } from "@modules/ui/mainLyricsView";
-import { pictureInPictureController } from "@modules/ui/pictureInPicture/browserController";
 import { controlIcons, parseSvgString, syncTypeColors, syncTypeIcons } from "./icons";
 import {
   adjustGlobalOffsetValue,
@@ -222,24 +220,6 @@ function buildToggle(icon: string, active: boolean, label: string, onToggle: () 
   return btn;
 }
 
-function buildPictureInPictureControl(): HTMLButtonElement | null {
-  if (!pictureInPictureController.isSupported()) return null;
-
-  const label = t("picture_in_picture_open");
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = `${DOCK_CLASS}__control`;
-  btn.dataset.blyricsPictureInPictureToggle = "true";
-  btn.setAttribute("aria-label", label);
-  btn.title = label;
-
-  const icon = parseSvgString(controlIcons.pictureInPicture);
-  if (icon) btn.appendChild(icon);
-
-  btn.addEventListener("click", () => pictureInPictureController.toggle());
-  return btn;
-}
-
 // Persisting and reloading on every click trips chrome.storage's write-per-minute quota
 // when a toggle is spam-clicked (the reload also writes cache info), so the write and reload
 // are debounced to the settled state while the button's active class still flips instantly.
@@ -269,7 +249,7 @@ function toggleRomanize(): void {
 }
 
 function hasLyrics(): boolean {
-  return mainView.lines.length > 0;
+  return (AppState.lyricData?.lines?.length ?? 0) > 0;
 }
 
 function lyricsContainNonLatin(): boolean {
@@ -470,7 +450,6 @@ const controlBuilders: Record<string, () => HTMLElement | null> = {
         )
       : null,
   offset: () => (isSynced() && AppState.isDockOffsetEnabled ? buildOffsetControl() : null),
-  pictureInPicture: () => (AppState.isDockPictureInPictureEnabled ? buildPictureInPictureControl() : null),
 };
 
 function buildDivider(): HTMLElement {

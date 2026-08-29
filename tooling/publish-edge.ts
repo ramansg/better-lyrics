@@ -52,15 +52,12 @@ async function main() {
       return;
     }
 
-    // Notes must stay empty: @plasmohq/edge-addons-api@2.0.0 serializes non-empty notes as a
-    // malformed body (`{ "notes"="..." }`), which the Edge API rejects with a 400.
-    const submissionId = await client.publish();
+    const submissionId = await client.publish("Automated submission via API");
     console.log(`Submission ID: ${submissionId}`);
     await pollPublish(submissionId);
     console.log("Process completed successfully.");
   } catch (error) {
-    const responseBody = (error as { response?: { body?: unknown } }).response?.body;
-    console.error("Failed to publish to Edge Add-ons:", responseBody ?? error);
+    console.error("Failed to publish to Edge Add-ons:", error);
     process.exit(1);
   }
 }

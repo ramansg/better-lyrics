@@ -1,4 +1,4 @@
-import { warnUnison } from "@core/logger";
+import { LOG_PREFIX_UNISON } from "@constants";
 
 const STORAGE_KEY = "unisonLyricsRequests";
 const MAX_ENTRIES = 500;
@@ -19,7 +19,7 @@ async function loadAll(): Promise<TrackerMap> {
     if (raw && typeof raw === "object") return raw as TrackerMap;
     return {};
   } catch (err) {
-    warnUnison("lyricsRequestTracker load failed", err);
+    console.warn(LOG_PREFIX_UNISON, "lyricsRequestTracker load failed", err);
     return {};
   }
 }
@@ -28,7 +28,7 @@ async function saveAll(map: TrackerMap): Promise<void> {
   try {
     await chrome.storage.local.set({ [STORAGE_KEY]: map });
   } catch (err) {
-    warnUnison("lyricsRequestTracker save failed", err);
+    console.warn(LOG_PREFIX_UNISON, "lyricsRequestTracker save failed", err);
   }
 }
 

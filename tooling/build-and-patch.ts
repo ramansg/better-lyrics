@@ -1,19 +1,15 @@
-import { execFileSync } from "node:child_process";
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { SOURCEMAPS_STAGING_ROOT } from "./sourcemap-utils.js";
+import { execSync } from "child_process";
+import { readFileSync, writeFileSync } from "fs";
+import { join } from "path";
 
 const browsers = ["chrome", "edge", "firefox"];
 
 try {
-  rmSync(SOURCEMAPS_STAGING_ROOT, { recursive: true, force: true });
+  execSync("rm -rf sourcemaps_for_upload", { stdio: "inherit" });
 
   for (const browser of browsers) {
     console.log(`Building for ${browser}...`);
-    execFileSync("extension", ["build", "--browser", browser, "--polyfill"], {
-      stdio: "inherit",
-      env: { ...process.env, SOURCEMAPS_ENABLED: "true" },
-    });
+    execSync(`extension build --browser ${browser} --polyfill`, { stdio: "inherit" });
 
     if (browser === "edge") {
       console.log("Removing key field from manifest.json for edge...");
@@ -23,13 +19,17 @@ try {
       writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
     }
 
-    console.log(`Staging and patching sourcemaps for ${browser}...`);
-    execFileSync("tsx", ["tooling/patch-sourcemaps.ts", browser], { stdio: "inherit" });
-  }
+    console.log(`Copying sourcemaps for ${browser}...`);
+    execSync(`mkdir -p sourcemaps_for_upload/${browser}`, { stdio: "inherit" });
+    execSync(`find dist/${browser} -name '*.map' -exec cp {} sourcemaps_for_upload/${browser} \\; -delete`, {
+      stdio: "inherit",
+    });
 
-  for (const browser of browsers) {
-    console.log(`Uploading sourcemaps for ${browser} directly to R2...`);
-    execFileSync("tsx", ["tooling/upload-sourcemaps.ts", browser], { stdio: "inherit" });
+    console.log(`Patching sourcemaps for ${browser}...`);
+    execSync(`tsx tooling/patch-sourcemaps.ts ${browser}`, { stdio: "inherit" });
+
+    console.log(`Uploading sourcemaps for ${browser}...`);
+    execSync(`tsx tooling/upload-sourcemaps.ts ${browser}`, { stdio: "inherit" });
   }
 } catch (error) {
   console.error("Build and patch process failed:", error);

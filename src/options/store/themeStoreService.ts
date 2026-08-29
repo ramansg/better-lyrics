@@ -1,4 +1,4 @@
-import { THEME_DISCUSSIONS_URL, THEME_REGISTRY_URL } from "@constants";
+import { LOG_PREFIX_STORE, THEME_DISCUSSIONS_URL, THEME_REGISTRY_URL } from "@constants";
 import { resolveBuildForVersion } from "./themeBuildResolver";
 import { resolveThemeBuild } from "./themeStoreApi";
 import type {
@@ -9,7 +9,6 @@ import type {
   ThemeLockfile,
   ThemeValidationResult,
 } from "./types";
-import { warnStore } from "@core/logger";
 
 const EXTENSION_VERSION = chrome.runtime.getManifest().version;
 
@@ -59,7 +58,7 @@ async function testBranchExists(repo: string, branch: string, testFile = "metada
     const response = await fetchWithTimeout(url, { method: "HEAD" }, 5000);
     return response.ok;
   } catch (err) {
-    warnStore("Branch test failed:", err);
+    console.warn(LOG_PREFIX_STORE, "Branch test failed:", err);
     return false;
   }
 }
@@ -84,7 +83,7 @@ async function getDefaultBranch(repo: string, testFile = "metadata.json"): Promi
       return branch;
     }
   } catch (err) {
-    warnStore("GitHub API failed, falling back to branch testing:", err);
+    console.warn(LOG_PREFIX_STORE, "GitHub API failed, falling back to branch testing:", err);
   }
 
   if (await testBranchExists(repo, "master", testFile)) {
@@ -150,7 +149,7 @@ async function fetchRegistryDescription(basePath: string): Promise<string | null
     if (!response.ok) return null;
     return response.text();
   } catch (err) {
-    warnStore("Failed to fetch registry CSS:", err);
+    console.warn(LOG_PREFIX_STORE, "Failed to fetch registry CSS:", err);
     return null;
   }
 }
@@ -161,7 +160,7 @@ async function checkRegistryFileExists(basePath: string, file: string): Promise<
     const response = await fetchWithTimeout(url, { method: "HEAD" }, 5000);
     return response.ok;
   } catch (err) {
-    warnStore("Failed to check registry file:", err);
+    console.warn(LOG_PREFIX_STORE, "Failed to check registry file:", err);
     return false;
   }
 }
@@ -174,7 +173,7 @@ export async function fetchRegistryShaderConfig(basePath: string): Promise<Recor
     if (!response.ok) return null;
     return response.json();
   } catch (err) {
-    warnStore("Failed to fetch registry shader config:", err);
+    console.warn(LOG_PREFIX_STORE, "Failed to fetch registry shader config:", err);
     return null;
   }
 }
@@ -322,7 +321,7 @@ export async function fetchThemeCSS(repo: string, branchOverride?: string): Prom
 
   const ricsUrl = getRawGitHubUrl(repo, branch, "style.rics");
   const ricsResponse = await fetchWithTimeout(ricsUrl, { cache: "no-store" }).catch(err => {
-    warnStore("RICS fetch failed, trying CSS:", err);
+    console.warn(LOG_PREFIX_STORE, "RICS fetch failed, trying CSS:", err);
     return null;
   });
 
@@ -345,7 +344,7 @@ async function checkFileExists(url: string): Promise<boolean> {
     const response = await fetchWithTimeout(url, { method: "HEAD" }, 5000);
     return response.ok;
   } catch (err) {
-    warnStore("File existence check failed:", err);
+    console.warn(LOG_PREFIX_STORE, "File existence check failed:", err);
     return false;
   }
 }
@@ -365,7 +364,7 @@ export async function fetchThemeShaderConfig(
     if (!response.ok) return null;
     return response.json();
   } catch (err) {
-    warnStore("Failed to fetch theme shader config:", err);
+    console.warn(LOG_PREFIX_STORE, "Failed to fetch theme shader config:", err);
     return null;
   }
 }
@@ -379,7 +378,7 @@ async function fetchThemeDescription(repo: string, branchOverride?: string): Pro
     if (!response.ok) return null;
     return response.text();
   } catch (err) {
-    warnStore("Failed to fetch theme description:", err);
+    console.warn(LOG_PREFIX_STORE, "Failed to fetch theme description:", err);
     return null;
   }
 }
@@ -436,7 +435,7 @@ export async function fetchSingleStoreTheme(themeId: string): Promise<StoreTheme
     if (!entry) return null;
     return await fetchFullThemeFromRegistry(entry);
   } catch (err) {
-    warnStore(`Failed to fetch single store theme ${themeId}:`, err);
+    console.warn(LOG_PREFIX_STORE, `Failed to fetch single store theme ${themeId}:`, err);
     return null;
   }
 }
@@ -451,7 +450,7 @@ export async function fetchAllStoreThemes(): Promise<StoreTheme[]> {
     if (result.status === "fulfilled") {
       themes.push(result.value);
     } else {
-      warnStore("Failed to fetch theme:", result.reason);
+      console.warn(LOG_PREFIX_STORE, "Failed to fetch theme:", result.reason);
     }
   }
 
@@ -472,7 +471,7 @@ export async function validateThemeRepo(repo: string, branchOverride?: string): 
       return { valid: false, errors, missingFiles };
     }
   } catch (err) {
-    warnStore("Metadata check failed:", err);
+    console.warn(LOG_PREFIX_STORE, "Metadata check failed:", err);
     missingFiles.push("metadata.json");
     errors.push("Missing required file: metadata.json");
     return { valid: false, errors, missingFiles };

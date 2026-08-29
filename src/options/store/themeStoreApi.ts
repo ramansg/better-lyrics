@@ -1,4 +1,4 @@
-import { THEME_STORE_API_URL } from "@constants";
+import { LOG_PREFIX_STORE, THEME_STORE_API_URL } from "@constants";
 import {
   getCertificate,
   isKeyRegistered,
@@ -11,7 +11,6 @@ import {
 import { UnisonErrorCode } from "@modules/unison/errorCodes";
 import { fetchWithTimeout } from "./themeStoreService";
 import type { AllThemeStats, ApiResult, RatingResult, ResolvedBuild } from "./types";
-import { logStore, warnStore } from "@core/logger";
 
 const RESOLVE_TIMEOUT_MS = 3000;
 
@@ -63,14 +62,14 @@ export async function resolveThemeBuild(themeId: string, extensionVersion: strin
 
     const data = await response.json().catch(() => null);
     if (!isResolvedBuild(data)) {
-      warnStore(`Malformed resolve response for ${themeId}`);
+      console.warn(LOG_PREFIX_STORE, `Malformed resolve response for ${themeId}`);
       return null;
     }
 
     return data;
   } catch (err) {
     const error = err instanceof Error ? err.message : "Network error";
-    warnStore(`Failed to resolve build for ${themeId}:`, error);
+    console.warn(LOG_PREFIX_STORE, `Failed to resolve build for ${themeId}:`, error);
     return null;
   }
 }
@@ -80,13 +79,13 @@ export async function fetchAllStats(): Promise<ApiResult<AllThemeStats>> {
     const response = await fetchWithTimeout(`${THEME_STORE_API_URL}/api/stats`);
     if (!response.ok) {
       const error = `Failed to fetch stats: ${response.status}`;
-      warnStore(error);
+      console.warn(LOG_PREFIX_STORE, error);
       return { success: false, data: {}, error };
     }
     return { success: true, data: await response.json() };
   } catch (err) {
     const error = err instanceof Error ? err.message : "Network error";
-    warnStore("Failed to fetch stats:", error);
+    console.warn(LOG_PREFIX_STORE, "Failed to fetch stats:", error);
     return { success: false, data: {}, error };
   }
 }
@@ -133,7 +132,7 @@ export async function trackInstall(themeId: string): Promise<ApiResult<number | 
 
     if (!response.ok) {
       const error = `Failed to track install: ${response.status}`;
-      warnStore(error);
+      console.warn(LOG_PREFIX_STORE, error);
       return { success: false, data: null, error };
     }
 
@@ -145,7 +144,7 @@ export async function trackInstall(themeId: string): Promise<ApiResult<number | 
     return { success: true, data: data.count };
   } catch (err) {
     const error = err instanceof Error ? err.message : "Network error";
-    warnStore("Failed to track install:", error);
+    console.warn(LOG_PREFIX_STORE, "Failed to track install:", error);
     return { success: false, data: null, error };
   }
 }
@@ -211,7 +210,7 @@ export async function submitRating(
 
     if (!response.ok) {
       const error = `Failed to submit rating: ${response.status}`;
-      warnStore(error);
+      console.warn(LOG_PREFIX_STORE, error);
       return { success: false, data: null, error };
     }
 
@@ -223,13 +222,13 @@ export async function submitRating(
 
     if (data.certificate && typeof data.certificate === "string") {
       await setCertificate(data.certificate);
-      logStore("Certificate received and stored");
+      console.log(LOG_PREFIX_STORE, "Certificate received and stored");
     }
 
     return { success: true, data };
   } catch (err) {
     const error = err instanceof Error ? err.message : "Network error";
-    warnStore("Failed to submit rating:", error);
+    console.warn(LOG_PREFIX_STORE, "Failed to submit rating:", error);
     return { success: false, data: null, error };
   }
 }
@@ -279,7 +278,7 @@ export async function fetchUserRatings(): Promise<ApiResult<Record<string, numbe
 
     if (!response.ok) {
       const error = `Failed to fetch user ratings: ${response.status}`;
-      warnStore(error);
+      console.warn(LOG_PREFIX_STORE, error);
       return { success: false, data: {}, error };
     }
 
@@ -291,7 +290,7 @@ export async function fetchUserRatings(): Promise<ApiResult<Record<string, numbe
     return { success: true, data };
   } catch (err) {
     const error = err instanceof Error ? err.message : "Network error";
-    warnStore("Failed to fetch user ratings:", error);
+    console.warn(LOG_PREFIX_STORE, "Failed to fetch user ratings:", error);
     return { success: false, data: {}, error };
   }
 }

@@ -1,4 +1,4 @@
-import { UNISON_API_BASE_URL } from "@constants";
+import { LOG_PREFIX_UNISON, UNISON_API_BASE_URL } from "@constants";
 import { getIdentity, isKeyRegistered, markKeyRegistered, signPayload } from "@/core/keyIdentity";
 import { fetchWithTimeout } from "@/options/store/themeStoreService";
 import { UnisonErrorCode } from "./errorCodes";
@@ -15,7 +15,6 @@ import type {
   UnisonSubmission,
   VoteValue,
 } from "./types";
-import { warnUnison } from "@core/logger";
 
 // -- Helpers --------------------------
 
@@ -79,7 +78,7 @@ async function signedRequest<T>(
     if (!response.ok) {
       const errorData: UnisonErrorBody | null = cachedErrorBody ?? (await response.json().catch(() => null));
       const error = errorData?.error ?? `Request failed: ${response.status}`;
-      warnUnison(error);
+      console.warn(LOG_PREFIX_UNISON, error);
       return {
         success: false,
         data: null as T,
@@ -98,7 +97,7 @@ async function signedRequest<T>(
     return { success: true, data: result.data as T };
   } catch (err) {
     const error = err instanceof Error ? err.message : "Network error";
-    warnUnison(endpoint, error);
+    console.warn(LOG_PREFIX_UNISON, endpoint, error);
     return { success: false, data: null as T, error };
   }
 }
@@ -117,7 +116,7 @@ export async function searchLyrics(query: string): Promise<ApiResult<UnisonSearc
     return { success: json.success, data: json.data ?? [] };
   } catch (err) {
     const error = err instanceof Error ? err.message : "Network error";
-    warnUnison("Search failed:", error);
+    console.warn(LOG_PREFIX_UNISON, "Search failed:", error);
     return { success: false, data: [], error };
   }
 }
@@ -152,7 +151,7 @@ export async function getFeed(
       const identity = await getIdentity();
       headers["X-Key-ID"] = identity.keyId;
     } catch {
-      warnUnison("No identity yet, skipping feed personalization");
+      console.warn(LOG_PREFIX_UNISON, "No identity yet, skipping feed personalization");
     }
 
     const url = `${UNISON_API_BASE_URL}/feed${params.toString() ? `?${params}` : ""}`;
@@ -164,7 +163,7 @@ export async function getFeed(
     return { success: json.success, data: { entries: json.data ?? [], nextCursor: json.nextCursor } };
   } catch (err) {
     const error = err instanceof Error ? err.message : "Network error";
-    warnUnison("Feed failed:", error);
+    console.warn(LOG_PREFIX_UNISON, "Feed failed:", error);
     return { success: false, data: { entries: [] }, error };
   }
 }
@@ -196,7 +195,7 @@ export async function getMySubmissions(
     return { success: json.success, data: { entries: json.data ?? [], nextCursor: json.nextCursor } };
   } catch (err) {
     const error = err instanceof Error ? err.message : "Network error";
-    warnUnison("My submissions failed:", error);
+    console.warn(LOG_PREFIX_UNISON, "My submissions failed:", error);
     return { success: false, data: { entries: [] }, error };
   }
 }
@@ -208,7 +207,7 @@ export async function getLyricsById(id: number): Promise<ApiResult<UnisonLyricsE
       const identity = await getIdentity();
       headers["X-Key-ID"] = identity.keyId;
     } catch {
-      warnUnison("No identity yet, skipping lyrics personalization");
+      console.warn(LOG_PREFIX_UNISON, "No identity yet, skipping lyrics personalization");
     }
 
     const response = await fetchWithTimeout(`${UNISON_API_BASE_URL}/lyrics/${id}`, { headers });
@@ -219,7 +218,7 @@ export async function getLyricsById(id: number): Promise<ApiResult<UnisonLyricsE
     return { success: json.success, data: json.data ?? null };
   } catch (err) {
     const error = err instanceof Error ? err.message : "Network error";
-    warnUnison("Fetch by ID failed:", error);
+    console.warn(LOG_PREFIX_UNISON, "Fetch by ID failed:", error);
     return { success: false, data: null, error };
   }
 }
@@ -231,7 +230,7 @@ export async function getLyricsByVideoId(videoId: string): Promise<ApiResult<Uni
       const identity = await getIdentity();
       headers["X-Key-ID"] = identity.keyId;
     } catch {
-      warnUnison("No identity yet, skipping lyrics personalization");
+      console.warn(LOG_PREFIX_UNISON, "No identity yet, skipping lyrics personalization");
     }
 
     const response = await fetchWithTimeout(`${UNISON_API_BASE_URL}/lyrics?v=${encodeURIComponent(videoId)}`, {
@@ -244,7 +243,7 @@ export async function getLyricsByVideoId(videoId: string): Promise<ApiResult<Uni
     return { success: json.success, data: json.data ?? null };
   } catch (err) {
     const error = err instanceof Error ? err.message : "Network error";
-    warnUnison("Fetch by videoId failed:", error);
+    console.warn(LOG_PREFIX_UNISON, "Fetch by videoId failed:", error);
     return { success: false, data: null, error };
   }
 }

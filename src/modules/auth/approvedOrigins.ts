@@ -1,5 +1,4 @@
-import { AUTH_APPROVAL_TTL_MS } from "@constants";
-import { warnAuth } from "@core/logger";
+import { AUTH_APPROVAL_TTL_MS, LOG_PREFIX_AUTH } from "@constants";
 
 const STORAGE_KEY = "blAuthApprovedOrigins";
 
@@ -17,7 +16,7 @@ async function loadAll(): Promise<ApprovalMap> {
     if (raw && typeof raw === "object") return raw as ApprovalMap;
     return {};
   } catch (err) {
-    warnAuth("approvedOrigins load failed", err);
+    console.warn(LOG_PREFIX_AUTH, "approvedOrigins load failed", err);
     return {};
   }
 }
@@ -26,7 +25,7 @@ async function saveAll(map: ApprovalMap): Promise<void> {
   try {
     await chrome.storage.local.set({ [STORAGE_KEY]: map });
   } catch (err) {
-    warnAuth("approvedOrigins save failed", err);
+    console.warn(LOG_PREFIX_AUTH, "approvedOrigins save failed", err);
   }
 }
 
