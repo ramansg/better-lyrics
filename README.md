@@ -8,13 +8,13 @@ Better Lyrics upgrades your YouTube Music™ experience by providing beautiful t
 
 <p align="left">
  <a aria-label="License" href="https://www.gnu.org/licenses/gpl-3.0.en.html"><img src="https://img.shields.io/badge/license-GPL_v3-blue.svg" alt=""/></a>
- <img src="https://img.shields.io/badge/version-2.3.2-blue.svg" alt=""/>
+ <img src="https://img.shields.io/badge/version-2.4.0 3-blue.svg" alt=""/>
 
  <img src="https://img.shields.io/badge/status-active-brightgreen.svg" alt=""/>
  <a aria-label="Better Stack Badge" href="https://better-lyrics-status.boidu.dev"><img height="20" src="https://uptime.betterstack.com/status-badges/v2/monitor/1dqoz.svg" alt="Better Stack Badge" /></a>
 
  <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-<img src="https://img.shields.io/badge/all_contributors-19-orange.svg" alt=""/>
+<img src="https://img.shields.io/badge/all_contributors-20-orange.svg" alt=""/>
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
  <a aria-label="Crowdin" href="https://crowdin.com/project/better-lyrics"><img alt="Crowdin" src="https://badges.crowdin.net/better-lyrics/localized.svg"></a>
  <a aria-label="Graphite" href="https://graphite.com/?utm_source=github&utm_medium=readme&utm_campaign=better-lyrics"><img height="20" src="https://img.shields.io/badge/Code_Review-Graphite-black?logo=Graphite&logoColor=white" alt="Graphite" /></a>
@@ -303,7 +303,7 @@ Right now, Better Lyrics is available for Chrome, Firefox, and Edge (and other C
 No, Better Lyrics is specifically designed for YouTube Music™. If you want something similar for other streaming services, check out these extensions. If you have suggestions for others, open a PR to add them to this list:
 
 - [Spicy Lyrics](https://github.com/Spikerko/spicy-lyrics) - Spotify
-- [Beautiful Lyrics](https://github.com/surfbryce/beautiful-lyrics) - Spotify
+- [Radiant Lyrics](https://radiant-lyrics.org/) - Tidal & Mobile
 - [YouLy+](https://github.com/ibratabian17/YouLyPlus) - Apple Music, Tidal
 
 ## Funding
@@ -356,12 +356,12 @@ YouTube Music™, YouTube™, Google™, and Chrome™ are trademarks of Google 
 
 ## Star History
 
-<a href="https://www.star-history.com/#better-lyrics/better-lyrics&type=date&legend=top-left">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=better-lyrics/better-lyrics&type=date&theme=dark&legend=top-left" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=better-lyrics/better-lyrics&type=date&legend=top-left" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=better-lyrics/better-lyrics&type=date&legend=top-left" />
-  </picture>
+<a href="https://www.star-history.com/?type=date&legend=top-left&repos=better-lyrics%2Fbetter-lyrics">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=better-lyrics/better-lyrics&type=date&theme=dark&legend=top-left&sealed_token=J9IwYlZ-HGwqs7dxJCnowQ3wlZ0Fk1M57QbNY8fPYlGhkJCr00lCXEeFvKJ3NegBZikDzmT-5Z2zMrYhV00rhRYZLalwZOe09JI38lDIvk3iJd0MQDWR7Wc00peRdRtQXrXa23fbkUZTxnlCmlh38ZotjrpAAXoHGqhwAlLO0iQXEC0iOUGVM0p6u0TB" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=better-lyrics/better-lyrics&type=date&legend=top-left&sealed_token=J9IwYlZ-HGwqs7dxJCnowQ3wlZ0Fk1M57QbNY8fPYlGhkJCr00lCXEeFvKJ3NegBZikDzmT-5Z2zMrYhV00rhRYZLalwZOe09JI38lDIvk3iJd0MQDWR7Wc00peRdRtQXrXa23fbkUZTxnlCmlh38ZotjrpAAXoHGqhwAlLO0iQXEC0iOUGVM0p6u0TB" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=better-lyrics/better-lyrics&type=date&legend=top-left&sealed_token=J9IwYlZ-HGwqs7dxJCnowQ3wlZ0Fk1M57QbNY8fPYlGhkJCr00lCXEeFvKJ3NegBZikDzmT-5Z2zMrYhV00rhRYZLalwZOe09JI38lDIvk3iJd0MQDWR7Wc00peRdRtQXrXa23fbkUZTxnlCmlh38ZotjrpAAXoHGqhwAlLO0iQXEC0iOUGVM0p6u0TB" />
+ </picture>
 </a>
 
 ## Contributors ✨
@@ -397,6 +397,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
       <td align="center" valign="top" width="14.28%"><a href="https://binimum.org"><img src="https://avatars.githubusercontent.com/u/61615730?v=4?s=100" width="100px;" alt="binimum"/><br /><sub><b>binimum</b></sub></a><br /><a href="https://github.com/better-lyrics/better-lyrics/commits?author=binimum" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/noobpro45"><img src="https://avatars.githubusercontent.com/u/137317223?v=4?s=100" width="100px;" alt="Michael"/><br /><sub><b>Michael</b></sub></a><br /><a href="https://github.com/better-lyrics/better-lyrics/commits?author=noobpro45" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/MeDustyy"><img src="https://avatars.githubusercontent.com/u/58863601?v=4?s=100" width="100px;" alt="Oleksandr"/><br /><sub><b>Oleksandr</b></sub></a><br /><a href="#ideas-MeDustyy" title="Ideas, Planning, & Feedback">🤔</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/llc1123"><img src="https://avatars.githubusercontent.com/u/5478730?v=4?s=100" width="100px;" alt="粒粒橙"/><br /><sub><b>粒粒橙</b></sub></a><br /><a href="https://github.com/better-lyrics/better-lyrics/commits?author=llc1123" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>

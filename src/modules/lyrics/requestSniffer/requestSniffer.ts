@@ -1,6 +1,6 @@
 import type { LongBylineText, NextResponse, ThumbnailElement } from "@modules/lyrics/requestSniffer/NextResponse";
-import { log } from "@utils";
 import { parseTime } from "./utils";
+import { logCore } from "@core/logger";
 
 interface Segment {
   primaryVideoStartTimeMilliseconds: number;
@@ -28,6 +28,8 @@ interface VideoMetadata {
   id: string;
   title: string;
   artist: string;
+  displayTitle: string;
+  displayByline: string;
   album: string;
   isVideo: boolean;
   durationMs: number;
@@ -41,6 +43,68 @@ const browseIdToVideoIdMap = new Map<string, string>();
 const videoIdToLyricsMap = new Map<string, LyricsInfo>();
 const videoMetaDataMap = new Map<string, VideoMetadata>();
 const videoIdToAlbumMap = new Map<string, string | null>();
+const REQUEST_REPLAY_EVENT = "blyrics-request-sniff-replay";
+const RESPONSE_EVENT = "blyrics-send-response";
+const REPLAY_RETRY_DELAY_MS = 100;
+
+interface LocalizedDisplayMetadata {
+  title: string;
+  byline: string;
+}
+
+function getPlaylistPanelContents(response: NextResponse) {
+  return (
+    response.contents?.singleColumnMusicWatchNextResultsRenderer.tabbedRenderer.watchNextTabbedResultsRenderer.tabs?.[0]
+      .tabRenderer.content?.musicQueueRenderer.content?.playlistPanelRenderer.contents ??
+    response.continuationContents?.playlistPanelContinuation.contents
+  );
+}
+
+function getBylineText(longBylineText: LongBylineText): string {
+  return (longBylineText?.runs ?? [])
+    .map(run => run.text)
+    .join("")
+    .trim();
+}
+
+function collectLocalizedDisplayMetadata(response: NextResponse): Map<string, LocalizedDisplayMetadata> {
+  const metadata = new Map<string, LocalizedDisplayMetadata>();
+  for (const content of getPlaylistPanelContents(response) ?? []) {
+    const primaryRenderer =
+      content.playlistPanelVideoRenderer ??
+      content.playlistPanelVideoWrapperRenderer?.primaryRenderer.playlistPanelVideoRenderer;
+    if (primaryRenderer) {
+      metadata.set(primaryRenderer.videoId, {
+        title: primaryRenderer.title.runs[0]?.text ?? "",
+        byline: getBylineText(primaryRenderer.longBylineText),
+      });
+    }
+
+    const counterpartRenderer =
+      content.playlistPanelVideoWrapperRenderer?.counterpart?.[0]?.counterpartRenderer.playlistPanelVideoRenderer;
+    if (counterpartRenderer) {
+      metadata.set(counterpartRenderer.videoId, {
+        title: counterpartRenderer.title.runs[0]?.text ?? "",
+        byline: getBylineText(counterpartRenderer.longBylineText),
+      });
+    }
+  }
+  return metadata;
+}
+
+function localizedMetadataOrFallback(
+  metadata: Map<string, LocalizedDisplayMetadata>,
+  videoId: string,
+  title: string,
+  artist: string
+): LocalizedDisplayMetadata {
+  return (
+    metadata.get(videoId) ?? {
+      title,
+      byline: artist,
+    }
+  );
+}
 
 // /**
 //  * ContinuationId -> Last song in the playlist (before the continuation)
@@ -94,7 +158,7 @@ export function getLyrics(videoId: string, maxRetries = 250, signal?: AbortSigna
       if (checkCount > maxRetries) {
         clearInterval(checkInterval);
         signal?.removeEventListener("abort", abortHandler);
-        log("Failed to sniff lyrics");
+        logCore("Failed to sniff lyrics");
         resolve({ hasLyrics: false, lyrics: "", sourceText: "" });
         return;
       }
@@ -148,7 +212,7 @@ export function getSongMetadata(
       if (checkCount > maxCheckCount) {
         clearInterval(checkInterval);
         signal?.removeEventListener("abort", abortHandler);
-        log("Failed to find Segment Map for video");
+        logCore("Failed to find Segment Map for video");
         resolve(null);
         return;
       }
@@ -157,6 +221,27 @@ export function getSongMetadata(
 
     signal?.addEventListener("abort", abortHandler, { once: true });
   });
+}
+
+/**
+ * Resolves the metadata whose thumbnail is the square album art. A music video's own thumbnail is a
+ * 16:9 frame, so its audio counterpart is preferred whenever the queue exposes one.
+ *
+ * @param videoId
+ * @param maxCheckCount
+ * @param signal - AbortSignal to cancel polling
+ * @return
+ */
+export async function getArtworkMetadata(
+  videoId: string,
+  maxCheckCount = 250,
+  signal?: AbortSignal
+): Promise<VideoMetadata | null> {
+  const metadata = await getSongMetadata(videoId, maxCheckCount, signal);
+  if (metadata?.isVideo && metadata.counterpartVideoId) {
+    return getSongMetadata(metadata.counterpartVideoId, 10, signal);
+  }
+  return metadata;
 }
 
 /**
@@ -172,26 +257,24 @@ export async function getSongAlbum(videoId: string, signal?: AbortSignal): Promi
     }
     await new Promise(resolve => setTimeout(resolve, 20));
   }
-  log("Song album information didn't come in time for: ", videoId);
+  logCore("Song album information didn't come in time for: ", videoId);
 }
 
-export function setupRequestSniffer(): void {
+export function setupRequestSniffer(): () => void {
   let url = new URL(window.location.href);
   if (url.searchParams.has("v")) {
     firstRequestMissedVideoId = url.searchParams.get("v");
   }
 
-  document.addEventListener("blyrics-send-response", (event: Event) => {
+  const handleSniffResponse = (event: Event): void => {
     if (!(event instanceof CustomEvent)) return;
-    let { /** @type string */ url, requestJson, responseJson } = event.detail;
+    let { /** @type string */ url, requestJson, responseJson, localizedResponseJson } = event.detail;
     if (matchesPath(url, "/youtubei/v1/next")) {
       let nextResponse = responseJson as NextResponse;
-      let playlistPanelRendererContents =
-        nextResponse.contents.singleColumnMusicWatchNextResultsRenderer.tabbedRenderer.watchNextTabbedResultsRenderer
-          .tabs?.[0].tabRenderer.content?.musicQueueRenderer.content?.playlistPanelRenderer.contents;
-      if (!playlistPanelRendererContents) {
-        playlistPanelRendererContents = nextResponse.continuationContents?.playlistPanelContinuation.contents;
-      }
+      const localizedMetadata = collectLocalizedDisplayMetadata(
+        (localizedResponseJson ?? responseJson) as NextResponse
+      );
+      let playlistPanelRendererContents = getPlaylistPanelContents(nextResponse);
 
       if (!playlistPanelRendererContents) {
         playlistPanelRendererContents =
@@ -201,9 +284,9 @@ export function setupRequestSniffer(): void {
             ?.contents;
 
         if (!playlistPanelRendererContents) {
-          log("PlaylistPanelRendererContents not found.");
+          logCore("PlaylistPanelRendererContents not found.");
         } else {
-          log("PlaylistPanelRendererContents found in onResponseReceivedEndpoints!");
+          logCore("PlaylistPanelRendererContents found in onResponseReceivedEndpoints!");
         }
       }
 
@@ -318,7 +401,19 @@ export function setupRequestSniffer(): void {
           let nextCounterPartVideo = nextPair?.counterpart?.id || nextPrimaryVideo;
 
           let counterpart = videoPair.counterpart;
+          const primaryDisplay = localizedMetadataOrFallback(
+            localizedMetadata,
+            videoPair.primary.id,
+            videoPair.primary.title,
+            videoPair.primary.artist
+          );
           if (counterpart) {
+            const counterpartDisplay = localizedMetadataOrFallback(
+              localizedMetadata,
+              counterpart.id,
+              counterpart.title,
+              counterpart.artist
+            );
             let numSegmentMap: SegmentMap | null = null; // our segment map with `Number` as the type
             let reversedSegmentMap: SegmentMap | null = null;
 
@@ -343,6 +438,8 @@ export function setupRequestSniffer(): void {
 
             videoMetaDataMap.set(videoPair.primary.id, {
               artist: videoPair.primary.artist,
+              displayByline: primaryDisplay.byline,
+              displayTitle: primaryDisplay.title,
               nextVideoId: nextPrimaryVideo,
               title: videoPair.primary.title,
               album: videoPair.primary.album,
@@ -357,6 +454,8 @@ export function setupRequestSniffer(): void {
 
             videoMetaDataMap.set(counterpart.id, {
               artist: counterpart.artist,
+              displayByline: counterpartDisplay.byline,
+              displayTitle: counterpartDisplay.title,
               isVideo: counterpart.isVideo,
               nextVideoId: nextCounterPartVideo,
               album: counterpart.album,
@@ -373,6 +472,8 @@ export function setupRequestSniffer(): void {
           } else {
             videoMetaDataMap.set(videoPair.primary.id, {
               artist: videoPair.primary.artist,
+              displayByline: primaryDisplay.byline,
+              displayTitle: primaryDisplay.title,
               nextVideoId: nextPrimaryVideo,
               title: videoPair.primary.title,
               album: videoPair.primary.album,
@@ -390,7 +491,7 @@ export function setupRequestSniffer(): void {
       }
 
       let continuation =
-        nextResponse.contents.singleColumnMusicWatchNextResultsRenderer.tabbedRenderer.watchNextTabbedResultsRenderer
+        nextResponse.contents?.singleColumnMusicWatchNextResultsRenderer.tabbedRenderer.watchNextTabbedResultsRenderer
           .tabs[0].tabRenderer.content?.musicQueueRenderer.content?.playlistPanelRenderer.continuations?.[0]
           .nextRadioContinuationData.continuation;
       if (continuation) {
@@ -461,7 +562,22 @@ export function setupRequestSniffer(): void {
         }
       }
     }
-  });
+  };
+
+  document.addEventListener(RESPONSE_EVENT, handleSniffResponse);
+
+  const requestReplay = (): void => {
+    document.dispatchEvent(new Event(REQUEST_REPLAY_EVENT));
+  };
+  requestReplay();
+  // Extension.js injects the MAIN and ISOLATED entries independently. The immediate request is
+  // normally handled by the old or new interceptor; one retry covers the brief handoff between them.
+  const replayRetry = window.setTimeout(requestReplay, REPLAY_RETRY_DELAY_MS);
+
+  return () => {
+    window.clearTimeout(replayRetry);
+    document.removeEventListener(RESPONSE_EVENT, handleSniffResponse);
+  };
 }
 
 function matchesPath(urlString: string, path: string) {

@@ -1,48 +1,31 @@
-import { GENERAL_ERROR_LOG, LOG_PREFIX } from "@constants";
+import { reloadLyrics } from "@core/appState";
 import { decompressString, isCompressed } from "@core/compression";
-import { compileRicsToStyles, getLocalStorage, getSyncStorage, loadChunkedStyles } from "@core/storage";
-import { setThemeSettings } from "@modules/settings/themeOptions";
-import { log } from "@utils";
-import { cachedDurations } from "./animationEngine";
+import {
+  compileRicsToStyles,
+  getAppliedStoreThemeId,
+  getLocalStorage,
+  getSyncStorage,
+  loadChunkedStyles,
+} from "@core/storage";
+import { mainView } from "./mainLyricsView";
+import { publishPictureInPictureLyrics } from "./pictureInPicture/lyricsPublisher";
+import { logCore, logError } from "@core/logger";
 
 let hasSubscribedToStyles = false;
 
-function parseBlyricsConfig(cssContent: string): Map<string, string> {
-  const configMap = new Map<string, string>();
-
-  const commentRegex = /\/\*([\s\S]*?)\*\//g;
-  const configRegex = /(blyrics-[\w-]+)\s*=\s*([^;]+);/g;
-
-  let commentMatch;
-
-  while ((commentMatch = commentRegex.exec(cssContent)) !== null) {
-    const commentContent = commentMatch[1];
-    let configMatch;
-
-    while ((configMatch = configRegex.exec(commentContent)) !== null) {
-      const key = configMatch[1];
-      let value = configMatch[2].trim();
-      configMap.set(key, value);
-    }
-  }
-
-  return configMap;
-}
-
+/**
+ * Hands a compiled theme to the side panel's view, which parses the `blyrics-*` config out of it,
+ * applies the stylesheet to this document and reports whether the lines have to be built again.
+ * Everything before this point is the extension's: where the theme was stored, whether it was
+ * compressed, and compiling the RICS source it is written in.
+ */
 export function applyCustomStyles(css: string): void {
-  let config = parseBlyricsConfig(css);
-  setThemeSettings(config);
+  const needsLyricReload = mainView.setTheme(css);
+  publishPictureInPictureLyrics();
 
-  let styleTag = document.getElementById("blyrics-custom-style");
-  if (styleTag) {
-    styleTag.textContent = css;
-  } else {
-    styleTag = document.createElement("style");
-    styleTag.id = "blyrics-custom-style";
-    styleTag.textContent = css;
-    document.head.appendChild(styleTag);
+  if (needsLyricReload) {
+    reloadLyrics();
   }
-  cachedDurations.clear();
 }
 
 interface CSSStorageData {
@@ -81,7 +64,7 @@ export async function getAndApplyCustomStyles(): Promise<void> {
       applyCustomStyles(compileRicsToStyles(css));
     }
   } catch (error) {
-    log(GENERAL_ERROR_LOG, error);
+    logError(error);
     try {
       const chunkedStyles = await loadChunkedStyles();
       if (chunkedStyles) {
@@ -113,23 +96,22 @@ export async function getAndApplyCustomStyles(): Promise<void> {
         applyCustomStyles(compileRicsToStyles(css));
       }
     } catch (fallbackError) {
-      log(GENERAL_ERROR_LOG, fallbackError);
+      logError(fallbackError);
     }
   }
 }
 
 async function handleStoreThemeChange(key: string, change: { oldValue?: any; newValue?: any }): Promise<void> {
   const themeId = key.replace("storeTheme:", "");
-  const { activeStoreTheme } = await getSyncStorage<{ activeStoreTheme?: string }>(["activeStoreTheme"]);
 
-  if (activeStoreTheme !== themeId) return;
+  if ((await getAppliedStoreThemeId()) !== themeId) return;
 
   const theme = change.newValue;
   if (!theme?.css) return;
 
   if (change.oldValue?.css === theme.css && change.oldValue?.version === theme.version) return;
 
-  log(LOG_PREFIX, "Store theme updated:", theme.title || themeId);
+  logCore("Store theme updated:", theme.title || themeId);
   applyCustomStyles(compileRicsToStyles(theme.css));
 }
 
