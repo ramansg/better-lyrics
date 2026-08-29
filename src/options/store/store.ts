@@ -1,4 +1,4 @@
-import { formatCreators } from "@core/customCss";
+import { LOG_PREFIX_STORE } from "@constants";
 import { t } from "@core/i18n";
 import { getLocalStorage, getSyncStorage } from "@core/storage";
 import autoAnimate, { type AnimationController } from "@formkit/auto-animate";
@@ -40,7 +40,6 @@ import {
   validateThemeRepo,
 } from "./themeStoreService";
 import { cleanupTurnstile, getTurnstileToken } from "./turnstile";
-import { errorStore, warnStore } from "@core/logger";
 
 let detailModalOverlay: HTMLElement | null = null;
 let urlModalOverlay: HTMLElement | null = null;
@@ -624,7 +623,7 @@ export async function initStoreUI(): Promise<void> {
   setupKeyboardListeners();
 
   await Promise.all([loadUserRatings(), loadUserInstalls()]);
-  setTimeout(checkForThemeUpdatesIfDue, 500);
+  setTimeout(checkForThemeUpdates, 500);
 }
 
 export async function initMarketplaceUI(): Promise<void> {
@@ -1063,7 +1062,7 @@ async function loadMarketplace(): Promise<void> {
 
     openThemeFromUrlParam();
   } catch (err) {
-    errorStore("Failed to load themes:", err);
+    console.error(LOG_PREFIX_STORE, "Failed to load themes:", err);
     if (loading) loading.style.display = "none";
     if (error) {
       error.style.display = "flex";
@@ -1105,28 +1104,6 @@ async function refreshMarketplace(): Promise<void> {
   await loadMarketplace();
 }
 
-const THEME_UPDATE_CHECK_KEY = "lastThemeUpdateCheck";
-const THEME_UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000;
-
-/**
- * A full check costs one request per registry theme, so opening the popup
- * repeatedly should not re-run it. The background alarm covers the long tail.
- */
-async function checkForThemeUpdatesIfDue(): Promise<void> {
-  try {
-    const stored = await getLocalStorage<{ [THEME_UPDATE_CHECK_KEY]?: number }>([THEME_UPDATE_CHECK_KEY]);
-    const lastCheck = stored[THEME_UPDATE_CHECK_KEY] ?? 0;
-    if (Date.now() - lastCheck < THEME_UPDATE_CHECK_INTERVAL_MS) return;
-
-    await chrome.storage.local.set({ [THEME_UPDATE_CHECK_KEY]: Date.now() });
-  } catch (err) {
-    warnStore("Update check throttle failed:", err);
-    return;
-  }
-
-  await checkForThemeUpdates();
-}
-
 async function checkForThemeUpdates(): Promise<void> {
   try {
     const installed = await getInstalledStoreThemes();
@@ -1139,7 +1116,7 @@ async function checkForThemeUpdates(): Promise<void> {
       updateYourThemesDropdown();
     }
   } catch (err) {
-    warnStore("Update check failed:", err);
+    console.warn(LOG_PREFIX_STORE, "Update check failed:", err);
   }
 }
 
@@ -1335,7 +1312,7 @@ function renderNextBatch(batchSize: number): void {
 function matchesSearchQuery(theme: StoreTheme, query: string): boolean {
   if (!query) return true;
 
-  const searchableText = [theme.title, theme.description, formatCreators(theme.creators)].join(" ").toLowerCase();
+  const searchableText = [theme.title, theme.description, ...theme.creators].join(" ").toLowerCase();
 
   return searchableText.includes(query);
 }
@@ -1480,7 +1457,7 @@ function createStoreThemeCard(
 
   const author = document.createElement("div");
   author.className = "store-card-author";
-  author.textContent = `By ${formatCreators(theme.creators)}`;
+  author.textContent = `By ${theme.creators.join(", ")}`;
 
   const actionBtn = document.createElement("button");
   actionBtn.className = `store-card-btn ${isInstalled ? "store-card-btn-remove" : "store-card-btn-install"}`;
@@ -1525,7 +1502,7 @@ function createStoreThemeCard(
       const applied = await handleApplyTheme(installedTheme);
       if (!applied) applyBtn.disabled = false;
     } catch (err) {
-      errorStore("Failed to apply theme:", err);
+      console.error(LOG_PREFIX_STORE, "Failed to apply theme:", err);
       applyBtn.disabled = false;
     }
   });
@@ -1713,13 +1690,13 @@ async function handleThemeAction(theme: StoreTheme, button: HTMLButtonElement): 
               }
             }
           })
-          .catch(err => errorStore("Failed to track install:", err));
+          .catch(err => console.error(LOG_PREFIX_STORE, "Failed to track install:", err));
       }
     }
 
     updateYourThemesDropdown();
   } catch (err) {
-    errorStore("Action failed:", err);
+    console.error(LOG_PREFIX_STORE, "Action failed:", err);
     button.className = `store-card-btn ${isRemoveButton ? "store-card-btn-remove" : "store-card-btn-install"}`;
     button.textContent = isRemoveButton ? t("marketplace_remove") : t("marketplace_install");
     showAlert(`Failed: ${err}`);
@@ -1751,7 +1728,7 @@ async function openDetailModal(theme: StoreTheme, urlThemeInfo?: UrlThemeInfo): 
       titleEl.appendChild(createGitHubBadge("detail-url-badge", title));
     }
   }
-  if (authorEl) authorEl.textContent = `By ${formatCreators(theme.creators)} · v${theme.version}`;
+  if (authorEl) authorEl.textContent = `By ${theme.creators.join(", ")} · v${theme.version}`;
   if (descEl) descEl.replaceChildren(parseMarkdown(theme.description));
 
   const statsEl = document.getElementById("detail-stats");
@@ -1943,7 +1920,7 @@ async function openDetailModal(theme: StoreTheme, urlThemeInfo?: UrlThemeInfo): 
             turnstileToken = await getTurnstileToken();
           }
         } catch (turnstileError) {
-          errorStore("Turnstile verification failed:", turnstileError);
+          console.error(LOG_PREFIX_STORE, "Turnstile verification failed:", turnstileError);
           currentRating = previousRating;
           updateStarDisplay(previousRating, false);
           ratingStatusEl.textContent = "Verification failed. Please try again.";
@@ -2030,7 +2007,7 @@ async function openDetailModal(theme: StoreTheme, urlThemeInfo?: UrlThemeInfo): 
         const applied = await handleApplyTheme(installedTheme);
         if (!applied) detailApplyBtn.disabled = false;
       } catch (err) {
-        errorStore("Failed to apply theme:", err);
+        console.error(LOG_PREFIX_STORE, "Failed to apply theme:", err);
         detailApplyBtn.disabled = false;
         showAlert(`${t("marketplace_applyFailed")}: ${err}`);
       }
@@ -2082,7 +2059,7 @@ async function openDetailModal(theme: StoreTheme, urlThemeInfo?: UrlThemeInfo): 
                     }
                   }
                 })
-                .catch(err => errorStore("Failed to track install:", err));
+                .catch(err => console.error(LOG_PREFIX_STORE, "Failed to track install:", err));
             }
           }
         }
@@ -2358,7 +2335,7 @@ async function handleUrlInstall(): Promise<void> {
     await applyFiltersToGrid();
     await refreshStoreCards();
   } catch (err) {
-    errorStore("URL install failed:", err);
+    console.error(LOG_PREFIX_STORE, "URL install failed:", err);
     if (error) {
       error.textContent = `${err}`;
       error.style.display = "block";
@@ -2419,7 +2396,7 @@ async function updateYourThemesDropdown(): Promise<void> {
 
     const meta = document.createElement("span");
     meta.className = "your-themes-item-meta";
-    meta.textContent = `By ${formatCreators(theme.creators)} · v${theme.version}`;
+    meta.textContent = `By ${theme.creators.join(", ")} · v${theme.version}`;
 
     info.appendChild(titleRow);
     info.appendChild(meta);
@@ -2475,7 +2452,7 @@ async function handleApplyTheme(theme: InstalledStoreTheme): Promise<boolean> {
 
     return true;
   } catch (err) {
-    errorStore("Failed to apply theme:", err);
+    console.error(LOG_PREFIX_STORE, "Failed to apply theme:", err);
     showAlert(`${t("marketplace_applyFailed")}: ${err}`);
     return false;
   }

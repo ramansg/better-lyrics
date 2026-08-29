@@ -1,5 +1,5 @@
 import { getLyrics as getRequestSnifferLyrics } from "@modules/lyrics/requestSniffer/requestSniffer";
-import { PlainParser } from "@braccato/parsers";
+import { parsePlainLyrics } from "./lrcUtils";
 import { type LyricSourceResult, type ProviderParameters } from "./shared";
 
 export type YTLyricSourceResult = LyricSourceResult & {
@@ -12,7 +12,7 @@ export default async function ytLyrics(providerParameters: ProviderParameters): 
     let lyricsText = lyricsObj.lyrics!;
     let sourceText = lyricsObj.sourceText!.substring(8) + " (via YT)";
 
-    let lyricsArray = PlainParser.parse(lyricsText);
+    let lyricsArray = parsePlainLyrics(lyricsText);
     providerParameters.sourceMap["yt-lyrics"].lyricSourceResult = {
       lyrics: lyricsArray,
       text: lyricsText,

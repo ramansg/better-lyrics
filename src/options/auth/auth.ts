@@ -1,8 +1,6 @@
-import { AUTH_PORT_NAME_PREFIX } from "@constants";
+import { type AuthPartner, AUTH_PORT_NAME_PREFIX, getAuthPartnerByOrigin, LOG_PREFIX_AUTH } from "@constants";
 import { initI18n, loadLocaleOverride, t } from "@core/i18n";
 import { getDisplayName } from "@core/keyIdentity";
-import { type AuthPartner, getAuthPartnerByOrigin } from "@modules/auth/partners";
-import { logAuth, warnAuth } from "@core/logger";
 
 interface RequestParams {
   requestId: string;
@@ -43,7 +41,7 @@ function originLabel(origin: string): string {
 
 function renderLogos(partner: AuthPartner | undefined): void {
   const logo = document.getElementById("auth-logo") as HTMLImageElement | null;
-  if (logo) logo.src = chrome.runtime.getURL("images/icons/icon-512.png");
+  if (logo) logo.src = chrome.runtime.getURL("icons/icon-512.png");
 
   const pulse = document.getElementById("auth-pulse");
   const partnerLogo = document.getElementById("auth-partner-logo") as HTMLImageElement | null;
@@ -98,7 +96,7 @@ async function bindDynamicText(params: RequestParams): Promise<void> {
       const displayName = await getDisplayName();
       subtitle.textContent = t("auth_consentSubheading", displayName);
     } catch (err) {
-      warnAuth("identity load failed", err);
+      console.warn(LOG_PREFIX_AUTH, "identity load failed", err);
       subtitle.textContent = t("auth_consentSubheading", "");
     }
     subtitle.dataset.ready = "true";
@@ -116,7 +114,7 @@ function wireActions(port: chrome.runtime.Port): void {
     try {
       port.postMessage({ result: "approve", remember: remember?.checked === true });
     } catch (err) {
-      warnAuth("approve post failed", err);
+      console.warn(LOG_PREFIX_AUTH, "approve post failed", err);
       showError("auth_sessionExpired");
     }
   });
@@ -127,7 +125,7 @@ function wireActions(port: chrome.runtime.Port): void {
     try {
       port.postMessage({ result: "cancel" });
     } catch (err) {
-      warnAuth("cancel post failed", err);
+      console.warn(LOG_PREFIX_AUTH, "cancel post failed", err);
       showError("auth_sessionExpired");
     }
   });
@@ -136,8 +134,8 @@ function wireActions(port: chrome.runtime.Port): void {
 function wireDevActions(): void {
   const approve = document.getElementById("auth-approve") as HTMLButtonElement | null;
   const cancel = document.getElementById("auth-cancel") as HTMLButtonElement | null;
-  approve?.addEventListener("click", () => logAuth("[dev] approve clicked"));
-  cancel?.addEventListener("click", () => logAuth("[dev] cancel clicked"));
+  approve?.addEventListener("click", () => console.log(LOG_PREFIX_AUTH, "[dev] approve clicked"));
+  cancel?.addEventListener("click", () => console.log(LOG_PREFIX_AUTH, "[dev] cancel clicked"));
 }
 
 async function main(): Promise<void> {

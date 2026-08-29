@@ -1,9 +1,8 @@
-import { saveCustomCss } from "@core/customCss";
+import { LOG_PREFIX_EDITOR } from "@constants";
 import { editorStateManager } from "../core/state";
 import { showAlert } from "../ui/feedback";
-import { broadcastRICSToTabs, showSyncSuccess } from "./storage";
+import { broadcastRICSToTabs, saveToStorageWithFallback, showSyncSuccess } from "./storage";
 import { hideThemeName, updateThemeSelectorButton } from "./themes";
-import { errorEditor, logEditor } from "@core/logger";
 
 export const generateDefaultFilename = (): string => {
   const date = new Date();
@@ -71,15 +70,15 @@ const fallbackSaveMethod = (content: string, defaultFilename: string): void => {
 
 class ImportManager {
   async importCSSFile(file: File): Promise<void> {
-    logEditor(` Starting import of file: ${file.name}`);
+    console.log(LOG_PREFIX_EDITOR, ` Starting import of file: ${file.name}`);
 
     try {
       const css = await this.readFileContent(file);
-      logEditor(` File read successfully: ${css.length} bytes`);
+      console.log(LOG_PREFIX_EDITOR, ` File read successfully: ${css.length} bytes`);
 
       await this.performImport(css, file.name);
     } catch (error) {
-      errorEditor("Import failed:", error);
+      console.error(LOG_PREFIX_EDITOR, "Import failed:", error);
       showAlert("Error importing theme file! Please try again.");
       throw error;
     }
@@ -107,34 +106,34 @@ class ImportManager {
   }
 
   private async performImport(css: string, filename: string): Promise<void> {
-    logEditor(` Performing import operation`);
+    console.log(LOG_PREFIX_EDITOR, ` Performing import operation`);
 
     await editorStateManager.queueOperation("import", async () => {
-      logEditor(` Step 1: Clearing theme state`);
+      console.log(LOG_PREFIX_EDITOR, ` Step 1: Clearing theme state`);
       await editorStateManager.clearThemeState();
       hideThemeName();
       updateThemeSelectorButton();
 
-      logEditor(` Step 2: Incrementing save count`);
+      console.log(LOG_PREFIX_EDITOR, ` Step 2: Incrementing save count`);
       editorStateManager.incrementSaveCount();
       editorStateManager.setIsSaving(true);
 
       try {
-        logEditor(` Step 3: Setting editor content`);
+        console.log(LOG_PREFIX_EDITOR, ` Step 3: Setting editor content`);
         await editorStateManager.setEditorContent(css, `file-import:${filename}`, false);
 
-        logEditor(` Step 4: Saving to storage`);
-        const result = await saveCustomCss(css);
+        console.log(LOG_PREFIX_EDITOR, ` Step 4: Saving to storage`);
+        const result = await saveToStorageWithFallback(css);
 
         if (!result.success || !result.strategy) {
           throw new Error(`Storage save failed: ${result.error?.message || "Unknown error"}`);
         }
 
-        logEditor(` Step 5: Sending update message`);
+        console.log(LOG_PREFIX_EDITOR, ` Step 5: Sending update message`);
         showSyncSuccess(result.strategy, result.wasRetry);
         await broadcastRICSToTabs(css, result.strategy);
 
-        logEditor(` Import completed successfully`);
+        console.log(LOG_PREFIX_EDITOR, ` Import completed successfully`);
         showAlert(`Theme file "${filename}" imported successfully!`);
       } finally {
         editorStateManager.setIsSaving(false);

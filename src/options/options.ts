@@ -3,6 +3,7 @@
 import {
   DOCK_CONTROL_ORDER_DEFAULT,
   DOCK_DEFAULT_POSITION,
+  LOG_PREFIX,
   ROMANIZATION_LANGUAGES,
   UNISON_API_BASE_URL,
 } from "@constants";
@@ -14,7 +15,6 @@ import { parseSvgString, syncTypeColors } from "@modules/ui/lyricsDock/icons";
 import Sortable from "sortablejs";
 import { showModal } from "./editor/ui/feedback";
 import { initStoreUI, setupYourThemesButton } from "./store/store";
-import { errorCore, warnCore } from "@core/logger";
 
 interface Options {
   isLogsEnabled: boolean;
@@ -24,11 +24,6 @@ interface Options {
   isFullScreenDisabled: boolean;
   isStylizedAnimationsEnabled: boolean;
   isPassiveScrollEnabled: boolean;
-  isPictureInPictureEnabled: boolean;
-  isPictureInPictureAutoRestoreEnabled: boolean;
-  pipArtworkTransition: string;
-  pipTextTransition: string;
-  pipMarqueeEnabled: boolean;
   isTranslateEnabled: boolean;
   translationLanguage: string;
   isCursorAutoHideEnabled: boolean;
@@ -44,7 +39,6 @@ interface Options {
   isDockTranslateEnabled: boolean;
   isDockRomanizeEnabled: boolean;
   isDockOffsetEnabled: boolean;
-  isDockPictureInPictureEnabled: boolean;
   dockControlsOrder: string[];
   globalLyricOffset: number;
   richsyncOffsetTrim: number;
@@ -84,13 +78,6 @@ const getOptionsFromForm = (): Options => {
     isFullScreenDisabled: (document.getElementById("isFullScreenDisabled") as HTMLInputElement).checked,
     isStylizedAnimationsEnabled: (document.getElementById("isStylizedAnimationsEnabled") as HTMLInputElement).checked,
     isPassiveScrollEnabled: (document.getElementById("isPassiveScrollEnabled") as HTMLInputElement).checked,
-    isPictureInPictureEnabled: (document.getElementById("isPictureInPictureEnabled") as HTMLInputElement).checked,
-    isPictureInPictureAutoRestoreEnabled: (
-      document.getElementById("isPictureInPictureAutoRestoreEnabled") as HTMLInputElement
-    ).checked,
-    pipArtworkTransition: (document.getElementById("pipArtworkTransition") as HTMLSelectElement).value,
-    pipTextTransition: (document.getElementById("pipTextTransition") as HTMLSelectElement).value,
-    pipMarqueeEnabled: (document.getElementById("pipMarqueeEnabled") as HTMLInputElement).checked,
     isTranslateEnabled: (document.getElementById("translate") as HTMLInputElement).checked,
     translationLanguage: (document.getElementById("translationLanguage") as HTMLInputElement).value,
     isCursorAutoHideEnabled: (document.getElementById("cursorAutoHide") as HTMLInputElement).checked,
@@ -108,8 +95,6 @@ const getOptionsFromForm = (): Options => {
     isDockTranslateEnabled: (document.getElementById("isDockTranslateEnabled") as HTMLInputElement).checked,
     isDockRomanizeEnabled: (document.getElementById("isDockRomanizeEnabled") as HTMLInputElement).checked,
     isDockOffsetEnabled: (document.getElementById("isDockOffsetEnabled") as HTMLInputElement).checked,
-    isDockPictureInPictureEnabled: (document.getElementById("isDockPictureInPictureEnabled") as HTMLInputElement)
-      .checked,
     dockControlsOrder: getDockControlsOrder(),
     globalLyricOffset: parseFloat((document.getElementById("globalLyricOffset") as HTMLInputElement).value) || 0,
     richsyncOffsetTrim: parseFloat((document.getElementById("richsyncOffsetTrim") as HTMLInputElement).value) || 0,
@@ -134,11 +119,6 @@ function setDockControlsOrderInForm(order: string[]): void {
   for (const key of order) {
     const cell = picker.querySelector(`.control-cell[data-control="${key}"]`);
     if (cell) picker.appendChild(cell);
-  }
-  // A control added after the stored order was written is absent from it, so re-append it here;
-  // otherwise it stays put while every listed cell moves past it and it ends up first.
-  for (const cell of Array.from(picker.querySelectorAll<HTMLElement>(".control-cell"))) {
-    if (cell.dataset.control && !order.includes(cell.dataset.control)) picker.appendChild(cell);
   }
 }
 
@@ -273,11 +253,6 @@ const restoreOptions = (): void => {
     isFullScreenDisabled: false,
     isStylizedAnimationsEnabled: true,
     isPassiveScrollEnabled: true,
-    isPictureInPictureEnabled: true,
-    isPictureInPictureAutoRestoreEnabled: false,
-    pipArtworkTransition: "shuffle",
-    pipTextTransition: "spring",
-    pipMarqueeEnabled: true,
     isTranslateEnabled: false,
     translationLanguage: "en",
     isRomanizationEnabled: false,
@@ -308,7 +283,6 @@ const restoreOptions = (): void => {
     isDockTranslateEnabled: true,
     isDockRomanizeEnabled: true,
     isDockOffsetEnabled: true,
-    isDockPictureInPictureEnabled: true,
     dockControlsOrder: [...DOCK_CONTROL_ORDER_DEFAULT],
     globalLyricOffset: 0,
     richsyncOffsetTrim: 0,
@@ -339,7 +313,6 @@ const restoreOptions = (): void => {
 
   document.getElementById("clear-cache")!.addEventListener("click", () => clearTransientLyrics());
   setupUnisonActionsModal();
-  initPictureInPictureModal();
   initOffsetModal();
 };
 
@@ -354,12 +327,6 @@ const setOptionsInForm = (items: Options): void => {
   (document.getElementById("isStylizedAnimationsEnabled") as HTMLInputElement).checked =
     items.isStylizedAnimationsEnabled;
   (document.getElementById("isPassiveScrollEnabled") as HTMLInputElement).checked = items.isPassiveScrollEnabled;
-  (document.getElementById("isPictureInPictureEnabled") as HTMLInputElement).checked = items.isPictureInPictureEnabled;
-  (document.getElementById("isPictureInPictureAutoRestoreEnabled") as HTMLInputElement).checked =
-    items.isPictureInPictureAutoRestoreEnabled;
-  (document.getElementById("pipArtworkTransition") as HTMLSelectElement).value = items.pipArtworkTransition;
-  (document.getElementById("pipTextTransition") as HTMLSelectElement).value = items.pipTextTransition;
-  (document.getElementById("pipMarqueeEnabled") as HTMLInputElement).checked = items.pipMarqueeEnabled;
   (document.getElementById("translate") as HTMLInputElement).checked = items.isTranslateEnabled;
   (document.getElementById("translationLanguage") as HTMLInputElement).value = items.translationLanguage;
   (document.getElementById("isRomanizationEnabled") as HTMLInputElement).checked = items.isRomanizationEnabled;
@@ -372,14 +339,11 @@ const setOptionsInForm = (items: Options): void => {
   (document.getElementById("isDockTranslateEnabled") as HTMLInputElement).checked = items.isDockTranslateEnabled;
   (document.getElementById("isDockRomanizeEnabled") as HTMLInputElement).checked = items.isDockRomanizeEnabled;
   (document.getElementById("isDockOffsetEnabled") as HTMLInputElement).checked = items.isDockOffsetEnabled;
-  (document.getElementById("isDockPictureInPictureEnabled") as HTMLInputElement).checked =
-    items.isDockPictureInPictureEnabled;
   setOffsetDisplay("globalLyricOffset", items.globalLyricOffset);
   setOffsetDisplay("richsyncOffsetTrim", items.richsyncOffsetTrim);
   setOffsetDisplay("lineOffsetTrim", items.lineOffsetTrim);
   setDockControlsOrderInForm(items.dockControlsOrder);
   syncUnisonModalDependentState(items.isControlsDockEnabled);
-  syncPictureInPictureModalDependentState(items.isPictureInPictureEnabled);
   romanizationDisabledLanguages = items.romanizationDisabledLanguages || [];
   translationDisabledLanguages = items.translationDisabledLanguages || [];
   updateExclusionsConfigVisibility();
@@ -607,7 +571,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   initI18n();
   populateLanguageDropdown();
   initTabScrollIndicators();
-  initSettingHelpTooltips();
   restoreOptions();
   restoreActiveTab();
 });
@@ -669,38 +632,6 @@ function initTabScrollIndicators(): void {
   update();
 }
 
-// -- Setting help tooltips --------------------------
-
-const TOOLTIP_GAP = 8;
-
-// A modal body counts as a boundary even though it does not clip: a tooltip that runs past its top
-// covers the modal title, which is the thing the tooltip is explaining.
-function getBoundaryTop(element: HTMLElement): number {
-  for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
-    const clips = !getComputedStyle(ancestor)
-      .overflow.split(" ")
-      .every(axis => axis === "visible");
-
-    if (clips || ancestor.classList.contains("modal-body")) {
-      return ancestor.getBoundingClientRect().top;
-    }
-  }
-  return 0;
-}
-
-function initSettingHelpTooltips(): void {
-  for (const help of document.querySelectorAll<HTMLElement>(".setting-help")) {
-    const place = (): void => {
-      const height = parseFloat(getComputedStyle(help, "::after").height) || 0;
-      const spaceAbove = help.getBoundingClientRect().top - getBoundaryTop(help);
-      help.dataset.tooltipPlacement = spaceAbove >= height + TOOLTIP_GAP ? "top" : "bottom";
-    };
-
-    help.addEventListener("pointerenter", place);
-    help.addEventListener("focus", place);
-  }
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   new Sortable(document.getElementById("providers-list")!, {
     animation: 150,
@@ -738,7 +669,7 @@ async function initIdentityUI(): Promise<void> {
   try {
     displayNameEl.textContent = await getDisplayName();
   } catch (error) {
-    errorCore("Failed to load identity:", error);
+    console.error(LOG_PREFIX, "Failed to load identity:", error);
     displayNameEl.textContent = t("options_alert_identityLoadError");
   }
 
@@ -913,7 +844,7 @@ function initNicknameModal(): void {
       setStatus(mapCheckResult(json.data));
     } catch (error) {
       if (seq !== checkSeq) return;
-      warnCore("Nickname availability check failed:", error);
+      console.warn(LOG_PREFIX, "Nickname availability check failed:", error);
       setStatus("error");
     }
   };
@@ -962,7 +893,7 @@ function initNicknameModal(): void {
           const errJson = (await response.clone().json()) as { error?: string };
           if (errJson.error === "NICKNAME_PROFANE") conflict = "profane";
         } catch (err) {
-          warnCore("Nickname conflict body parse failed:", err);
+          console.warn(LOG_PREFIX, "Nickname conflict body parse failed:", err);
         }
         setStatus(conflict);
         resetBtn.disabled = false;
@@ -986,7 +917,7 @@ function initNicknameModal(): void {
       resetBtn.disabled = false;
       closeNicknameModal();
     } catch (error) {
-      warnCore("Nickname save failed:", error);
+      console.warn(LOG_PREFIX, "Nickname save failed:", error);
       setStatus("error");
       resetBtn.disabled = false;
     }
@@ -1030,7 +961,7 @@ function initNicknameModal(): void {
       resetBtn.disabled = false;
       closeNicknameModal();
     } catch (error) {
-      warnCore("Nickname reset failed:", error);
+      console.warn(LOG_PREFIX, "Nickname reset failed:", error);
       setStatus("error");
       resetBtn.disabled = false;
     }
@@ -1057,7 +988,7 @@ async function handleExportIdentity(): Promise<void> {
       }
     });
   } catch (error) {
-    errorCore("Failed to export identity:", error);
+    console.error(LOG_PREFIX, "Failed to export identity:", error);
     showAlert(t("options_alert_exportFailed"));
   }
 }
@@ -1506,7 +1437,6 @@ function resetDockSettings(): void {
   (document.getElementById("isDockTranslateEnabled") as HTMLInputElement).checked = true;
   (document.getElementById("isDockRomanizeEnabled") as HTMLInputElement).checked = true;
   (document.getElementById("isDockOffsetEnabled") as HTMLInputElement).checked = true;
-  (document.getElementById("isDockPictureInPictureEnabled") as HTMLInputElement).checked = true;
   setUnisonPositionInForm(DOCK_DEFAULT_POSITION);
   setDockControlsOrderInForm([...DOCK_CONTROL_ORDER_DEFAULT]);
   syncUnisonModalDependentState(true);
@@ -1550,13 +1480,7 @@ function setupUnisonActionsModal(): void {
 
   autoHideToggle.addEventListener("change", saveOptions);
 
-  for (const id of [
-    "isDockSourceEnabled",
-    "isDockTranslateEnabled",
-    "isDockRomanizeEnabled",
-    "isDockOffsetEnabled",
-    "isDockPictureInPictureEnabled",
-  ]) {
+  for (const id of ["isDockSourceEnabled", "isDockTranslateEnabled", "isDockRomanizeEnabled", "isDockOffsetEnabled"]) {
     document.getElementById(id)?.addEventListener("change", debouncedSaveOptions);
   }
 
@@ -1583,38 +1507,6 @@ function setOffsetDisplay(id: string, value: number): void {
   if (input) input.value = String(value);
   const display = document.querySelector<HTMLElement>(`.offset-stepper__value[data-for="${id}"]`);
   if (display) display.textContent = formatOffsetDisplay(value);
-}
-
-// The controls live outside #options, so the blanket change listener over that
-// subtree does not reach them and each one is bound here instead.
-function initPictureInPictureModal(): void {
-  const openBtn = document.getElementById("pip-settings-btn");
-  const overlay = document.getElementById("pip-modal-overlay");
-  const closeBtn = document.getElementById("pip-modal-close");
-  if (!openBtn || !overlay || !closeBtn) return;
-
-  const close = (): void => overlay.classList.remove("active");
-  openBtn.addEventListener("click", () => overlay.classList.add("active"));
-  closeBtn.addEventListener("click", close);
-  overlay.addEventListener("click", event => {
-    if (event.target === overlay) close();
-  });
-  document.addEventListener("keydown", event => {
-    if (event.key === "Escape" && overlay.classList.contains("active")) close();
-  });
-
-  for (const control of overlay.querySelectorAll("input, select")) {
-    control.addEventListener("change", saveOptions);
-  }
-
-  const enabledToggle = document.getElementById("isPictureInPictureEnabled") as HTMLInputElement | null;
-  enabledToggle?.addEventListener("change", () => syncPictureInPictureModalDependentState(enabledToggle.checked));
-}
-
-function syncPictureInPictureModalDependentState(enabled: boolean): void {
-  const body = document.getElementById("pip-modal-body");
-  if (!body) return;
-  body.dataset.pipDisabled = enabled ? "false" : "true";
 }
 
 function initOffsetModal(): void {

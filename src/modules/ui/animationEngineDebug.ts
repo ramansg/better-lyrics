@@ -1,14 +1,12 @@
-import { errorGeneral } from "@core/logger";
-
 const CANVAS_ID = "blyrics-lyric-debug-canvas";
 
-let ctx: CanvasRenderingContext2D | null = null;
+export let ctx: CanvasRenderingContext2D | null = null;
 
 let canvas: HTMLCanvasElement | null = null;
 function createDebugCanvas() {
   let tabRenderer = document.querySelector("#tab-renderer") as HTMLElement;
   if (!tabRenderer) {
-    errorGeneral("Can't find tab renderer");
+    console.error("Can't find tab renderer");
     return;
   }
 
@@ -20,6 +18,8 @@ function createDebugCanvas() {
   canvas = document.createElement("canvas");
   canvas.id = CANVAS_ID;
   canvas.style.position = "fixed";
+  // canvas.style.top = "0";
+  // canvas.style.left = "0";
   canvas.style.width = "100%";
   canvas.style.height = "100%";
   canvas.style.order = "100";
@@ -30,7 +30,7 @@ function createDebugCanvas() {
 
   ctx = canvas.getContext("2d");
   if (!ctx) {
-    errorGeneral("Can't find canvas context");
+    console.error("Can't find canvas context");
     return;
   }
   resizeCanvas();

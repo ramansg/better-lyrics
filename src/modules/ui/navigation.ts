@@ -1,4 +1,5 @@
-import { logError } from "@core/logger";
+import { GENERAL_ERROR_LOG } from "@constants";
+import { log } from "@utils";
 
 const PLAYER_PAGE_WAIT_INTERVAL_MS = 50;
 const PLAYER_PAGE_WAIT_TIMEOUT_MS = 3000;
@@ -41,7 +42,7 @@ export function openPlayerPageForFullscreen(): Promise<void> {
         resolve();
       })
       .catch(err => {
-        logError("Player page open timeout", err);
+        log(GENERAL_ERROR_LOG, "Player page open timeout", err);
         isNavigationInProgress = false;
         openedPlayerPageForFullscreen = false;
         resolve();

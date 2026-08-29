@@ -1,7 +1,6 @@
 import { MUSIC_NOTES } from "@constants";
-import { langCodesMatch } from "@utils";
+import { langCodesMatch, log } from "@utils";
 import type { LyricsArray, ProviderParameters } from "./shared";
-import { logCore } from "@core/logger";
 
 export async function ytCaptions(providerParameters: ProviderParameters): Promise<void> {
   let audioTrackData = providerParameters.audioTrackData;
@@ -25,7 +24,7 @@ export async function ytCaptions(providerParameters: ProviderParameters): Promis
   }
 
   if (!langCode) {
-    logCore("Found Caption Tracks, but couldn't determine the default", audioTrackData);
+    log("Found Caption Tracks, but couldn't determine the default", audioTrackData);
     providerParameters.sourceMap["yt-captions"].filled = true;
     providerParameters.sourceMap["yt-captions"].lyricSourceResult = null;
     return;
@@ -41,7 +40,7 @@ export async function ytCaptions(providerParameters: ProviderParameters): Promis
   }
 
   if (!captionsUrl) {
-    logCore("Only found auto generated lyrics for youtube captions, not using", audioTrackData);
+    log("Only found auto generated lyrics for youtube captions, not using", audioTrackData);
     providerParameters.sourceMap["yt-captions"].filled = true;
     providerParameters.sourceMap["yt-captions"].lyricSourceResult = null;
     return;

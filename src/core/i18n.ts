@@ -1,5 +1,5 @@
+import { LOG_PREFIX } from "@constants";
 import { LOCALE_CODES } from "@core/generated/locales";
-import { warnCore } from "@core/logger";
 
 // -- Display Code Mapping --------------------------
 
@@ -49,14 +49,14 @@ export async function loadLocaleOverride(): Promise<void> {
     const url = chrome.runtime.getURL(`_locales/${locale}/messages.json`);
     const response = await fetch(url);
     if (!response.ok) {
-      warnCore(`Failed to load locale "${locale}": ${response.status}`);
+      console.warn(`${LOG_PREFIX} Failed to load locale "${locale}": ${response.status}`);
       overrideMessages = null;
       return;
     }
 
     overrideMessages = await response.json();
   } catch (e) {
-    warnCore(`Failed to load locale override:`, e);
+    console.warn(`${LOG_PREFIX} Failed to load locale override:`, e);
     overrideMessages = null;
   }
 }
@@ -94,19 +94,16 @@ export function getLanguageDisplayName(langCode: string): string {
     const displayNames = new Intl.DisplayNames([navigator.language], { type: "language" });
     return displayNames.of(displayCode) ?? langCode;
   } catch (e) {
-    warnCore(`Failed to get display name for "${langCode}":`, e);
+    console.warn(`${LOG_PREFIX} Failed to get display name for "${langCode}":`, e);
     return langCode;
   }
 }
 
-// Consumers that cache resolved strings rather than calling t() at render time have to
-// republish here, once the override has actually swapped, not from their own storage listener.
-export function subscribeToLocaleChanges(onLocaleApplied?: () => void): void {
+export function subscribeToLocaleChanges(): void {
   chrome.storage.onChanged.addListener(async (changes, area) => {
     if (area !== "sync" || !changes.uiLanguage) return;
     await loadLocaleOverride();
     injectI18nCssVars();
-    onLocaleApplied?.();
   });
 }
 
